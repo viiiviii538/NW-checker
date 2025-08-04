@@ -4,6 +4,13 @@ set -e
 echo "=== Python 環境構築 ==="
 if [ -f requirements.txt ]; then
     pip install --upgrade pip
+
+    echo "=== nmap のインストール（apt） ==="
+    apt-get update && apt-get install -y nmap
+
+    echo "=== python-nmap のインストール（pip） ==="
+    pip install python-nmap
+
     pip install -r requirements.txt
 else
     echo "requirements.txt が見つかりません。スキップします。"
