@@ -1,30 +1,36 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/material.dart';
 
 import 'package:nw_checker/main.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
+  testWidgets('Tab bar contains four tabs with correct labels',
+      (WidgetTester tester) async {
     await tester.pumpWidget(const MyApp());
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    expect(find.byType(Tab), findsNWidgets(4));
+    expect(find.text('静的スキャン'), findsOneWidget);
+    expect(find.text('動的スキャン'), findsOneWidget);
+    expect(find.text('ネットワーク図'), findsOneWidget);
+    expect(find.text('テスト'), findsOneWidget);
+  });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+  testWidgets('Each tab shows its button', (WidgetTester tester) async {
+    await tester.pumpWidget(const MyApp());
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // 静的スキャン tab is selected by default
+    expect(find.text('静的スキャンを実行'), findsOneWidget);
+
+    await tester.tap(find.text('動的スキャン'));
+    await tester.pumpAndSettle();
+    expect(find.text('動的スキャンを実行'), findsOneWidget);
+
+    await tester.tap(find.text('ネットワーク図'));
+    await tester.pumpAndSettle();
+    expect(find.text('ネットワーク図を表示'), findsOneWidget);
+
+    await tester.tap(find.text('テスト'));
+    await tester.pumpAndSettle();
+    expect(find.text('テストを開始'), findsOneWidget);
   });
 }
