@@ -4,6 +4,17 @@ import 'package:flutter/material.dart';
 import 'package:nw_checker/main.dart';
 
 void main() {
+  testWidgets('Tab bar contains four tabs with correct labels',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(const MyApp());
+
+    expect(find.byType(Tab), findsNWidgets(4));
+    expect(find.text('静的スキャン'), findsOneWidget);
+    expect(find.text('動的スキャン'), findsOneWidget);
+    expect(find.text('ネットワーク図'), findsOneWidget);
+    expect(find.text('テスト'), findsOneWidget);
+  });
+
   testWidgets('Each tab shows its button', (WidgetTester tester) async {
     await tester.pumpWidget(const MyApp());
 
