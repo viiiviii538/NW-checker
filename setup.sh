@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -e
 
+# まずFlutterプロジェクトのルートに移動
+cd /workspace/NW-checker
+
 echo "=== OSパッケージインストール ==="
 apt-get update
 apt-get install -y nmap
@@ -61,7 +64,3 @@ fi
 echo "=== セットアップ完了 ==="
 echo "Python: $(python --version)"
 echo "Flutter: $(flutter --version)"
-
-# setup.sh の最後に追加
-cd /workspace/NW-checker  # ← Flutterプロジェクトのパスに置き換える
-flutter pub get
