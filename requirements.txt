@@ -1,4 +1,3 @@
-nmap
 python-nmap
 requests
 scapy
