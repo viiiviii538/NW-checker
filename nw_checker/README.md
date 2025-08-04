@@ -1,16 +1,38 @@
 # nw_checker
 
-A new Flutter project.
+Python + Flutter based network vulnerability scanning tool.
 
-## Getting Started
+## Setup
 
-This project is a starting point for a Flutter application.
+### 1. Install dependencies
 
-A few resources to get you started if this is your first Flutter project:
+```bash
+# Run setup script
+./setup.sh
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+Python dependencies are listed in requirements.txt
+Flutter dependencies are listed in pubspec.yaml
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+pytest
+
+flutter test
+
+src/        # Python backend modules (network scanning, vulnerability checks)
+tests/      # Python tests
+lib/        # Flutter frontend code
+
+Python: 3.11.x
+Flutter: 3.19.x
+Platform: Windows / macOS / Linux
+
+python src/port_scan.py
+
+flutter run -d windows
+
+Make sure to have pytest installed (pip install pytest) if not already in requirements.txt.
+
+Before running flutter commands, ensure the Flutter SDK path is set correctly in your environment.
+
+For Android builds, configure local.properties in android/ with your sdk.dir path.
+
+
