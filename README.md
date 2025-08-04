@@ -1,1 +1,1 @@
-# NW-checker
+# nw-checker
