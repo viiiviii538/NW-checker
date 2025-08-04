@@ -61,3 +61,7 @@ fi
 echo "=== セットアップ完了 ==="
 echo "Python: $(python --version)"
 echo "Flutter: $(flutter --version)"
+
+# setup.sh の最後に追加
+cd /workspace/NW-CHECKER/nw_checker   # ← Flutterプロジェクトのパスに置き換える
+flutter pub get
