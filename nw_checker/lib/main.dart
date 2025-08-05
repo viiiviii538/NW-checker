@@ -57,10 +57,10 @@ STATUS: CRITICAL
           title: const Text('Network Checker'),
           bottom: const TabBar(
             tabs: [
-              Tab(text: '静的スキャン'),
-              Tab(text: '動的スキャン'),
-              Tab(text: 'ネットワーク図'),
-              Tab(text: 'テスト'),
+              Tab(key: Key('staticTab'), text: '静的スキャン'),
+              Tab(key: Key('dynamicTab'), text: '動的スキャン'),
+              Tab(key: Key('networkTab'), text: 'ネットワーク図'),
+              Tab(key: Key('testTab'), text: 'テスト'),
             ],
           ),
         ),
@@ -68,6 +68,7 @@ STATUS: CRITICAL
           children: [
             Center(
               child: ElevatedButton(
+                key: const Key('staticButton'),
                 onPressed: () {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('静的スキャンを実行しました')),
@@ -78,6 +79,7 @@ STATUS: CRITICAL
             ),
             Center(
               child: ElevatedButton(
+                key: const Key('dynamicButton'),
                 onPressed: () {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('動的スキャンを実行しました')),
@@ -88,6 +90,7 @@ STATUS: CRITICAL
             ),
             Center(
               child: ElevatedButton(
+                key: const Key('networkButton'),
                 onPressed: () {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('ネットワーク図を表示しました')),
