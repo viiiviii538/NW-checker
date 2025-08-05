@@ -48,7 +48,11 @@ void main() {
     expect(find.byType(SelectableText), findsNothing);
     await tester.pump(const Duration(seconds: 90));
     expect(find.byType(SelectableText), findsOneWidget);
-    expect(find.textContaining('[SCAN] TCP 3389 OPEN'), findsOneWidget);
+    final selectable = tester.widget<SelectableText>(
+      find.byType(SelectableText),
+    );
+    final text = selectable.textSpan!.toPlainText();
+    expect(text.contains('[SCAN] TCP 3389 OPEN'), isTrue);
   });
 
   testWidgets('Static button shows a SnackBar', (WidgetTester tester) async {
@@ -99,7 +103,32 @@ void main() {
     final selectable = tester.widget<SelectableText>(
       find.byType(SelectableText),
     );
-    expect(selectable.style?.fontFamily, 'monospace');
-    expect(selectable.data!.contains('RISK SCORE: 92/100'), isTrue);
+    expect(selectable.style?.fontFamily, 'Courier New');
+    final text = selectable.textSpan!.toPlainText();
+    expect(text.contains('RISK SCORE: 92/100'), isTrue);
+
+    bool hasWarnSpan = false;
+    (selectable.textSpan as TextSpan).visitChildren((span) {
+      if (span is TextSpan &&
+          span.text == '[WARN]' &&
+          span.style?.color == const Color(0xFFCC0000)) {
+        hasWarnSpan = true;
+        return false;
+      }
+      return true;
+    });
+    expect(hasWarnSpan, isTrue);
+
+    final Container container = tester.widget(
+      find
+          .ancestor(
+            of: find.byType(SelectableText),
+            matching: find.byType(Container),
+          )
+          .first,
+    );
+    final BoxDecoration deco = container.decoration as BoxDecoration;
+    expect(deco.color, const Color(0xFFFAFAFA));
+    expect((deco.border as Border).top.color, const Color(0xFF999999));
   });
 }

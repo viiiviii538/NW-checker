@@ -14,39 +14,47 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: const HomePage(),
+      home: HomePage(),
     );
   }
 }
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key, this.testOutput = _dummyTestOutput});
+  HomePage({super.key, List<String>? testOutputLines})
+    : testOutputLines = testOutputLines ?? _generateDummyOutput();
 
   /// 表示する診断結果（後でPython側から差し替え予定）
-  final String testOutput;
+  final List<String> testOutputLines;
 
   /// 仮の診断結果（ダミーデータ）
-  static const String _dummyTestOutput = '''
- [SCAN] TCP 3389 OPEN :: HIGH RISK (RDP) [WARN]
- [SCAN] TCP 445 OPEN :: HIGH RISK (SMB) [WARN]
- [SCAN] TCP 21 OPEN :: FTP (ANON) [WARN]
- [SCAN] TCP 80 OPEN :: HTTP/1.1
- NOTE: Multiple external ports detected.
-
- [BANNER] 192.168.1.10:445 OS: WinServer2012R2 (EOL)
- [BANNER] 192.168.1.15:80 SVC: Apache/2.2.15 (VULNERABLE)
-
- [SMB] RESPONDING
- [NETBIOS] RESPONDING
- [UPNP] ENABLED
- [ARP] Multiple replies detected (protection: NONE)
- [DHCP] DUPLICATE (192.168.1.1 / 192.168.1.200)
- [DNS] External: 8.8.8.8 / 114.114.114.114
- [SSL] example.co.jp EXP: 12 days (AUTORENEW: DISABLED)
- RISK SCORE: 92/100
- STATUS: CRITICAL
- (output truncated)
- ''';
+  static List<String> _generateDummyOutput() {
+    final timestamp = DateTime.now().toString().split('.').first;
+    return [
+      '=== NETWORK SECURITY SCAN REPORT ===',
+      'Scan Date: $timestamp',
+      '-------------------- SECTION --------------------',
+      '[SCAN] TCP 3389 OPEN :: HIGH RISK (RDP) [WARN]',
+      '[SCAN] TCP  445 OPEN :: HIGH RISK (SMB) [WARN]',
+      '[SCAN] TCP   21 OPEN :: FTP (ANON) [WARN]',
+      '[SCAN] TCP   80 OPEN :: HTTP/1.1',
+      'NOTE: Multiple external ports detected.',
+      '-------------------- SECTION --------------------',
+      '[BANNER] 192.168.1.10:445 OS: WinServer2012R2 (EOL)',
+      '[BANNER] 192.168.1.15:80 SVC: Apache/2.2.15 (VULNERABLE)',
+      '-------------------- SECTION --------------------',
+      '[SMB] RESPONDING',
+      '[NETBIOS] RESPONDING',
+      '[UPNP] ENABLED',
+      '[ARP] Multiple replies detected (protection: NONE)',
+      '[DHCP] DUPLICATE (192.168.1.1 / 192.168.1.200)',
+      '[DNS] External: 8.8.8.8 / 114.114.114.114',
+      '[SSL] example.co.jp EXP: 12 days (AUTORENEW: DISABLED)',
+      '-------------------- SECTION --------------------',
+      'RISK SCORE: 92/100',
+      'STATUS: CRITICAL',
+      '(output truncated)',
+    ];
+  }
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -55,6 +63,52 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   bool _showTestOutput = false;
   bool _isLoading = false;
+
+  List<InlineSpan> _buildOutputSpans() {
+    const warnStyle = TextStyle(
+      color: Color(0xFFCC0000),
+      fontWeight: FontWeight.bold,
+    );
+    const labelTextStyle = TextStyle(
+      fontFamily: 'Courier New',
+      fontFamilyFallback: ['Consolas', 'monospace'],
+      fontSize: 12,
+      height: 1.2,
+      color: Colors.white,
+      fontWeight: FontWeight.bold,
+    );
+
+    final spans = <InlineSpan>[];
+    for (final line in widget.testOutputLines) {
+      if (line.startsWith('STATUS:')) {
+        spans.add(const TextSpan(text: 'STATUS: '));
+        spans.add(
+          WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: Container(
+              color: const Color(0xFFCC0000),
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+              child: const Text('CRITICAL', style: labelTextStyle),
+            ),
+          ),
+        );
+        spans.add(const TextSpan(text: '\n'));
+        continue;
+      }
+      final regex = RegExp(r'HIGH RISK|\[WARN\]');
+      int start = 0;
+      for (final match in regex.allMatches(line)) {
+        if (match.start > start) {
+          spans.add(TextSpan(text: line.substring(start, match.start)));
+        }
+        spans.add(TextSpan(text: match.group(0), style: warnStyle));
+        start = match.end;
+      }
+      spans.add(TextSpan(text: line.substring(start)));
+      spans.add(const TextSpan(text: '\n'));
+    }
+    return spans;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -107,8 +161,7 @@ class _HomePageState extends State<HomePage> {
                 child: const Text('ネットワーク図を表示'),
               ),
             ),
-            Container(
-              color: Colors.white,
+            Padding(
               padding: const EdgeInsets.all(8.0),
               child: Column(
                 children: [
@@ -134,15 +187,24 @@ class _HomePageState extends State<HomePage> {
                     )
                   else if (_showTestOutput)
                     Expanded(
-                      child: Scrollbar(
-                        thumbVisibility: true,
-                        child: SingleChildScrollView(
-                          child: SelectableText(
-                            widget.testOutput,
-                            style: const TextStyle(
-                              fontFamily: 'monospace',
-                              fontSize: 13,
-                              color: Colors.black,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFAFAFA),
+                          border: Border.all(color: Color(0xFF999999)),
+                        ),
+                        padding: const EdgeInsets.all(8.0),
+                        child: Scrollbar(
+                          thumbVisibility: true,
+                          child: SingleChildScrollView(
+                            child: SelectableText.rich(
+                              TextSpan(children: _buildOutputSpans()),
+                              style: const TextStyle(
+                                fontFamily: 'Courier New',
+                                fontFamilyFallback: ['Consolas', 'monospace'],
+                                fontSize: 12,
+                                height: 1.2,
+                                color: Colors.black,
+                              ),
                             ),
                           ),
                         ),
