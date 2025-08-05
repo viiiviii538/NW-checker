@@ -65,7 +65,7 @@ class HomePage extends StatelessWidget {
               ),
             ),
             Center(
-              child: ElevatedButton(
+              child: ElevatedButton
                 onPressed: () {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(

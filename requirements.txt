@@ -1,0 +1,6 @@
+python-nmap
+requests
+scapy
+geoip2
+pdfkit
+pytest
