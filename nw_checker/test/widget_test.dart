@@ -32,6 +32,10 @@ void main() {
 
     await tester.tap(find.text('テスト'));
     await tester.pumpAndSettle();
+    expect(find.text('テストを実行'), findsOneWidget);
+    expect(find.byType(SelectableText), findsNothing);
+    await tester.tap(find.text('テストを実行'));
+    await tester.pump();
     expect(find.byType(SelectableText), findsOneWidget);
     expect(find.textContaining('[SCAN] TCP 3389 OPEN'), findsOneWidget);
   });
@@ -71,6 +75,12 @@ void main() {
 
     await tester.tap(find.text('テスト'));
     await tester.pumpAndSettle();
+
+    // Initially no output is shown
+    expect(find.byType(SelectableText), findsNothing);
+
+    await tester.tap(find.text('テストを実行'));
+    await tester.pump();
 
     expect(find.byType(Scrollbar), findsOneWidget);
     final selectable = tester.widget<SelectableText>(
