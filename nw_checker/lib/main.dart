@@ -35,22 +35,12 @@ class HomePage extends StatefulWidget {
       '-------------------- SECTION --------------------',
       '[SCAN] TCP 3389 OPEN :: HIGH RISK (RDP) [WARN]',
       '[SCAN] TCP  445 OPEN :: HIGH RISK (SMB) [WARN]',
-      '[SCAN] TCP   21 OPEN :: FTP (ANON) [WARN]',
-      '[SCAN] TCP   80 OPEN :: HTTP/1.1',
-      'NOTE: Multiple external ports detected.',
+      '[INFO] Suspicious ARP replies detected.',
       '-------------------- SECTION --------------------',
-      '[BANNER] 192.168.1.10:445 OS: WinServer2012R2 (EOL)',
-      '[BANNER] 192.168.1.15:80 SVC: Apache/2.2.15 (VULNERABLE)',
+      '[BANNER] 192.168.1.20:3389 OS: WinServer2016 (EOL)',
+      '[SSL] expired.example.com EXP: -5 days (CERT EXPIRED)',
       '-------------------- SECTION --------------------',
-      '[SMB] RESPONDING',
-      '[NETBIOS] RESPONDING',
-      '[UPNP] ENABLED',
-      '[ARP] Multiple replies detected (protection: NONE)',
-      '[DHCP] DUPLICATE (192.168.1.1 / 192.168.1.200)',
-      '[DNS] External: 8.8.8.8 / 114.114.114.114',
-      '[SSL] example.co.jp EXP: 12 days (AUTORENEW: DISABLED)',
-      '-------------------- SECTION --------------------',
-      'RISK SCORE: 92/100',
+      'RISK SCORE: 97/100',
       'STATUS: CRITICAL',
       '(output truncated)',
     ];
@@ -64,10 +54,15 @@ class _HomePageState extends State<HomePage> {
   bool _showTestOutput = false;
   bool _isLoading = false;
 
-  List<InlineSpan> _buildOutputSpans() {
+  List<InlineSpan> _buildOutputSpans(Iterable<String> lines) {
     const warnStyle = TextStyle(
-      color: Color(0xFFCC0000),
+      color: Color(0xFFB71C1C),
+      backgroundColor: Color(0xFFFFEBEE),
       fontWeight: FontWeight.bold,
+    );
+    const sectionStyle = TextStyle(
+      color: Color(0xFF666666),
+      fontWeight: FontWeight.w400,
     );
     const labelTextStyle = TextStyle(
       fontFamily: 'Courier New',
@@ -75,27 +70,33 @@ class _HomePageState extends State<HomePage> {
       fontSize: 12,
       height: 1.2,
       color: Colors.white,
-      fontWeight: FontWeight.bold,
+      fontWeight: FontWeight.w600,
     );
 
     final spans = <InlineSpan>[];
-    for (final line in widget.testOutputLines) {
+    for (final line in lines) {
       if (line.startsWith('STATUS:')) {
+        final status = line.substring('STATUS: '.length);
         spans.add(const TextSpan(text: 'STATUS: '));
         spans.add(
           WidgetSpan(
             alignment: PlaceholderAlignment.middle,
             child: Container(
-              color: const Color(0xFFCC0000),
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-              child: const Text('CRITICAL', style: labelTextStyle),
+              color: const Color(0xFFD32F2F),
+              padding: const EdgeInsets.all(4),
+              child: Text(status, style: labelTextStyle),
             ),
           ),
         );
         spans.add(const TextSpan(text: '\n'));
         continue;
       }
-      final regex = RegExp(r'HIGH RISK|\[WARN\]');
+      if (line.startsWith('--------------------')) {
+        spans.add(TextSpan(text: line, style: sectionStyle));
+        spans.add(const TextSpan(text: '\n'));
+        continue;
+      }
+      final regex = RegExp(r'\[HIGH RISK\]|\[WARN\]|CRITICAL');
       int start = 0;
       for (final match in regex.allMatches(line)) {
         if (match.start > start) {
@@ -108,6 +109,40 @@ class _HomePageState extends State<HomePage> {
       spans.add(const TextSpan(text: '\n'));
     }
     return spans;
+  }
+
+  Widget _buildReportContent() {
+    final baseStyle = const TextStyle(
+      fontFamily: 'Courier New',
+      fontFamilyFallback: ['Consolas', 'monospace'],
+      fontSize: 12,
+      height: 1.2,
+      fontWeight: FontWeight.w600,
+      color: Colors.black,
+    );
+    final lines = widget.testOutputLines;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: double.infinity,
+          color: Colors.black,
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Text(
+            lines.first,
+            style: baseStyle.copyWith(color: Colors.white),
+          ),
+        ),
+        Align(
+          alignment: Alignment.centerRight,
+          child: Text(lines[1], style: baseStyle),
+        ),
+        SelectableText.rich(
+          TextSpan(children: _buildOutputSpans(lines.skip(2))),
+          style: baseStyle,
+        ),
+      ],
+    );
   }
 
   @override
@@ -188,23 +223,25 @@ class _HomePageState extends State<HomePage> {
                   else if (_showTestOutput)
                     Expanded(
                       child: Container(
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFAFAFA),
-                          border: Border.all(color: Color(0xFF999999)),
-                        ),
-                        padding: const EdgeInsets.all(8.0),
+                        color: const Color(0xFFF4F4F4),
+                        alignment: Alignment.topCenter,
                         child: Scrollbar(
                           thumbVisibility: true,
                           child: SingleChildScrollView(
-                            child: SelectableText.rich(
-                              TextSpan(children: _buildOutputSpans()),
-                              style: const TextStyle(
-                                fontFamily: 'Courier New',
-                                fontFamilyFallback: ['Consolas', 'monospace'],
-                                fontSize: 12,
-                                height: 1.2,
-                                color: Colors.black,
+                            child: Container(
+                              width: 700,
+                              margin: const EdgeInsets.symmetric(vertical: 16),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.15),
+                                    blurRadius: 8,
+                                  ),
+                                ],
                               ),
+                              child: _buildReportContent(),
                             ),
                           ),
                         ),

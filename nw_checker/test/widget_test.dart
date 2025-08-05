@@ -105,13 +105,14 @@ void main() {
     );
     expect(selectable.style?.fontFamily, 'Courier New');
     final text = selectable.textSpan!.toPlainText();
-    expect(text.contains('RISK SCORE: 92/100'), isTrue);
+    expect(text.contains('RISK SCORE: 97/100'), isTrue);
 
     bool hasWarnSpan = false;
     (selectable.textSpan as TextSpan).visitChildren((span) {
       if (span is TextSpan &&
           span.text == '[WARN]' &&
-          span.style?.color == const Color(0xFFCC0000)) {
+          span.style?.color == const Color(0xFFB71C1C) &&
+          span.style?.backgroundColor == const Color(0xFFFFEBEE)) {
         hasWarnSpan = true;
         return false;
       }
@@ -128,7 +129,7 @@ void main() {
           .first,
     );
     final BoxDecoration deco = container.decoration as BoxDecoration;
-    expect(deco.color, const Color(0xFFFAFAFA));
-    expect((deco.border as Border).top.color, const Color(0xFF999999));
+    expect(deco.color, Colors.white);
+    expect(deco.boxShadow?.isNotEmpty ?? false, isTrue);
   });
 }
