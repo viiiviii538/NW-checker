@@ -45,3 +45,12 @@ def test_scan_ports_all_closed_ports(monkeypatch):
 
     result = scan_ports("127.0.0.1")
     assert result == []
+def test_scan_ports_handles_scan_errors(monkeypatch):
+    class ErrorScanner:
+        def scan(self, target_ip, arguments=""):
+            raise nmap.PortScannerError("scan failed")
+
+    monkeypatch.setattr(nmap, "PortScanner", lambda: ErrorScanner())
+
+    with pytest.raises(nmap.PortScannerError):
+        scan_ports("127.0.0.1")
