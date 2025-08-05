@@ -42,25 +42,49 @@ class HomePage extends StatelessWidget {
           children: [
             Center(
               child: ElevatedButton(
-                onPressed: () {},
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('静的スキャンを実行しました'),
+                    ),
+                  );
+                },
                 child: const Text('静的スキャンを実行'),
               ),
             ),
             Center(
               child: ElevatedButton(
-                onPressed: () {},
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('動的スキャンを実行しました'),
+                    ),
+                  );
+                },
                 child: const Text('動的スキャンを実行'),
               ),
             ),
             Center(
-              child: ElevatedButton(
-                onPressed: () {},
+              child: ElevatedButton
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('ネットワーク図を表示しました'),
+                    ),
+                  );
+                },
                 child: const Text('ネットワーク図を表示'),
               ),
             ),
             Center(
               child: ElevatedButton(
-                onPressed: () {},
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('テストを開始しました'),
+                    ),
+                  );
+                },
                 child: const Text('テストを開始'),
               ),
             ),
