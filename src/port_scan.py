@@ -8,4 +8,5 @@ def scan_ports(target_ip: str):
     Returns:
         list of open ports.
     """
-    pass
+    # 現状は実スキャンを行わず空のリストを返す（後で実装予定）
+    return []
