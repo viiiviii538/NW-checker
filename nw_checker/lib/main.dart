@@ -54,6 +54,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   bool _showTestOutput = false;
+  bool _isLoading = false;
 
   @override
   Widget build(BuildContext context) {
@@ -114,12 +115,24 @@ class _HomePageState extends State<HomePage> {
                   ElevatedButton(
                     onPressed: () {
                       setState(() {
-                        _showTestOutput = true;
+                        _isLoading = true;
+                        _showTestOutput = false;
+                      });
+                      Future.delayed(const Duration(seconds: 90), () {
+                        if (!mounted) return;
+                        setState(() {
+                          _isLoading = false;
+                          _showTestOutput = true;
+                        });
                       });
                     },
                     child: const Text('テストを実行'),
                   ),
-                  if (_showTestOutput)
+                  if (_isLoading)
+                    const Expanded(
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  else if (_showTestOutput)
                     Expanded(
                       child: Scrollbar(
                         thumbVisibility: true,

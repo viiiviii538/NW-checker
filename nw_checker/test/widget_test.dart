@@ -44,10 +44,11 @@ void main() {
     expect(find.byType(SelectableText), findsNothing);
     await tester.tap(find.text('テストを実行'));
     await tester.pump();
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byType(SelectableText), findsNothing);
+    await tester.pump(const Duration(seconds: 90));
     expect(find.byType(SelectableText), findsOneWidget);
-    final selectable =
-        tester.widget<SelectableText>(find.byType(SelectableText));
-    expect(selectable.data!.contains('[SCAN] TCP 3389 OPEN'), isTrue);
+    expect(find.textContaining('[SCAN] TCP 3389 OPEN'), findsOneWidget);
   });
 
   testWidgets('Static button shows a SnackBar', (WidgetTester tester) async {
@@ -91,6 +92,8 @@ void main() {
 
     await tester.tap(find.text('テストを実行'));
     await tester.pump();
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    await tester.pump(const Duration(seconds: 90));
 
     expect(find.byType(Scrollbar), findsOneWidget);
     final selectable = tester.widget<SelectableText>(
