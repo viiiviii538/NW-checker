@@ -77,10 +77,10 @@ class _HomePageState extends State<HomePage> {
               child: ElevatedButton(
                 onPressed: () {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('静的スキャンを実行しました')),
+                    const SnackBar(content: Text('テストを実行しました')),
                   );
                 },
-                child: const Text('静的スキャンを実行'),
+                child: const Text('テスト'),
               ),
             ),
             Center(
