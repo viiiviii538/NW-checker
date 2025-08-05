@@ -52,108 +52,120 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
+  late TabController _tabController;
   bool _showTestOutput = false;
   bool _isLoading = false;
 
   @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 4, vsync: this);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 4,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Network Checker'),
-          bottom: const TabBar(
-            tabs: [
-              Tab(key: Key('staticTab'), text: '静的スキャン'),
-              Tab(key: Key('dynamicTab'), text: '動的スキャン'),
-              Tab(key: Key('networkTab'), text: 'ネットワーク図'),
-              Tab(key: Key('testTab'), text: 'テスト'),
-            ],
-          ),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Network Checker'),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(key: Key('staticTab'), text: '静的スキャン'),
+            Tab(key: Key('dynamicTab'), text: '動的スキャン'),
+            Tab(key: Key('networkTab'), text: 'ネットワーク図'),
+            Tab(key: Key('testTab'), text: 'テスト'),
+          ],
         ),
-        body: TabBarView(
-          children: [
-            Center(
-              child: ElevatedButton(
-                key: const Key('staticButton'),
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('テストを実行しました')),
-                  );
-                },
-                child: const Text('テスト'),
-              ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          Center(
+            child: ElevatedButton(
+              key: const Key('staticButton'),
+              onPressed: () {
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text('テストを実行しました')));
+              },
+              child: const Text('テスト'),
             ),
-            Center(
-              child: ElevatedButton(
-                key: const Key('dynamicButton'),
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('動的スキャンを実行しました')),
-                  );
-                },
-                child: const Text('動的スキャンを実行'),
-              ),
+          ),
+          Center(
+            child: ElevatedButton(
+              key: const Key('dynamicButton'),
+              onPressed: () {
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text('動的スキャンを実行しました')));
+              },
+              child: const Text('動的スキャンを実行'),
             ),
-            Center(
-              child: ElevatedButton(
-                key: const Key('networkButton'),
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('ネットワーク図を表示しました')),
-                  );
-                },
-                child: const Text('ネットワーク図を表示'),
-              ),
+          ),
+          Center(
+            child: ElevatedButton(
+              key: const Key('networkButton'),
+              onPressed: () {
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text('ネットワーク図を表示しました')));
+              },
+              child: const Text('ネットワーク図を表示'),
             ),
-            Container(
-              color: Colors.white,
-              padding: const EdgeInsets.all(8.0),
-              child: Column(
-                children: [
-                  ElevatedButton(
-                    onPressed: () {
+          ),
+          Container(
+            color: Colors.white,
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              children: [
+                ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      _isLoading = true;
+                      _showTestOutput = false;
+                    });
+                    Future.delayed(const Duration(seconds: 90), () {
+                      if (!mounted) return;
                       setState(() {
-                        _isLoading = true;
-                        _showTestOutput = false;
+                        _isLoading = false;
+                        _showTestOutput = true;
                       });
-                      Future.delayed(const Duration(seconds: 90), () {
-                        if (!mounted) return;
-                        setState(() {
-                          _isLoading = false;
-                          _showTestOutput = true;
-                        });
-                      });
-                    },
-                    child: const Text('テストを実行'),
-                  ),
-                  if (_isLoading)
-                    const Expanded(
-                      child: Center(child: CircularProgressIndicator()),
-                    )
-                  else if (_showTestOutput)
-                    Expanded(
-                      child: Scrollbar(
-                        thumbVisibility: true,
-                        child: SingleChildScrollView(
-                          child: SelectableText(
-                            widget.testOutput,
-                            style: const TextStyle(
-                              fontFamily: 'monospace',
-                              fontSize: 13,
-                              color: Colors.black,
-                            ),
+                    });
+                  },
+                  child: const Text('テストを実行'),
+                ),
+                if (_isLoading)
+                  const Expanded(
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                else if (_showTestOutput)
+                  Expanded(
+                    child: Scrollbar(
+                      thumbVisibility: true,
+                      child: SingleChildScrollView(
+                        child: SelectableText(
+                          widget.testOutput,
+                          style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 13,
+                            color: Colors.black,
                           ),
                         ),
                       ),
                     ),
-                ],
-              ),
+                  ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 }
