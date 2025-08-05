@@ -3,7 +3,7 @@ set -e
 
 # ===== 環境変数設定 =====
 export DEBIAN_FRONTEND=noninteractive
-PROJECT_DIR="/workspace/NW-checker"
+PROJECT_DIR="/workspace/NW-checker/nw_checker"
 FLUTTER_VERSION=3.19.0
 FLUTTER_DIR="$HOME/flutter"
 export PATH="$FLUTTER_DIR/bin:$PATH"
