@@ -14,6 +14,8 @@ def scan_ports(target_ip: str):
     Returns:
         list of open ports as integers.
     """
+    # 現状は実スキャンを行わず空のリストを返す（後で実装予定）
+    return []
     scanner = nmap.PortScanner()
     # `-p-` instructs nmap to scan all ports
     scan_data = scanner.scan(target_ip, arguments="-p-")

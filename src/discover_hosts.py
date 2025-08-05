@@ -8,5 +8,6 @@ def discover_hosts(subnet: str):
     Returns:
         list of IP addresses or host details.
     """
+    # 現状はスキャンを行わず空のリストを返す（後で実装予定）
     # TODO: Implement real host discovery.
     return []

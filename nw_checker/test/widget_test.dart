@@ -40,6 +40,10 @@ void main() {
 
     await tester.tap(find.byKey(const Key('testTab')));
     await tester.pumpAndSettle();
+    expect(find.text('テストを実行'), findsOneWidget);
+    expect(find.byType(SelectableText), findsNothing);
+    await tester.tap(find.text('テストを実行'));
+    await tester.pump();
     expect(find.byType(SelectableText), findsOneWidget);
     final selectable =
         tester.widget<SelectableText>(find.byType(SelectableText));
@@ -51,7 +55,7 @@ void main() {
 
     await tester.tap(find.byKey(const Key('staticButton')));
     await tester.pump();
-    expect(find.text('静的スキャンを実行しました'), findsOneWidget);
+    expect(find.text('テストを実行しました'), findsOneWidget);
   });
 
   testWidgets('Dynamic button shows a SnackBar', (WidgetTester tester) async {
@@ -81,6 +85,12 @@ void main() {
 
     await tester.tap(find.byKey(const Key('testTab')));
     await tester.pumpAndSettle();
+
+    // Initially no output is shown
+    expect(find.byType(SelectableText), findsNothing);
+
+    await tester.tap(find.text('テストを実行'));
+    await tester.pump();
 
     expect(find.byType(Scrollbar), findsOneWidget);
     final selectable = tester.widget<SelectableText>(
