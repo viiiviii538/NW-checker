@@ -65,10 +65,10 @@ class _HomePageState extends State<HomePage> {
           title: const Text('Network Checker'),
           bottom: const TabBar(
             tabs: [
-              Tab(text: '静的スキャン'),
-              Tab(text: '動的スキャン'),
-              Tab(text: 'ネットワーク図'),
-              Tab(text: 'テスト'),
+              Tab(key: Key('staticTab'), text: '静的スキャン'),
+              Tab(key: Key('dynamicTab'), text: '動的スキャン'),
+              Tab(key: Key('networkTab'), text: 'ネットワーク図'),
+              Tab(key: Key('testTab'), text: 'テスト'),
             ],
           ),
         ),
@@ -76,16 +76,18 @@ class _HomePageState extends State<HomePage> {
           children: [
             Center(
               child: ElevatedButton(
+                key: const Key('staticButton'),
                 onPressed: () {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('静的スキャンを実行しました')),
+                    const SnackBar(content: Text('テストを実行しました')),
                   );
                 },
-                child: const Text('静的スキャンを実行'),
+                child: const Text('テスト'),
               ),
             ),
             Center(
               child: ElevatedButton(
+                key: const Key('dynamicButton'),
                 onPressed: () {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('動的スキャンを実行しました')),
@@ -96,6 +98,7 @@ class _HomePageState extends State<HomePage> {
             ),
             Center(
               child: ElevatedButton(
+                key: const Key('networkButton'),
                 onPressed: () {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('ネットワーク図を表示しました')),
