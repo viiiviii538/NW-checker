@@ -31,61 +31,69 @@ class HomePage extends StatelessWidget {
           title: const Text('Network Checker'),
           bottom: const TabBar(
             tabs: [
-              Tab(text: '静的スキャン'),
-              Tab(text: '動的スキャン'),
-              Tab(text: 'ネットワーク図'),
-              Tab(text: 'テスト'),
+              Tab(key: Key('tab-static'), text: '静的スキャン'),
+              Tab(key: Key('tab-dynamic'), text: '動的スキャン'),
+              Tab(key: Key('tab-network'), text: 'ネットワーク図'),
+              Tab(key: Key('tab-test'), text: 'テスト'),
             ],
           ),
         ),
         body: TabBarView(
           children: [
             Center(
-              child: ElevatedButton(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('静的スキャンを実行しました'),
+              child: Builder(
+                builder:
+                    (context) => ElevatedButton(
+                      key: const Key('btn-static'),
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('静的スキャンを実行しました')),
+                        );
+                      },
+                      child: const Text('静的スキャンを実行'),
                     ),
-                  );
-                },
-                child: const Text('静的スキャンを実行'),
               ),
             ),
             Center(
-              child: ElevatedButton(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('動的スキャンを実行しました'),
+              child: Builder(
+                builder:
+                    (context) => ElevatedButton(
+                      key: const Key('btn-dynamic'),
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('動的スキャンを実行しました')),
+                        );
+                      },
+                      child: const Text('動的スキャンを実行'),
                     ),
-                  );
-                },
-                child: const Text('動的スキャンを実行'),
               ),
             ),
             Center(
-              child: ElevatedButton(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('ネットワーク図を表示しました'),
+              child: Builder(
+                builder:
+                    (context) => ElevatedButton(
+                      key: const Key('btn-network'),
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('ネットワーク図を表示しました')),
+                        );
+                      },
+                      child: const Text('ネットワーク図を表示'),
                     ),
-                  );
-                },
-                child: const Text('ネットワーク図を表示'),
               ),
             ),
             Center(
-              child: ElevatedButton(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('テストを開始しました'),
+              child: Builder(
+                builder:
+                    (context) => ElevatedButton(
+                      key: const Key('btn-test'),
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('テストを開始しました')),
+                        );
+                      },
+                      child: const Text('テストを開始'),
                     ),
-                  );
-                },
-                child: const Text('テストを開始'),
               ),
             ),
           ],
