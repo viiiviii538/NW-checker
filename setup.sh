@@ -4,9 +4,10 @@ set -e
 # ===== 環境変数設定 =====
 export DEBIAN_FRONTEND=noninteractive
 PROJECT_DIR="/workspace/NW-checker/nw_checker"
-FLUTTER_VERSION=3.19.0
+FLUTTER_VERSION=3.32.8   # Dart 3.7.2 同梱の安定版
 FLUTTER_DIR="$HOME/flutter"
 export PATH="$FLUTTER_DIR/bin:$PATH"
+
 
 echo "=== プロジェクトルートへ移動 ==="
 cd "$PROJECT_DIR"
