@@ -13,14 +13,14 @@ void main() {
     expect(find.text('静的スキャン'), findsOneWidget);
     expect(find.text('動的スキャン'), findsOneWidget);
     expect(find.text('ネットワーク図'), findsOneWidget);
-    expect(find.text('テスト'), findsOneWidget);
+    expect(find.widgetWithText(Tab, 'テスト'), findsOneWidget);
   });
 
   testWidgets('Each tab shows expected content', (WidgetTester tester) async {
     await tester.pumpWidget(const MyApp());
 
     // 静的スキャン tab is selected by default
-    expect(find.text('静的スキャンを実行'), findsOneWidget);
+    expect(find.widgetWithText(ElevatedButton, 'テスト'), findsOneWidget);
 
     await tester.tap(find.text('動的スキャン'));
     await tester.pumpAndSettle();
@@ -30,7 +30,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('ネットワーク図を表示'), findsOneWidget);
 
-    await tester.tap(find.text('テスト'));
+    await tester.tap(find.widgetWithText(Tab, 'テスト'));
     await tester.pumpAndSettle();
     expect(find.byType(SelectableText), findsOneWidget);
     expect(find.textContaining('[SCAN] TCP 3389 OPEN'), findsOneWidget);
@@ -39,9 +39,9 @@ void main() {
   testWidgets('Static button shows a SnackBar', (WidgetTester tester) async {
     await tester.pumpWidget(const MyApp());
 
-    await tester.tap(find.text('静的スキャンを実行'));
+    await tester.tap(find.widgetWithText(ElevatedButton, 'テスト'));
     await tester.pump();
-    expect(find.text('静的スキャンを実行しました'), findsOneWidget);
+    expect(find.text('テストを実行しました'), findsOneWidget);
   });
 
   testWidgets('Dynamic button shows a SnackBar', (WidgetTester tester) async {
@@ -69,7 +69,7 @@ void main() {
   ) async {
     await tester.pumpWidget(const MyApp());
 
-    await tester.tap(find.text('テスト'));
+    await tester.tap(find.widgetWithText(Tab, 'テスト'));
     await tester.pumpAndSettle();
 
     expect(find.byType(Scrollbar), findsOneWidget);
