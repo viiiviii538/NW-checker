@@ -1,5 +1,6 @@
 import asyncio
 import socket
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from collections import defaultdict
 from typing import Any, Dict, Iterable
@@ -8,6 +9,41 @@ import requests
 
 # 危険とされるプロトコルの名称
 DANGEROUS_PROTOCOLS = {"telnet", "ftp", "rdp"}
+
+
+@dataclass
+class AnalysisResult:
+    """解析結果を共通形式で表すデータクラス"""
+
+    src_ip: str | None = None
+    dst_ip: str | None = None
+    protocol: str | None = None
+    geoip: Dict[str, Any] | None = None
+    reverse_dns: str | None = None
+    dangerous_protocol: bool | None = None
+    new_device: bool | None = None
+    unapproved_device: bool | None = None
+    traffic_anomaly: bool | None = None
+    out_of_hours: bool | None = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        """None でないフィールドのみ dict 化して返す"""
+        return {k: v for k, v in asdict(self).items() if v is not None}
+
+    @classmethod
+    def merge(cls, *results: "AnalysisResult") -> "AnalysisResult":
+        """複数の解析結果を一つにまとめる"""
+        merged = cls()
+        for res in results:
+            for key, value in asdict(res).items():
+                if value is not None:
+                    setattr(merged, key, value)
+        return merged
+
+
+# DNS 履歴と検出済みデバイスの簡易メモリ
+_dns_history: Dict[str, str] = {}
+_known_devices: set[str] = set()
 
 
 def geoip_lookup(ip: str) -> Dict[str, Any]:
@@ -54,39 +90,90 @@ def is_night_traffic(timestamp: float, start_hour: int = 0, end_hour: int = 6) -
     return start_hour <= hour < end_hour
 
 
-async def analyse_packets(queue: asyncio.Queue, storage, approved_macs: Iterable[str] | None = None) -> None:
+def assign_geoip_info(packet) -> AnalysisResult:
+    """GeoIP 情報をパケットに付与する"""
+    src_ip = getattr(packet, "src_ip", getattr(packet, "ip_src", None))
+    dst_ip = getattr(packet, "dst_ip", getattr(packet, "ip_dst", None))
+    geoip = geoip_lookup(src_ip) if src_ip else {}
+    return AnalysisResult(src_ip=src_ip, dst_ip=dst_ip, geoip=geoip)
+
+
+def record_dns_history(packet) -> AnalysisResult:
+    """DNS 履歴を記録する"""
+    src_ip = getattr(packet, "src_ip", getattr(packet, "ip_src", None))
+    hostname = reverse_dns_lookup(src_ip) if src_ip else None
+    if hostname:
+        _dns_history[src_ip] = hostname
+    return AnalysisResult(reverse_dns=hostname)
+
+
+def detect_dangerous_protocols(packet) -> AnalysisResult:
+    """危険なプロトコルを検出"""
+    protocol = getattr(packet, "protocol", getattr(getattr(packet, "payload", None), "name", "unknown"))
+    dangerous = is_dangerous_protocol(protocol)
+    return AnalysisResult(protocol=protocol, dangerous_protocol=dangerous)
+
+
+def track_new_devices(packet) -> AnalysisResult:
+    """新たに観測されたデバイスを追跡"""
+    mac = getattr(packet, "src_mac", getattr(packet, "mac", getattr(packet, "src", "")))
+    is_new = mac not in _known_devices
+    if is_new:
+        _known_devices.add(mac)
+    return AnalysisResult(new_device=is_new)
+
+
+def detect_traffic_anomalies(packet, stats, threshold: int = 1_000_000) -> AnalysisResult:
+    """通信量の異常を検出"""
+    key = getattr(packet, "src_ip", getattr(packet, "ip_src", getattr(packet, "src_mac", "")))
+    size = getattr(packet, "size", getattr(packet, "len", 0))
+    anomaly = detect_traffic_anomaly(stats, key, size, threshold=threshold)
+    return AnalysisResult(traffic_anomaly=anomaly)
+
+
+def detect_out_of_hours(packet, schedule) -> AnalysisResult:
+    """時間外通信を検出"""
+    timestamp = getattr(packet, "timestamp", getattr(packet, "time", datetime.now().timestamp()))
+    start_hour, end_hour = schedule
+    hour = datetime.fromtimestamp(timestamp).hour
+    out = hour < start_hour or hour >= end_hour
+    return AnalysisResult(out_of_hours=out)
+
+
+async def analyse_packets(
+    queue: asyncio.Queue,
+    storage,
+    approved_macs: Iterable[str] | None = None,
+    schedule: tuple[int, int] = (0, 6),
+) -> None:
     """キューからパケットを取得し解析する。"""
+
     approved = set(approved_macs or [])
     traffic_stats: Dict[str, int] = defaultdict(int)
 
     while True:
         packet = await queue.get()
 
-        src_ip = getattr(packet, "src_ip", getattr(packet, "ip_src", None))
-        dst_ip = getattr(packet, "dst_ip", getattr(packet, "ip_dst", None))
-        protocol = getattr(packet, "protocol", getattr(getattr(packet, "payload", None), "name", "unknown"))
+        geoip_res = await asyncio.to_thread(assign_geoip_info, packet)
+        dns_res = await asyncio.to_thread(record_dns_history, packet)
+        dangerous_res = detect_dangerous_protocols(packet)
+        new_dev_res = track_new_devices(packet)
+        traffic_res = detect_traffic_anomalies(packet, traffic_stats)
+        out_res = detect_out_of_hours(packet, schedule)
+
         mac = getattr(packet, "src_mac", getattr(packet, "mac", getattr(packet, "src", "")))
-        size = getattr(packet, "size", getattr(packet, "len", 0))
-        timestamp = getattr(packet, "timestamp", getattr(packet, "time", datetime.now().timestamp()))
-
-        geoip = await asyncio.to_thread(geoip_lookup, src_ip) if src_ip else {}
-        dns = reverse_dns_lookup(src_ip) if src_ip else None
-        dangerous = is_dangerous_protocol(protocol)
         unapproved = is_unapproved_device(mac, approved)
-        anomaly = detect_traffic_anomaly(traffic_stats, src_ip or mac, size)
-        night = is_night_traffic(timestamp)
+        unapproved_res = AnalysisResult(unapproved_device=unapproved)
 
-        result = {
-            "src_ip": src_ip,
-            "dst_ip": dst_ip,
-            "protocol": protocol,
-            "geoip": geoip,
-            "reverse_dns": dns,
-            "dangerous_protocol": dangerous,
-            "unapproved_device": unapproved,
-            "traffic_anomaly": anomaly,
-            "night_traffic": night,
-        }
+        combined = AnalysisResult.merge(
+            geoip_res,
+            dns_res,
+            dangerous_res,
+            new_dev_res,
+            traffic_res,
+            out_res,
+            unapproved_res,
+        )
 
-        await storage.save(result)
+        await storage.save_result(combined.to_dict())
         queue.task_done()
