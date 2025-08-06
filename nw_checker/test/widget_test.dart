@@ -51,7 +51,8 @@ void main() {
     await tester.pump();
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
     expect(find.byType(SelectableText), findsNothing);
-    await tester.pump(const Duration(seconds: 3));
+    await tester.pump(const Duration(seconds: 30));
+    await tester.pumpAndSettle();
     expect(find.byType(SelectableText), findsOneWidget);
     final selectable = tester.widget<SelectableText>(
       find.byType(SelectableText),
@@ -109,7 +110,8 @@ void main() {
     await tester.tap(find.text('テストを実行'));
     await tester.pump();
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
-    await tester.pump(const Duration(seconds: 3));
+    await tester.pump(const Duration(seconds: 30));
+    await tester.pumpAndSettle();
 
     expect(find.byType(Scrollbar), findsOneWidget);
     final selectable = tester.widget<SelectableText>(
@@ -169,9 +171,10 @@ void main() {
     await tester.tap(find.text('テストを実行'));
     await tester.pump();
 
-    expect(find.text('Loading...'), findsOneWidget);
-    await tester.pump(const Duration(seconds: 3));
-    expect(find.text('Loading...'), findsNothing);
+    expect(find.text('Running security scan...'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 30));
+    await tester.pumpAndSettle();
+    expect(find.text('Running security scan...'), findsNothing);
     expect(find.byType(SelectableText), findsOneWidget);
   });
 }

@@ -43,21 +43,43 @@ class HomePage extends StatefulWidget {
       '-------------------- SECTION --------------------',
       '[BANNER] 192.168.1.20:3389 OS: WinServer2016 (EOL)',
       '[DEVICE] IoT camera detected (192.168.1.50) - Firmware outdated (820 days)',
+      '[DEVICE] Network printer (192.168.1.60) - Default admin password in use [WARN]',
       '',
       '-------------------- SECTION --------------------',
       '[DNS] External: 8.8.8.8 (Google) / 114.114.114.114 (China Telecom)',
+      '[DNS] Internal resolver at 192.168.1.1 - No DNSSEC [WARN]',
       'NOTE: At least one DNS server is located outside Japan.',
       '',
+      '-------------------- SECTION --------------------',
       '[CONNECTIONS] Suspicious outbound traffic detected:',
       '  - 192.168.1.15 → 185.143.220.13 (RU) [PORT 443] [Unknown certificate issuer]',
       '  - 192.168.1.22 → 203.113.25.42 (VN) [PORT 8080] [Service: proxy]',
-      'NOTE: Connections to high-risk countries (RU, VN) observed.',
+      '  - 192.168.1.35 → 45.83.220.19 (CN) [PORT 22] [SSH Brute Force suspected]',
+      'NOTE: Connections to high-risk countries (RU, VN, CN) observed.',
       '',
       '-------------------- SECTION --------------------',
       '[SSL] expired.example.com EXP: -5 days (CERT EXPIRED)',
       '[SSL] secure.example.jp EXP: 7 days (AUTORENEW: DISABLED) [WARN]',
+      '[SSL] shop.example.net EXP: 120 days [OK]',
       '',
       '-------------------- SECTION --------------------',
+      '[VULN SCAN] SMBv1 enabled [HIGH]',
+      '[VULN SCAN] NetBIOS name service exposed [MEDIUM]',
+      '[VULN SCAN] UPnP service enabled [MEDIUM]',
+      '',
+      '-------------------- SECTION --------------------',
+      '[LAN DEVICES]',
+      '  - 192.168.1.100 :: Smart TV (No firmware update in 2 years)',
+      '  - 192.168.1.101 :: NAS storage (Outdated OS: FreeNAS 11.1)',
+      '  - 192.168.1.102 :: VoIP phone (Default SIP credentials) [WARN]',
+      '',
+      '-------------------- SECTION --------------------',
+      '[FIREWALL] No outbound rule for port 23 (telnet) [OK]',
+      '[ACL] Guest network isolated from LAN [INFO]',
+      '[FIREWALL] Inbound rule permits FTP traffic [WARN]',
+      '',
+      '-------------------- SECTION --------------------',
+      '[SECURITY SCORE] Overall score calculated based on port exposure, outdated firmware, insecure services, and risky outbound traffic.',
       'RISK SCORE: 97/100',
       'STATUS: CRITICAL',
       'SUMMARY: Multiple high-risk services open, outdated firmware, expired SSL, and outbound traffic to blacklisted regions detected.',
@@ -94,6 +116,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     const noteStyle = TextStyle(
       color: Color(0xFF004D40),
       fontStyle: FontStyle.italic,
+    );
+    const okStyle = TextStyle(
+      color: Color(0xFF1B5E20),
+      backgroundColor: Color(0xFFE8F5E9),
+      fontWeight: FontWeight.bold,
     );
     const sectionStyle = TextStyle(
       color: Color(0xFF666666),
@@ -136,7 +163,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         spans.add(const TextSpan(text: '\n'));
         continue;
       }
-      final combinedRegex = RegExp(r'\[HIGH RISK\]|\[WARN\]|CRITICAL|\[INFO\]');
+      final combinedRegex = RegExp(
+        r'\[HIGH RISK\]|\[WARN\]|CRITICAL|\[INFO\]|\[OK\]',
+      );
       int start = 0;
       for (final match in combinedRegex.allMatches(line)) {
         if (match.start > start) {
@@ -148,6 +177,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           style = warnStyle;
         } else if (text == '[INFO]') {
           style = infoStyle;
+        } else if (text == '[OK]') {
+          style = okStyle;
+
         }
         spans.add(TextSpan(text: text, style: style));
         start = match.end;
@@ -249,7 +281,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       _isLoading = true;
                       _showTestOutput = false;
                     });
-                    Future.delayed(const Duration(seconds: 3), () {
+                    Future.delayed(const Duration(seconds: 30), () {
                       if (!mounted) return;
                       setState(() {
                         _isLoading = false;
@@ -259,47 +291,53 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   },
                   child: const Text('テストを実行'),
                 ),
-                if (_isLoading)
-                  const Expanded(
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          CircularProgressIndicator(),
-                          SizedBox(height: 16),
-                          Text('Loading...'),
-                        ],
-                      ),
-                    ),
-                  )
-                else if (_showTestOutput)
-                  Expanded(
-                    child: Container(
-                      color: const Color(0xFFF4F4F4),
-                      alignment: Alignment.topCenter,
-                      child: Scrollbar(
-                        thumbVisibility: true,
-                        child: SingleChildScrollView(
-                          child: Container(
-                            width: 700,
-                            margin: const EdgeInsets.symmetric(vertical: 16),
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.15),
-
-                                  blurRadius: 8,
+                Expanded(
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 500),
+                    child:
+                        _isLoading
+                            ? const Center(
+                              key: ValueKey('loading'),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  CircularProgressIndicator(),
+                                  SizedBox(height: 16),
+                                  Text('Running security scan...'),
+                                ],
+                              ),
+                            )
+                            : _showTestOutput
+                            ? Container(
+                              key: const ValueKey('report'),
+                              color: const Color(0xFFF4F4F4),
+                              alignment: Alignment.topCenter,
+                              child: Scrollbar(
+                                thumbVisibility: true,
+                                child: SingleChildScrollView(
+                                  child: Container(
+                                    width: 700,
+                                    margin: const EdgeInsets.symmetric(
+                                      vertical: 16,
+                                    ),
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.15),
+                                          blurRadius: 8,
+                                        ),
+                                      ],
+                                    ),
+                                    child: _buildReportContent(),
+                                  ),
                                 ),
-                              ],
-                            ),
-                            child: _buildReportContent(),
-                          ),
-                        ),
-                      ),
-                    ),
+                              ),
+                            )
+                            : const SizedBox.shrink(),
                   ),
+                ),
               ],
             ),
           ),
