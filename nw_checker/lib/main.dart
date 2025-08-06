@@ -179,6 +179,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           style = infoStyle;
         } else if (text == '[OK]') {
           style = okStyle;
+
         }
         spans.add(TextSpan(text: text, style: style));
         start = match.end;
