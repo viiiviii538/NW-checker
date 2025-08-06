@@ -75,9 +75,25 @@ def test_storage_save_and_get(tmp_path):
     asyncio.run(runner())
 
 
+def test_save_and_fetch_results(tmp_path, monkeypatch):
+    monkeypatch.setattr(storage, "DB_PATH", tmp_path / "history.db")
+    storage._init_db()
+
+    async def runner():
+        await storage.save_result({"id": 1, "timestamp": "2024-01-01T00:00:00"})
+        await storage.save_result({"id": 2, "timestamp": "2024-01-10T00:00:00"})
+
+    asyncio.run(runner())
+    results = storage.fetch_results("2024-01-05", "2024-01-15")
+    assert len(results) == 1 and results[0]["id"] == 2
+
+
 def test_analyse_packets_pipeline(tmp_path, monkeypatch):
     async def runner():
         store = storage.Storage(tmp_path / "results.json")
+        async def dummy_save(_):
+            pass
+        monkeypatch.setattr(storage, "save_result", dummy_save)
         monkeypatch.setattr(analyze, "geoip_lookup", lambda ip: {"country": "Testland", "ip": ip})
         monkeypatch.setattr(analyze, "reverse_dns_lookup", lambda ip: "example.com")
         queue: asyncio.Queue = asyncio.Queue()
@@ -106,3 +122,35 @@ def test_analyse_packets_pipeline(tmp_path, monkeypatch):
         assert data[0]["reverse_dns"] == "example.com"
 
     asyncio.run(runner())
+
+
+def test_analyse_packets_calls_save_result(tmp_path, monkeypatch):
+    called = []
+
+    async def fake_save(result):
+        called.append(result)
+
+    monkeypatch.setattr(storage, "save_result", fake_save)
+
+    async def runner():
+        store = storage.Storage(tmp_path / "results.json")
+        queue: asyncio.Queue = asyncio.Queue()
+        task = asyncio.create_task(
+            analyze.analyse_packets(queue, store, approved_macs=set())
+        )
+        pkt = SimpleNamespace(
+            src_ip="8.8.8.8",
+            dst_ip="1.1.1.1",
+            src_mac="00:00:00:00:00:00",
+            protocol="HTTP",
+            size=123,
+            timestamp=datetime.utcnow().timestamp(),
+        )
+        await queue.put(pkt)
+        await queue.join()
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+
+    asyncio.run(runner())
+    assert len(called) == 1

@@ -6,6 +6,8 @@ from typing import Any, Dict, Iterable
 
 import requests
 
+from . import storage
+
 # 危険とされるプロトコルの名称
 DANGEROUS_PROTOCOLS = {"telnet", "ftp", "rdp"}
 
@@ -54,7 +56,7 @@ def is_night_traffic(timestamp: float, start_hour: int = 0, end_hour: int = 6) -
     return start_hour <= hour < end_hour
 
 
-async def analyse_packets(queue: asyncio.Queue, storage, approved_macs: Iterable[str] | None = None) -> None:
+async def analyse_packets(queue: asyncio.Queue, store, approved_macs: Iterable[str] | None = None) -> None:
     """キューからパケットを取得し解析する。"""
     approved = set(approved_macs or [])
     traffic_stats: Dict[str, int] = defaultdict(int)
@@ -88,5 +90,6 @@ async def analyse_packets(queue: asyncio.Queue, storage, approved_macs: Iterable
             "night_traffic": night,
         }
 
-        await storage.save(result)
+        await store.save(result)
+        await storage.save_result(result)
         queue.task_done()

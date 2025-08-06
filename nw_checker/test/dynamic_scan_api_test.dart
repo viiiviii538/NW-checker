@@ -15,4 +15,10 @@ void main() {
     expect(values[0], ['Result line 1']);
     expect(values[1], ['Result line 1', 'Result line 2']);
   });
+
+  test('fetchHistory returns list', () async {
+    final res =
+        await DynamicScanApi.fetchHistory(DateTime.now(), DateTime.now());
+    expect(res, ['History 1', 'History 2']);
+  });
 }

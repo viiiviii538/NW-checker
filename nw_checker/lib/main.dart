@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'static_scan_tab.dart';
+import 'dynamic_scan_tab.dart';
 
 void main() {
   runApp(const MyApp());
@@ -178,17 +179,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         controller: _tabController,
         children: [
           const StaticScanTab(),
-          Center(
-            child: ElevatedButton(
-              key: const Key('dynamicButton'),
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('動的スキャンを実行しました')),
-                );
-              },
-              child: const Text('動的スキャンを実行'),
-            ),
-          ),
+          const DynamicScanTab(),
           Center(
             child: ElevatedButton(
               key: const Key('networkButton'),

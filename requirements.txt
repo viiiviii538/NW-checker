@@ -4,3 +4,4 @@ scapy
 geoip2
 pdfkit
 pytest
+fastapi
