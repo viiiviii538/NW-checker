@@ -3,9 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:nw_checker/dynamic_scan_tab.dart';
 
 void main() {
-  Widget buildWidget() => const MaterialApp(home: Scaffold(body: DynamicScanTab()));
+  Widget buildWidget() =>
+      const MaterialApp(home: Scaffold(body: DynamicScanTab()));
 
-  testWidgets('button tap shows progress then results', (tester) async {
+  testWidgets('button tap shows progress then report', (tester) async {
     await tester.pumpWidget(buildWidget());
 
     await tester.tap(find.text('スキャン開始'));
@@ -14,6 +15,7 @@ void main() {
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
     await tester.pump(const Duration(seconds: 1));
-    expect(find.byType(ListView), findsOneWidget);
+    expect(find.text('Risk Score: 87'), findsOneWidget);
+    expect(find.text('Ports'), findsOneWidget);
   });
 }

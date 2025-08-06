@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'history_page.dart';
+import 'models/scan_category.dart';
+import 'models/scan_report.dart';
 import 'services/dynamic_scan_api.dart';
 
 /// 動的スキャンタブのウィジェット。
@@ -11,7 +13,8 @@ class DynamicScanTab extends StatefulWidget {
 }
 
 class _DynamicScanTabState extends State<DynamicScanTab> {
-  Stream<List<String>>? _resultStream;
+  Stream<ScanReport>? _resultStream;
+  ScanReport? _latestReport;
   bool _isScanning = false;
 
   Future<void> _startScan() async {
@@ -28,6 +31,12 @@ class _DynamicScanTabState extends State<DynamicScanTab> {
       _isScanning = false;
       _resultStream = null;
     });
+  }
+
+  void _exportPdf() {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('PDF export not implemented')));
   }
 
   @override
@@ -64,22 +73,57 @@ class _DynamicScanTabState extends State<DynamicScanTab> {
             child: CircularProgressIndicator(),
           ),
         Expanded(
-          child: StreamBuilder<List<String>>(
+          child: StreamBuilder<ScanReport>(
             stream: _resultStream,
             builder: (context, snapshot) {
-              final results = snapshot.data ?? [];
-              if (results.isEmpty) {
+              if (snapshot.hasData) {
+                _latestReport = snapshot.data;
+              }
+              final report = _latestReport;
+              if (report == null) {
                 return const SizedBox.shrink();
               }
-              return ListView.builder(
-                itemCount: results.length,
-                itemBuilder:
-                    (context, index) => ListTile(title: Text(results[index])),
+              return Column(
+                children: [
+                  _buildSummary(report),
+                  Expanded(child: _buildCategoryList(report.categories)),
+                ],
               );
             },
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildSummary(ScanReport report) {
+    return Card(
+      margin: const EdgeInsets.all(8),
+      child: ListTile(
+        title: Text('Risk Score: ${report.riskScore}'),
+        trailing: ElevatedButton.icon(
+          onPressed: _exportPdf,
+          icon: const Icon(Icons.picture_as_pdf),
+          label: const Text('Export PDF'),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCategoryList(List<ScanCategory> categories) {
+    return ListView(
+      children:
+          categories.map((cat) {
+            return ExpansionTile(
+              leading: Icon(
+                categoryIcon(cat.name),
+                color: severityColor(cat.severity),
+              ),
+              title: Text(cat.name),
+              children:
+                  cat.issues.map((e) => ListTile(title: Text(e))).toList(),
+            );
+          }).toList(),
     );
   }
 }
