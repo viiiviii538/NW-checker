@@ -61,12 +61,16 @@ void main() {
     expect(text.contains('[SCAN] TCP 3389 OPEN'), isTrue);
   });
 
-  testWidgets('Static button shows a SnackBar', (WidgetTester tester) async {
+  testWidgets('Static scan button shows progress and results',
+      (WidgetTester tester) async {
     await tester.pumpWidget(const MyApp());
 
     await tester.tap(find.byKey(const Key('staticButton')));
     await tester.pump();
-    expect(find.text('テストを実行しました'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 90));
+    expect(find.text('=== STATIC SCAN REPORT ==='), findsOneWidget);
   });
 
   testWidgets('Dynamic scan tab starts and stops', (WidgetTester tester) async {
