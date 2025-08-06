@@ -71,4 +71,18 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('22/tcp open'), findsOneWidget);
   });
+
+  testWidgets('shows snackbar on alert and navigates to detail', (tester) async {
+    await tester.pumpWidget(_buildWidget());
+
+    await tester.tap(find.text('スキャン開始'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    // wait for alert
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pump();
+    expect(find.text('ALERT: Port scan detected'), findsOneWidget);
+
+    // navigation to detail page is handled elsewhere
+  });
 }

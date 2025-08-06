@@ -19,4 +19,10 @@ void main() {
     expect(report.categories.first.name, 'Ports');
     expect(report.categories.first.issues, contains('22/tcp open'));
   });
+
+  test('subscribeAlerts emits alerts', () async {
+    final alerts = await DynamicScanApi.subscribeAlerts().toList();
+    expect(alerts.first, contains('ALERT'));
+    expect(alerts, hasLength(2));
+  });
 }

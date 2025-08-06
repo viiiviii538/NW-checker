@@ -82,7 +82,12 @@ def test_analyse_packets_pipeline(tmp_path, monkeypatch):
         monkeypatch.setattr(analyze, "reverse_dns_lookup", lambda ip: "example.com")
         queue: asyncio.Queue = asyncio.Queue()
         task = asyncio.create_task(
-            analyze.analyse_packets(queue, store, approved_macs={"00:11:22:33:44:55"})
+            analyze.analyse_packets(
+                queue,
+                store,
+                approved_macs={"00:11:22:33:44:55"},
+                schedule=(9, 17),
+            )
         )
         pkt = SimpleNamespace(
             src_ip="8.8.8.8",
@@ -101,7 +106,8 @@ def test_analyse_packets_pipeline(tmp_path, monkeypatch):
         assert data[0]["dangerous_protocol"] is True
         assert data[0]["unapproved_device"] is True
         assert data[0]["traffic_anomaly"] is True
-        assert data[0]["night_traffic"] is True
+        assert data[0]["out_of_hours"] is True
+        assert data[0]["new_device"] is True
         assert data[0]["geoip"]["country"] == "Testland"
         assert data[0]["reverse_dns"] == "example.com"
 

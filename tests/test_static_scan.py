@@ -38,6 +38,16 @@ def test_run_all_totals_scores():
     assert results["risk_score"] == total
 
 
+def test_run_all_propagates_scanner_exception(monkeypatch):
+    def boom():
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(static_scan, "SCANNERS", [boom])
+
+    with pytest.raises(RuntimeError):
+        static_scan.run_all()
+
+
 @pytest.mark.parametrize(
     "module,category",
     [
