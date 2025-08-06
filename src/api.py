@@ -2,14 +2,13 @@ from __future__ import annotations
 
 import asyncio
 import os
-from contextlib import suppress
 from typing import Optional
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from .dynamic_scan import capture, analyze, storage
+from .dynamic_scan import scheduler
 
 app = FastAPI()
 
@@ -33,69 +32,54 @@ class StartParams(BaseModel):
     interface: Optional[str] = None
     duration: Optional[int] = None
     approved_macs: Optional[list[str]] = None
+    interval: Optional[int] = None
 
 
-scan_queue: asyncio.Queue | None = None
-capture_task: asyncio.Task | None = None
-analyse_task: asyncio.Task | None = None
-storage_obj = storage.Storage()
+scan_scheduler = scheduler.DynamicScanScheduler()
 
 
 @app.post("/scan/dynamic/start")
 async def start_scan(params: StartParams, _: None = Depends(verify_token)):
-    global scan_queue, capture_task, analyse_task, storage_obj
-    if capture_task or analyse_task:
+    if scan_scheduler.job:
         return {"status": "already_running"}
-    scan_queue = asyncio.Queue()
-    storage_obj = storage.Storage()
-    capture_task = asyncio.create_task(
-        capture.capture_packets(
-            scan_queue,
-            interface=params.interface,
-            duration=params.duration,
-        )
+    scan_scheduler.start(
+        interface=params.interface,
+        duration=params.duration,
+        approved_macs=params.approved_macs or [],
+        interval=params.interval or 3600,
     )
-    analyse_task = asyncio.create_task(
-        analyze.analyse_packets(
-            scan_queue,
-            storage_obj,
-            approved_macs=params.approved_macs or [],
-        )
-    )
-    return {"status": "started"}
+    return {"status": "scheduled"}
 
 
 @app.post("/scan/dynamic/stop")
 async def stop_scan(_: None = Depends(verify_token)):
-    global capture_task, analyse_task
-    for task in (capture_task, analyse_task):
-        if task:
-            task.cancel()
-            with suppress(asyncio.CancelledError):
-                await task
-    capture_task = analyse_task = None
+    await scan_scheduler.stop()
     return {"status": "stopped"}
 
 
 @app.get("/scan/dynamic/results")
 async def get_results(_: None = Depends(verify_token)):
-    return {"results": storage_obj.get_all()}
+    return {"results": scan_scheduler.storage.get_all()}
 
 
 @app.get("/scan/dynamic/history")
 async def get_history(
-    from_date: str = Query(..., alias="from"),
-    to_date: str = Query(..., alias="to"),
+    start: Optional[str] = Query(None),
+    end: Optional[str] = Query(None),
+    device: Optional[str] = None,
+    protocol: Optional[str] = None,
     _: None = Depends(verify_token),
 ):
-    return {"results": storage_obj.fetch_results(from_date, to_date)}
+    filters = {"start": start, "end": end, "device": device, "protocol": protocol}
+    filters = {k: v for k, v in filters.items() if v is not None}
+    return {"results": scan_scheduler.storage.fetch_history(filters)}
 
 
 @app.websocket("/ws/scan/dynamic")
 async def ws_dynamic_scan(websocket: WebSocket):
     await websocket.accept()
     queue: asyncio.Queue = asyncio.Queue()
-    storage_obj.add_listener(queue)
+    scan_scheduler.storage.add_listener(queue)
     try:
         while True:
             data = await queue.get()
@@ -103,5 +87,5 @@ async def ws_dynamic_scan(websocket: WebSocket):
     except WebSocketDisconnect:
         pass
     finally:
-        storage_obj.remove_listener(queue)
+        scan_scheduler.storage.remove_listener(queue)
 

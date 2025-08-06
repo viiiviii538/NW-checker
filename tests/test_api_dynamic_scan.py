@@ -2,13 +2,13 @@ import asyncio
 from fastapi.testclient import TestClient
 
 from src import api
-from src.dynamic_scan import capture, analyze, storage
+from src.dynamic_scan import capture, analyze, storage, scheduler
 
 
 def test_dynamic_scan_endpoints(monkeypatch, tmp_path):
     client = TestClient(api.app)
     store = storage.Storage(tmp_path / "res.db")
-    api.storage_obj = store
+    api.scan_scheduler = scheduler.DynamicScanScheduler()
     # start_scan 内で Storage() が呼ばれても同じインスタンスを返すようにする
     monkeypatch.setattr(storage, "Storage", lambda *args, **kwargs: store)
 
@@ -23,17 +23,17 @@ def test_dynamic_scan_endpoints(monkeypatch, tmp_path):
 
     resp = client.post("/scan/dynamic/start", json={"duration": 0})
     assert resp.status_code == 200
-    assert resp.json() == {"status": "started"}
+    assert resp.json() == {"status": "scheduled"}
 
     resp2 = client.post("/scan/dynamic/stop")
     assert resp2.status_code == 200
     assert resp2.json() == {"status": "stopped"}
 
-    asyncio.run(api.storage_obj.save_result({"key": "value"}))
+    asyncio.run(api.scan_scheduler.storage.save_result({"key": "value"}))
     resp3 = client.get("/scan/dynamic/results")
     assert resp3.status_code == 200
     assert resp3.json()["results"][0]["key"] == "value"
 
-    resp4 = client.get("/scan/dynamic/history", params={"from": "1970-01-01", "to": "2100-01-01"})
+    resp4 = client.get("/scan/dynamic/history", params={"start": "1970-01-01", "end": "2100-01-01"})
     assert resp4.status_code == 200
     assert resp4.json()["results"][0]["key"] == "value"
