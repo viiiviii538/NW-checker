@@ -3,8 +3,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:nw_checker/static_scan_tab.dart';
 
 void main() {
-  Widget buildWidget() =>
-      const MaterialApp(home: Scaffold(body: StaticScanTab()));
+  Future<List<String>> mockScan() async =>
+      ['=== STATIC SCAN REPORT ===', 'No issues detected.'];
+
+  Widget buildWidget() => MaterialApp(
+        home: Scaffold(body: StaticScanTab(scanner: mockScan)),
+      );
 
   testWidgets('button tap shows progress then results', (tester) async {
     await tester.pumpWidget(buildWidget());
@@ -13,8 +17,7 @@ void main() {
     await tester.pump();
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
-    await tester.pump(const Duration(seconds: 90));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.byType(CircularProgressIndicator), findsNothing);
     expect(find.text('=== STATIC SCAN REPORT ==='), findsOneWidget);
