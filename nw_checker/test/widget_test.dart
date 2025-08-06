@@ -37,8 +37,7 @@ void main() {
 
     await tester.tap(find.byKey(const Key('dynamicTab')));
     await tester.pumpAndSettle();
-    expect(find.text('スキャン開始'), findsOneWidget);
-    expect(find.text('スキャン停止'), findsOneWidget);
+    expect(find.text('動的スキャンを実行'), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('networkTab')));
     await tester.pumpAndSettle();
@@ -52,7 +51,7 @@ void main() {
     await tester.pump();
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
     expect(find.byType(SelectableText), findsNothing);
-    await tester.pump(const Duration(seconds: 90));
+    await tester.pump(const Duration(seconds: 3));
     expect(find.byType(SelectableText), findsOneWidget);
     final selectable = tester.widget<SelectableText>(
       find.byType(SelectableText),
@@ -61,8 +60,9 @@ void main() {
     expect(text.contains('[SCAN] TCP 3389 OPEN'), isTrue);
   });
 
-  testWidgets('Static scan button shows progress and results',
-      (WidgetTester tester) async {
+  testWidgets('Static scan button shows progress and results', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(const MyApp());
 
     await tester.tap(find.byKey(const Key('staticButton')));
@@ -73,20 +73,16 @@ void main() {
     expect(find.text('=== STATIC SCAN REPORT ==='), findsOneWidget);
   });
 
-  testWidgets('Dynamic scan tab starts and stops', (WidgetTester tester) async {
+  testWidgets('Dynamic scan button shows a SnackBar', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(const MyApp());
 
     await tester.tap(find.byKey(const Key('dynamicTab')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('スキャン開始'));
+    await tester.tap(find.text('動的スキャンを実行'));
     await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
-    await tester.pump(const Duration(seconds: 1));
-    expect(find.byType(ListView), findsOneWidget);
-    await tester.tap(find.text('スキャン停止'));
-    await tester.pump(const Duration(milliseconds: 500));
-    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.text('動的スキャンを実行しました'), findsOneWidget);
   });
 
   testWidgets('Network button shows a SnackBar', (WidgetTester tester) async {
@@ -113,7 +109,7 @@ void main() {
     await tester.tap(find.text('テストを実行'));
     await tester.pump();
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
-    await tester.pump(const Duration(seconds: 90));
+    await tester.pump(const Duration(seconds: 3));
 
     expect(find.byType(Scrollbar), findsOneWidget);
     final selectable = tester.widget<SelectableText>(
@@ -122,19 +118,32 @@ void main() {
     expect(selectable.style?.fontFamily, 'Courier New');
     final text = selectable.textSpan!.toPlainText();
     expect(text.contains('RISK SCORE: 97/100'), isTrue);
+    expect(text.contains('[INFO]'), isTrue);
 
     bool hasWarnSpan = false;
+    bool hasInfoSpan = false;
+    bool hasNoteSpan = false;
     (selectable.textSpan as TextSpan).visitChildren((span) {
-      if (span is TextSpan &&
-          span.text == '[WARN]' &&
-          span.style?.color == const Color(0xFFB71C1C) &&
-          span.style?.backgroundColor == const Color(0xFFFFEBEE)) {
-        hasWarnSpan = true;
-        return false;
+      if (span is TextSpan) {
+        if (span.text == '[WARN]' &&
+            span.style?.color == const Color(0xFFB71C1C) &&
+            span.style?.backgroundColor == const Color(0xFFFFEBEE)) {
+          hasWarnSpan = true;
+        } else if (span.text == '[INFO]' &&
+            span.style?.color == const Color(0xFF0D47A1) &&
+            span.style?.backgroundColor == const Color(0xFFE3F2FD)) {
+          hasInfoSpan = true;
+        } else if (span.text != null &&
+            span.text!.startsWith('NOTE:') &&
+            span.style?.fontStyle == FontStyle.italic) {
+          hasNoteSpan = true;
+        }
       }
       return true;
     });
     expect(hasWarnSpan, isTrue);
+    expect(hasInfoSpan, isTrue);
+    expect(hasNoteSpan, isTrue);
 
     final Container container = tester.widget(
       find
@@ -147,5 +156,22 @@ void main() {
     final BoxDecoration deco = container.decoration as BoxDecoration;
     expect(deco.color, Colors.white);
     expect(deco.boxShadow?.isNotEmpty ?? false, isTrue);
+  });
+
+  testWidgets('Test tab shows loading text before report', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const MyApp());
+
+    await tester.tap(find.byKey(const Key('testTab')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('テストを実行'));
+    await tester.pump();
+
+    expect(find.text('Loading...'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 3));
+    expect(find.text('Loading...'), findsNothing);
+    expect(find.byType(SelectableText), findsOneWidget);
   });
 }

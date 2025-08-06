@@ -35,14 +35,32 @@ class HomePage extends StatefulWidget {
       'Scan Date: $timestamp',
       '-------------------- SECTION --------------------',
       '[SCAN] TCP 3389 OPEN :: HIGH RISK (RDP) [WARN]',
-      '[SCAN] TCP  445 OPEN :: HIGH RISK (SMB) [WARN]',
-      '[INFO] Suspicious ARP replies detected.',
+      '[SCAN] TCP 445 OPEN :: HIGH RISK (SMB) [WARN]',
+      '[SCAN] TCP 21 OPEN :: FTP (ANON) [WARN]',
+      '[SCAN] TCP 80 OPEN :: HTTP [INFO]',
+      'NOTE: Multiple external ports detected (exposed to WAN).',
+      '',
       '-------------------- SECTION --------------------',
       '[BANNER] 192.168.1.20:3389 OS: WinServer2016 (EOL)',
+      '[DEVICE] IoT camera detected (192.168.1.50) - Firmware outdated (820 days)',
+      '',
+      '-------------------- SECTION --------------------',
+      '[DNS] External: 8.8.8.8 (Google) / 114.114.114.114 (China Telecom)',
+      'NOTE: At least one DNS server is located outside Japan.',
+      '',
+      '[CONNECTIONS] Suspicious outbound traffic detected:',
+      '  - 192.168.1.15 → 185.143.220.13 (RU) [PORT 443] [Unknown certificate issuer]',
+      '  - 192.168.1.22 → 203.113.25.42 (VN) [PORT 8080] [Service: proxy]',
+      'NOTE: Connections to high-risk countries (RU, VN) observed.',
+      '',
+      '-------------------- SECTION --------------------',
       '[SSL] expired.example.com EXP: -5 days (CERT EXPIRED)',
+      '[SSL] secure.example.jp EXP: 7 days (AUTORENEW: DISABLED) [WARN]',
+      '',
       '-------------------- SECTION --------------------',
       'RISK SCORE: 97/100',
       'STATUS: CRITICAL',
+      'SUMMARY: Multiple high-risk services open, outdated firmware, expired SSL, and outbound traffic to blacklisted regions detected.',
       '(output truncated)',
     ];
   }
@@ -67,6 +85,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       color: Color(0xFFB71C1C),
       backgroundColor: Color(0xFFFFEBEE),
       fontWeight: FontWeight.bold,
+    );
+    const infoStyle = TextStyle(
+      color: Color(0xFF0D47A1),
+      backgroundColor: Color(0xFFE3F2FD),
+      fontWeight: FontWeight.bold,
+    );
+    const noteStyle = TextStyle(
+      color: Color(0xFF004D40),
+      fontStyle: FontStyle.italic,
     );
     const sectionStyle = TextStyle(
       color: Color(0xFF666666),
@@ -99,18 +126,30 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         spans.add(const TextSpan(text: '\n'));
         continue;
       }
+      if (line.startsWith('NOTE:')) {
+        spans.add(TextSpan(text: line, style: noteStyle));
+        spans.add(const TextSpan(text: '\n'));
+        continue;
+      }
       if (line.startsWith('--------------------')) {
         spans.add(TextSpan(text: line, style: sectionStyle));
         spans.add(const TextSpan(text: '\n'));
         continue;
       }
-      final regex = RegExp(r'\[HIGH RISK\]|\[WARN\]|CRITICAL');
+      final combinedRegex = RegExp(r'\[HIGH RISK\]|\[WARN\]|CRITICAL|\[INFO\]');
       int start = 0;
-      for (final match in regex.allMatches(line)) {
+      for (final match in combinedRegex.allMatches(line)) {
         if (match.start > start) {
           spans.add(TextSpan(text: line.substring(start, match.start)));
         }
-        spans.add(TextSpan(text: match.group(0), style: warnStyle));
+        final text = match.group(0)!;
+        TextStyle? style;
+        if (RegExp(r'\[HIGH RISK\]|\[WARN\]|CRITICAL').hasMatch(text)) {
+          style = warnStyle;
+        } else if (text == '[INFO]') {
+          style = infoStyle;
+        }
+        spans.add(TextSpan(text: text, style: style));
         start = match.end;
       }
       spans.add(TextSpan(text: line.substring(start)));
@@ -182,9 +221,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             child: ElevatedButton(
               key: const Key('dynamicButton'),
               onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('動的スキャンを実行しました')),
-                );
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text('動的スキャンを実行しました')));
               },
               child: const Text('動的スキャンを実行'),
             ),
@@ -210,7 +249,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       _isLoading = true;
                       _showTestOutput = false;
                     });
-                    Future.delayed(const Duration(seconds: 90), () {
+                    Future.delayed(const Duration(seconds: 3), () {
                       if (!mounted) return;
                       setState(() {
                         _isLoading = false;
@@ -222,7 +261,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 ),
                 if (_isLoading)
                   const Expanded(
-                    child: Center(child: CircularProgressIndicator()),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircularProgressIndicator(),
+                          SizedBox(height: 16),
+                          Text('Loading...'),
+                        ],
+                      ),
+                    ),
                   )
                 else if (_showTestOutput)
                   Expanded(
