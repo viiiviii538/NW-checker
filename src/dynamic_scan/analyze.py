@@ -88,5 +88,5 @@ async def analyse_packets(queue: asyncio.Queue, storage, approved_macs: Iterable
             "night_traffic": night,
         }
 
-        await storage.save(result)
+        await storage.save_result(result)
         queue.task_done()
