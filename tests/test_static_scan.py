@@ -10,6 +10,11 @@ from src.scans import (
     ssl_cert,
 )
 import pytest
+import time
+
+
+def _findings_by_category(results):
+    return {item["category"]: item for item in results["findings"]}
 
 
 def test_run_all_returns_all_categories():
@@ -24,28 +29,37 @@ def test_run_all_returns_all_categories():
         "dns",
         "ssl_cert",
     }
-    assert set(results["findings"].keys()) == expected
+    categories = {item["category"] for item in results["findings"]}
+    assert categories == expected
     assert isinstance(results["risk_score"], int)
-    for category, data in results["findings"].items():
-        assert data["category"] == category
-        assert isinstance(data["score"], int)
-        assert isinstance(data["details"], dict)
+    for item in results["findings"]:
+        assert isinstance(item["score"], int)
+        assert isinstance(item["details"], dict)
 
 
 def test_run_all_totals_scores():
     results = static_scan.run_all()
-    total = sum(item["score"] for item in results["findings"].values())
+    total = sum(item["score"] for item in results["findings"])
     assert results["risk_score"] == total
 
 
-def test_run_all_propagates_scanner_exception(monkeypatch):
+def test_run_all_handles_exceptions_and_timeouts(monkeypatch):
     def boom():
         raise RuntimeError("boom")
 
-    monkeypatch.setattr(static_scan, "SCANNERS", [boom])
+    def slow():
+        time.sleep(2)
 
-    with pytest.raises(RuntimeError):
-        static_scan.run_all()
+    monkeypatch.setattr(dns, "scan", boom)
+    monkeypatch.setattr(os_banner, "scan", slow)
+
+    results = static_scan.run_all(timeout=0.5)
+    by_cat = _findings_by_category(results)
+
+    assert by_cat["dns"]["details"]["error"] == "boom"
+    assert by_cat["dns"]["score"] == 0
+    assert by_cat["os_banner"]["details"]["error"] == "timeout"
+    assert by_cat["os_banner"]["score"] == 0
 
 
 @pytest.mark.parametrize(
