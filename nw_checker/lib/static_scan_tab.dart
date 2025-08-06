@@ -11,7 +11,9 @@ Future<List<String>> performStaticScan() async {
 }
 
 class StaticScanTab extends StatefulWidget {
-  const StaticScanTab({super.key});
+  const StaticScanTab({super.key, this.scanner = performStaticScan});
+
+  final Future<List<String>> Function() scanner;
 
   @override
   State<StaticScanTab> createState() => _StaticScanTabState();
@@ -27,7 +29,7 @@ class _StaticScanTabState extends State<StaticScanTab> {
       _isLoading = true;
       _showOutput = false;
     });
-    performStaticScan().then((lines) {
+    widget.scanner().then((lines) {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
