@@ -4,13 +4,15 @@ import asyncio
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 import static_scan
+from .report.pdf import create_pdf
 
 STATIC_SCAN_TIMEOUT = 60  # seconds
 
 app = FastAPI()
 
+
 @app.get('/static_scan')
-async def static_scan_endpoint():
+async def static_scan_endpoint(report: bool = False):
     try:
         result = await asyncio.wait_for(asyncio.to_thread(static_scan.run_all), timeout=STATIC_SCAN_TIMEOUT)
     except asyncio.TimeoutError:
@@ -26,4 +28,10 @@ async def static_scan_endpoint():
 
     findings = result.get('findings', {}) if isinstance(result, dict) else result
     risk_score = result.get('risk_score') if isinstance(result, dict) else None
-    return {'status': 'ok', 'findings': findings, 'risk_score': risk_score}
+
+    response = {'status': 'ok', 'findings': findings, 'risk_score': risk_score}
+    if report:
+        output_path = '/tmp/static_scan_report.pdf'
+        create_pdf(result, output_path)
+        response['report_path'] = output_path
+    return response
