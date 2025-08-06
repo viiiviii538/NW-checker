@@ -95,3 +95,42 @@ def test_detect_out_of_hours():
     )
     res = analyze.detect_out_of_hours(pkt, (9, 17))
     assert res.out_of_hours is True
+
+def test_record_dns_history_no_hostname(monkeypatch):
+    analyze._dns_history.clear()
+    monkeypatch.setattr(analyze, "reverse_dns_lookup", lambda ip: None)
+    pkt = type("Pkt", (), {"src_ip": "1.1.1.1"})
+    res = analyze.record_dns_history(pkt)
+    assert res.reverse_dns is None
+    assert analyze._dns_history == {}
+
+
+def test_detect_dangerous_protocols_safe_protocol():
+    pkt = type("Pkt", (), {"protocol": "HTTP"})
+    res = analyze.detect_dangerous_protocols(pkt)
+    assert res.dangerous_protocol is False
+
+
+def test_detect_traffic_anomalies_normal():
+    stats = defaultdict(int)
+    pkt = type("Pkt", (), {"src_ip": "1.1.1.1", "size": 500_000})
+    assert analyze.detect_traffic_anomalies(pkt, stats).traffic_anomaly is False
+
+
+def test_detect_out_of_hours_within_schedule():
+    pkt = type(
+        "Pkt", (), {"timestamp": datetime(2024, 1, 1, 10, 0).timestamp()}
+    )
+    res = analyze.detect_out_of_hours(pkt, (9, 17))
+    assert res.out_of_hours is False
+
+
+def test_analysis_result_merge_and_to_dict():
+    a = analyze.AnalysisResult(src_ip="1.1.1.1", dangerous_protocol=True)
+    b = analyze.AnalysisResult(dst_ip="2.2.2.2", new_device=False)
+    merged = analyze.AnalysisResult.merge(a, b)
+    assert merged.src_ip == "1.1.1.1"
+    assert merged.dst_ip == "2.2.2.2"
+    assert merged.dangerous_protocol is True
+    assert merged.new_device is False
+    assert "protocol" not in merged.to_dict()
