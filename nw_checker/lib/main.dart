@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'static_scan_tab.dart';
+import 'history_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -77,7 +78,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
   }
 
   List<InlineSpan> _buildOutputSpans(Iterable<String> lines) {
@@ -208,6 +209,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           tabs: const [
             Tab(key: Key('staticTab'), text: '静的スキャン'),
             Tab(key: Key('dynamicTab'), text: '動的スキャン'),
+            Tab(key: Key('historyTab'), text: '履歴'),
             Tab(key: Key('networkTab'), text: 'ネットワーク図'),
             Tab(key: Key('testTab'), text: 'テスト'),
           ],
@@ -228,6 +230,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               child: const Text('動的スキャンを実行'),
             ),
           ),
+          const HistoryPage(),
           Center(
             child: ElevatedButton(
               key: const Key('networkButton'),

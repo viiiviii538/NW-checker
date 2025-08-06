@@ -75,8 +75,21 @@ def test_storage_save_and_get(tmp_path):
     asyncio.run(runner())
 
 
+def test_history_storage(tmp_path, monkeypatch):
+    db = tmp_path / "history.db"
+    monkeypatch.setattr(storage, "DB_FILE", db)
+    storage._init_db()
+    storage.save_result({"timestamp": "2024-01-01T00:00:00", "value": 1})
+    storage.save_result({"timestamp": "2024-01-02T00:00:00", "value": 2})
+    res = storage.fetch_results("2024-01-01", "2024-01-01")
+    assert len(res) == 1 and res[0]["value"] == 1
+
+
 def test_analyse_packets_pipeline(tmp_path, monkeypatch):
     async def runner():
+        db = tmp_path / "results.db"
+        monkeypatch.setattr(storage, "DB_FILE", db)
+        storage._init_db()
         store = storage.Storage(tmp_path / "results.json")
         monkeypatch.setattr(analyze, "geoip_lookup", lambda ip: {"country": "Testland", "ip": ip})
         monkeypatch.setattr(analyze, "reverse_dns_lookup", lambda ip: "example.com")
@@ -104,5 +117,7 @@ def test_analyse_packets_pipeline(tmp_path, monkeypatch):
         assert data[0]["night_traffic"] is True
         assert data[0]["geoip"]["country"] == "Testland"
         assert data[0]["reverse_dns"] == "example.com"
+        hist = storage.fetch_results("2024-01-01", "2024-01-01")
+        assert len(hist) == 1
 
     asyncio.run(runner())

@@ -4,12 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:nw_checker/main.dart';
 
 void main() {
-  testWidgets('Tab bar contains four tabs with correct labels', (
+  testWidgets('Tab bar contains five tabs with correct labels', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const MyApp());
 
-    expect(find.byType(Tab), findsNWidgets(4));
+    expect(find.byType(Tab), findsNWidgets(5));
     expect(find.byKey(const Key('staticTab')), findsOneWidget);
     expect(
       tester.widget<Tab>(find.byKey(const Key('staticTab'))).text,
@@ -19,6 +19,11 @@ void main() {
     expect(
       tester.widget<Tab>(find.byKey(const Key('dynamicTab'))).text,
       '動的スキャン',
+    );
+    expect(find.byKey(const Key('historyTab')), findsOneWidget);
+    expect(
+      tester.widget<Tab>(find.byKey(const Key('historyTab'))).text,
+      '履歴',
     );
     expect(find.byKey(const Key('networkTab')), findsOneWidget);
     expect(
@@ -38,6 +43,14 @@ void main() {
     await tester.tap(find.byKey(const Key('dynamicTab')));
     await tester.pumpAndSettle();
     expect(find.text('動的スキャンを実行'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('historyTab')));
+    await tester.pumpAndSettle();
+    expect(find.text('読み込み'), findsOneWidget);
+    await tester.tap(find.text('読み込み'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byType(ListTile), findsNWidgets(2));
 
     await tester.tap(find.byKey(const Key('networkTab')));
     await tester.pumpAndSettle();

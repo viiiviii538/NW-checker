@@ -6,6 +6,8 @@ from typing import Any, Dict, Iterable
 
 import requests
 
+from . import storage as storage_module
+
 # 危険とされるプロトコルの名称
 DANGEROUS_PROTOCOLS = {"telnet", "ftp", "rdp"}
 
@@ -86,7 +88,9 @@ async def analyse_packets(queue: asyncio.Queue, storage, approved_macs: Iterable
             "unapproved_device": unapproved,
             "traffic_anomaly": anomaly,
             "night_traffic": night,
+            "timestamp": datetime.fromtimestamp(timestamp).isoformat(),
         }
 
         await storage.save(result)
+        await asyncio.to_thread(storage_module.save_result, result)
         queue.task_done()
