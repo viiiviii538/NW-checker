@@ -11,10 +11,12 @@ from src.scans import (
 )
 from src.models import ScanResult, compute_total, compute_score
 import pytest
+import time
 
 
 def test_run_all_returns_all_categories():
-    results = static_scan.run_all()
+    data = static_scan.run_all()
+    categories = {item["category"] for item in data["findings"]}
     expected = {
         "ports",
         "os_banner",
@@ -25,23 +27,38 @@ def test_run_all_returns_all_categories():
         "dns",
         "ssl_cert",
     }
-    assert set(results.keys()) == expected
-    for category, data in results.items():
-        assert isinstance(data, ScanResult)
-        assert data.category == category
-        assert isinstance(data.score, int)
-        assert isinstance(data.message, str)
-        assert isinstance(data.severity, str)
+    assert categories == expected
+    assert data["risk_score"] == sum(item["score"] for item in data["findings"])
 
 
-def test_run_all_propagates_scanner_exception(monkeypatch):
+def test_run_all_handles_scanner_exception(monkeypatch):
     def boom():
         raise RuntimeError("boom")
 
-    monkeypatch.setattr(static_scan, "SCANNERS", [boom])
+    monkeypatch.setattr(static_scan, "_discover_scanners", lambda: [("boom", boom)])
 
-    with pytest.raises(RuntimeError):
-        static_scan.run_all()
+    data = static_scan.run_all()
+    assert data["risk_score"] == 0
+    assert len(data["findings"]) == 1
+    item = data["findings"][0]
+    assert item["category"] == "boom"
+    assert item["severity"] == "error"
+    assert "boom" in item["message"]
+
+
+def test_run_all_handles_timeout(monkeypatch):
+    def slow():
+        time.sleep(0.2)
+        return ScanResult.from_severity("slow", "done", "low")
+
+    monkeypatch.setattr(static_scan, "_discover_scanners", lambda: [("slow", slow)])
+
+    data = static_scan.run_all(timeout=0.05)
+    assert len(data["findings"]) == 1
+    item = data["findings"][0]
+    assert item["category"] == "slow"
+    assert item["severity"] == "error"
+    assert "timeout" in item["message"]
 
 
 @pytest.mark.parametrize(
