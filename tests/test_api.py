@@ -2,13 +2,13 @@ import asyncio
 from fastapi.testclient import TestClient
 
 from src import api
-from src.dynamic_scan import capture, analyze, storage
+from src.dynamic_scan import capture, analyze, storage, scheduler
 
 
 def test_dynamic_scan_start_stop(monkeypatch, tmp_path):
     client = TestClient(api.app)
     store = storage.Storage(tmp_path / "res.db")
-    api.storage_obj = store
+    api.scan_scheduler = scheduler.DynamicScanScheduler()
     # start_scan 内で新たな Storage() が生成されても同じものを使用させる
     monkeypatch.setattr(storage, "Storage", lambda *args, **kwargs: store)
 
@@ -23,23 +23,24 @@ def test_dynamic_scan_start_stop(monkeypatch, tmp_path):
 
     resp = client.post("/scan/dynamic/start", json={"duration": 0})
     assert resp.status_code == 200
-    assert resp.json()["status"] == "started"
+    assert resp.json()["status"] == "scheduled"
 
     resp2 = client.post("/scan/dynamic/stop")
     assert resp2.status_code == 200
     assert resp2.json()["status"] == "stopped"
 
-    asyncio.run(api.storage_obj.save_result({"key": "value"}))
+    asyncio.run(api.scan_scheduler.storage.save_result({"key": "value"}))
     resp3 = client.get("/scan/dynamic/results")
     assert resp3.json()["results"][0]["key"] == "value"
 
 
 def test_dynamic_scan_websocket_broadcast(tmp_path):
     client = TestClient(api.app)
-    api.storage_obj = storage.Storage(tmp_path / "res.db")
+    api.scan_scheduler = scheduler.DynamicScanScheduler()
+    api.scan_scheduler.storage = storage.Storage(tmp_path / "res.db")
 
     with client.websocket_connect("/ws/scan/dynamic") as websocket:
         # 保存すると WebSocket へプッシュされることを確認
-        asyncio.run(api.storage_obj.save_result({"foo": "bar"}))
+        asyncio.run(api.scan_scheduler.storage.save_result({"foo": "bar"}))
         message = websocket.receive_json()
         assert message["foo"] == "bar"

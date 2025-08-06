@@ -9,3 +9,4 @@ uvicorn
 httpx
 reportlab
 PyPDF2
+apscheduler
