@@ -46,3 +46,52 @@ def test_is_night_traffic():
     day_ts = datetime(2024, 1, 1, 7, 0).timestamp()
     assert analyze.is_night_traffic(night_ts)
     assert not analyze.is_night_traffic(day_ts)
+
+
+def test_assign_geoip_info(monkeypatch):
+    class FakeResp:
+        ok = True
+
+        def json(self):  # pragma: no cover - 単純な dict 返却
+            return {"country_name": "Wonderland"}
+
+    monkeypatch.setattr(analyze.requests, "get", lambda url, timeout=5: FakeResp())
+    pkt = type("Pkt", (), {"src_ip": "203.0.113.1", "dst_ip": "1.1.1.1"})
+    res = analyze.assign_geoip_info(pkt)
+    assert res.geoip == {"country": "Wonderland", "ip": "203.0.113.1"}
+
+
+def test_record_dns_history(monkeypatch):
+    analyze._dns_history.clear()
+    monkeypatch.setattr(analyze, "reverse_dns_lookup", lambda ip: "host.example")
+    pkt = type("Pkt", (), {"src_ip": "1.1.1.1"})
+    res = analyze.record_dns_history(pkt)
+    assert res.reverse_dns == "host.example"
+    assert analyze._dns_history["1.1.1.1"] == "host.example"
+
+
+def test_detect_dangerous_protocols():
+    pkt = type("Pkt", (), {"protocol": "TELNET"})
+    res = analyze.detect_dangerous_protocols(pkt)
+    assert res.dangerous_protocol is True
+
+
+def test_track_new_devices():
+    analyze._known_devices.clear()
+    pkt = type("Pkt", (), {"src_mac": "00:11"})
+    assert analyze.track_new_devices(pkt).new_device is True
+    assert analyze.track_new_devices(pkt).new_device is False
+
+
+def test_detect_traffic_anomalies():
+    stats = defaultdict(int)
+    pkt = type("Pkt", (), {"src_ip": "1.1.1.1", "size": 2_000_000})
+    assert analyze.detect_traffic_anomalies(pkt, stats).traffic_anomaly is True
+
+
+def test_detect_out_of_hours():
+    pkt = type(
+        "Pkt", (), {"timestamp": datetime(2024, 1, 1, 3, 0).timestamp()}
+    )
+    res = analyze.detect_out_of_hours(pkt, (9, 17))
+    assert res.out_of_hours is True
