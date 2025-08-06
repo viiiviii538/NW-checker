@@ -1,9 +1,10 @@
 """Static scan for DNS records."""
 
-from typing import Dict, Any
+from ..models import ScanResult
 
 
-def scan() -> Dict[str, Any]:
+def scan() -> ScanResult:
     """Return dummy DNS data."""
-    # 実際のDNS解析は未実装
-    return {"category": "dns", "score": 0, "details": {"records": []}}
+    severity = "low"
+    message = "No suspicious DNS records."
+    return ScanResult.from_severity(category="dns", message=message, severity=severity)

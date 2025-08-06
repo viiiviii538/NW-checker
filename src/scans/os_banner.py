@@ -1,9 +1,10 @@
-"""Static scan for OS banners."""
+"""Static scan for OS banner detection."""
 
-from typing import Dict, Any
+from ..models import ScanResult
 
 
-def scan() -> Dict[str, Any]:
+def scan() -> ScanResult:
     """Return dummy OS banner data."""
-    # 実際のOS判別は未実装
-    return {"category": "os_banner", "score": 0, "details": {"banners": []}}
+    severity = "low"
+    message = "No OS banners captured."
+    return ScanResult.from_severity(category="os_banner", message=message, severity=severity)

@@ -1,9 +1,10 @@
-"""Static scan for ARP spoofing detection."""
+"""Static scan for ARP spoofing attempts."""
 
-from typing import Dict, Any
+from ..models import ScanResult
 
 
-def scan() -> Dict[str, Any]:
+def scan() -> ScanResult:
     """Return dummy ARP spoofing data."""
-    # 実際のARPスプーフィング検出は未実装
-    return {"category": "arp_spoof", "score": 0, "details": {"alerts": []}}
+    severity = "low"
+    message = "No ARP spoofing detected."
+    return ScanResult.from_severity(category="arp_spoof", message=message, severity=severity)

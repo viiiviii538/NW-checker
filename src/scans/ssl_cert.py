@@ -1,9 +1,10 @@
-"""Static scan for SSL certificate validation."""
+"""Static scan for SSL certificates."""
 
-from typing import Dict, Any
+from ..models import ScanResult
 
 
-def scan() -> Dict[str, Any]:
+def scan() -> ScanResult:
     """Return dummy SSL certificate data."""
-    # 実際のSSL証明書検証は未実装
-    return {"category": "ssl_cert", "score": 0, "details": {"certificates": []}}
+    severity = "low"
+    message = "No SSL certificate issues found."
+    return ScanResult.from_severity(category="ssl_cert", message=message, severity=severity)

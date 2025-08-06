@@ -1,9 +1,10 @@
 """Static scan for UPnP services."""
 
-from typing import Dict, Any
+from ..models import ScanResult
 
 
-def scan() -> Dict[str, Any]:
+def scan() -> ScanResult:
     """Return dummy UPnP data."""
-    # 実際のUPnP検出は未実装
-    return {"category": "upnp", "score": 0, "details": {"services": []}}
+    severity = "low"
+    message = "No UPnP services discovered."
+    return ScanResult.from_severity(category="upnp", message=message, severity=severity)

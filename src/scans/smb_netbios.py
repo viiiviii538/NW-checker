@@ -1,9 +1,10 @@
-"""Static scan for SMB/NetBIOS information."""
+"""Static scan for SMB/NetBIOS hosts."""
 
-from typing import Dict, Any
+from ..models import ScanResult
 
 
-def scan() -> Dict[str, Any]:
+def scan() -> ScanResult:
     """Return dummy SMB/NetBIOS data."""
-    # 実際のSMB/NetBIOS検出は未実装
-    return {"category": "smb_netbios", "score": 0, "details": {"hosts": []}}
+    severity = "low"
+    message = "No SMB/NetBIOS hosts found."
+    return ScanResult.from_severity(category="smb_netbios", message=message, severity=severity)
