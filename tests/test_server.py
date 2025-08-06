@@ -72,3 +72,27 @@ def test_static_scan_non_dict(monkeypatch):
     assert data['status'] == 'ok'
     assert data['findings'] == ['80/tcp open http']
     assert data['risk_score'] is None
+
+
+def test_static_scan_pdf_report(monkeypatch):
+    """PDFレポート生成の呼び出しを確認"""
+
+    def fake_run_all():
+        return {'findings': {'ports': {'score': 5}}, 'risk_score': 5}
+
+    server = _import_server(monkeypatch, fake_run_all)
+
+    called: dict = {}
+
+    def fake_create_pdf(data, path):
+        called['data'] = data
+        called['path'] = path
+
+    monkeypatch.setattr(server, 'create_pdf', fake_create_pdf)
+    client = TestClient(server.app)
+
+    resp = client.get('/static_scan', params={'report': 'true'})
+    assert resp.status_code == 200
+    assert called['data']['findings']['ports']['score'] == 5
+    assert called['path'] == '/tmp/static_scan_report.pdf'
+    assert resp.json()['report_path'] == '/tmp/static_scan_report.pdf'
