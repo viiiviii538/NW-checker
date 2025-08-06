@@ -11,17 +11,22 @@ void main() {
 
     expect(find.byType(Tab), findsNWidgets(4));
     expect(find.byKey(const Key('staticTab')), findsOneWidget);
-    expect(tester.widget<Tab>(find.byKey(const Key('staticTab'))).text,
-        '静的スキャン');
-    expect(find.byKey(const Key('dynamicTab')), findsOneWidget);
-    expect(tester.widget<Tab>(find.byKey(const Key('dynamicTab'))).text,
-        '動的スキャン');
-    expect(find.byKey(const Key('networkTab')), findsOneWidget);
-    expect(tester.widget<Tab>(find.byKey(const Key('networkTab'))).text,
-        'ネットワーク図');
-    expect(find.byKey(const Key('testTab')), findsOneWidget);
     expect(
-        tester.widget<Tab>(find.byKey(const Key('testTab'))).text, 'テスト');
+      tester.widget<Tab>(find.byKey(const Key('staticTab'))).text,
+      '静的スキャン',
+    );
+    expect(find.byKey(const Key('dynamicTab')), findsOneWidget);
+    expect(
+      tester.widget<Tab>(find.byKey(const Key('dynamicTab'))).text,
+      '動的スキャン',
+    );
+    expect(find.byKey(const Key('networkTab')), findsOneWidget);
+    expect(
+      tester.widget<Tab>(find.byKey(const Key('networkTab'))).text,
+      'ネットワーク図',
+    );
+    expect(find.byKey(const Key('testTab')), findsOneWidget);
+    expect(tester.widget<Tab>(find.byKey(const Key('testTab'))).text, 'テスト');
   });
 
   testWidgets('Each tab shows expected content', (WidgetTester tester) async {
@@ -32,7 +37,8 @@ void main() {
 
     await tester.tap(find.byKey(const Key('dynamicTab')));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('dynamicButton')), findsOneWidget);
+    expect(find.text('スキャン開始'), findsOneWidget);
+    expect(find.text('スキャン停止'), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('networkTab')));
     await tester.pumpAndSettle();
@@ -63,14 +69,20 @@ void main() {
     expect(find.text('テストを実行しました'), findsOneWidget);
   });
 
-  testWidgets('Dynamic button shows a SnackBar', (WidgetTester tester) async {
+  testWidgets('Dynamic scan tab starts and stops', (WidgetTester tester) async {
     await tester.pumpWidget(const MyApp());
 
     await tester.tap(find.byKey(const Key('dynamicTab')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('dynamicButton')));
+    await tester.tap(find.text('スキャン開始'));
     await tester.pump();
-    expect(find.text('動的スキャンを実行しました'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.byType(ListView), findsOneWidget);
+    await tester.tap(find.text('スキャン停止'));
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.byType(CircularProgressIndicator), findsNothing);
   });
 
   testWidgets('Network button shows a SnackBar', (WidgetTester tester) async {
