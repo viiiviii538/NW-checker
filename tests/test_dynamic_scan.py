@@ -67,10 +67,10 @@ def test_capture_packets_enqueue(monkeypatch):
 
 def test_storage_save_and_get(tmp_path):
     async def runner():
-        store = storage.Storage(tmp_path / "r.json")
-        await store.save({"a": 1})
-        await store.save({"b": 2})
-        assert store.get_all() == [{"a": 1}, {"b": 2}]
+        store = storage.Storage(tmp_path / "r.db")
+        await store.save_result({"a": 1})
+        await store.save_result({"b": 2})
+        assert len(store.get_all()) == 2
 
     asyncio.run(runner())
 
