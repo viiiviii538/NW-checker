@@ -53,4 +53,15 @@ class DynamicScanApi {
     await Future.delayed(const Duration(milliseconds: 300));
     return ['History ${from.toIso8601String()} - ${to.toIso8601String()}'];
   }
+
+  /// アラート通知を購読する。
+  /// 現状は2秒毎に2件のダミーアラートを流す。
+  static Stream<String> subscribeAlerts() {
+    return Stream.periodic(const Duration(seconds: 2), (count) {
+      if (count == 0) {
+        return 'ALERT: Port scan detected';
+      }
+      return 'CRITICAL: Malware detected';
+    }).take(2);
+  }
 }
