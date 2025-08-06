@@ -1,9 +1,10 @@
 """Static scan for open ports."""
 
-from typing import Dict, Any
+from ..models import ScanResult
 
 
-def scan() -> Dict[str, Any]:
+def scan() -> ScanResult:
     """Return dummy port scan data."""
-    # 実際のポートスキャンは未実装
-    return {"category": "ports", "score": 0, "details": {"open_ports": []}}
+    severity = "low"
+    message = "No open ports detected."
+    return ScanResult.from_severity(category="ports", message=message, severity=severity)

@@ -1,8 +1,9 @@
 """Aggregate multiple static network scan modules."""
 
 from concurrent.futures import ThreadPoolExecutor
-from typing import Dict, Any
+from typing import Dict
 
+from .models import ScanResult
 from .scans import (
     ports,
     os_banner,
@@ -26,12 +27,11 @@ SCANNERS = [
 ]
 
 
-def run_all() -> Dict[str, Dict[str, Any]]:
+def run_all() -> Dict[str, ScanResult]:
     """Run all static scans concurrently and aggregate their results."""
     with ThreadPoolExecutor() as executor:
         futures = [executor.submit(scanner) for scanner in SCANNERS]
         results = [future.result() for future in futures]
 
-    # Combine results using category as key
-    combined: Dict[str, Dict[str, Any]] = {res["category"]: res for res in results}
+    combined: Dict[str, ScanResult] = {res.category: res for res in results}
     return combined

@@ -1,9 +1,10 @@
-"""Static scan for DHCP configuration."""
+"""Static scan for DHCP servers."""
 
-from typing import Dict, Any
+from ..models import ScanResult
 
 
-def scan() -> Dict[str, Any]:
+def scan() -> ScanResult:
     """Return dummy DHCP data."""
-    # 実際のDHCP解析は未実装
-    return {"category": "dhcp", "score": 0, "details": {"servers": []}}
+    severity = "low"
+    message = "No rogue DHCP servers found."
+    return ScanResult.from_severity(category="dhcp", message=message, severity=severity)

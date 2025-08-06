@@ -9,6 +9,7 @@ from src.scans import (
     dns,
     ssl_cert,
 )
+from src.models import ScanResult, compute_total, compute_score
 import pytest
 
 
@@ -26,9 +27,11 @@ def test_run_all_returns_all_categories():
     }
     assert set(results.keys()) == expected
     for category, data in results.items():
-        assert data["category"] == category
-        assert isinstance(data["score"], int)
-        assert isinstance(data["details"], dict)
+        assert isinstance(data, ScanResult)
+        assert data.category == category
+        assert isinstance(data.score, int)
+        assert isinstance(data.message, str)
+        assert isinstance(data.severity, str)
 
 
 @pytest.mark.parametrize(
@@ -44,8 +47,28 @@ def test_run_all_returns_all_categories():
         (ssl_cert, "ssl_cert"),
     ],
 )
-def test_individual_scans_return_structured_data(module, category):
+def test_individual_scans_return_scanresult(module, category):
     result = module.scan()
-    assert result["category"] == category
-    assert isinstance(result["score"], int)
-    assert isinstance(result["details"], dict)
+    assert isinstance(result, ScanResult)
+    assert result.category == category
+    assert isinstance(result.score, int)
+    assert isinstance(result.severity, str)
+
+
+def test_helper_functions_compute_scores_and_total():
+    low = compute_score("low")
+    high = compute_score("high")
+    assert high > low
+    results = [
+        ScanResult("a", "", low, "low"),
+        ScanResult("b", "", high, "high"),
+    ]
+    assert compute_total(results) == low + high
+
+
+def test_scanresult_factory_computes_score():
+    result = ScanResult.from_severity("cat", "msg", "medium")
+    assert result.score == compute_score("medium")
+    assert result.category == "cat"
+    assert result.message == "msg"
+    assert result.severity == "medium"
