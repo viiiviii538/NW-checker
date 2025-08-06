@@ -21,7 +21,7 @@ class DynamicScanApi {
     final results = <String>[];
     var count = 1;
     return Stream.periodic(const Duration(seconds: 1), (_) {
-      results.add('Result line ' + count.toString());
+      results.add('Result line $count');
       count++;
       return List<String>.from(results);
     });
