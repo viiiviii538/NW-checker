@@ -14,15 +14,15 @@ def scan_ports(target_ip: str):
     Returns:
         list of open ports as integers.
     """
-    # 現状は実スキャンを行わず空のリストを返す（後で実装予定）
-    return []
     scanner = nmap.PortScanner()
     # `-p-` instructs nmap to scan all ports
     scan_data = scanner.scan(target_ip, arguments="-p-")
 
-    open_ports = []
+    open_ports: list[int] = []
     host_info = scan_data.get("scan", {}).get(target_ip, {})
     for proto, ports in host_info.items():
+        if proto not in {"tcp", "udp"}:
+            continue
         for port, info in ports.items():
             if info.get("state") == "open":
                 open_ports.append(port)
