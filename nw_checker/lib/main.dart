@@ -193,9 +193,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             child: ElevatedButton(
               key: const Key('networkButton'),
               onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('ネットワーク図を表示しました')),
-                );
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text('ネットワーク図を表示しました')));
               },
               child: const Text('ネットワーク図を表示'),
             ),
