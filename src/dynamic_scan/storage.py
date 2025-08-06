@@ -1,18 +1,34 @@
 import json
 import asyncio
+import sqlite3
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
 
 
 class Storage:
-    """解析結果を JSON 形式で保持するストレージ層"""
+    """解析結果を SQLite で保持するストレージ層"""
 
-    def __init__(self, file_path: str = "dynamic_scan_results.json") -> None:
-        self.path = Path(file_path)
-        if not self.path.exists():
-            self.path.write_text("[]", encoding="utf-8")
+    def __init__(self, db_path: str = "dynamic_scan_results.db") -> None:
+        self.db_path = Path(db_path)
         self._lock = asyncio.Lock()
         self._listeners: List[asyncio.Queue] = []
+        self._recent: List[Dict[str, Any]] = []
+        self._init_db()
+
+    def _init_db(self) -> None:
+        """SQLite テーブルを初期化"""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS results (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp TEXT NOT NULL,
+                    data TEXT NOT NULL
+                )
+                """
+            )
+            conn.commit()
 
     def add_listener(self, queue: asyncio.Queue) -> None:
         """結果更新時に通知を受け取るキューを追加"""
@@ -23,13 +39,32 @@ class Storage:
         if queue in self._listeners:
             self._listeners.remove(queue)
 
-    async def save(self, data: Dict[str, Any]) -> None:
+    async def save_result(self, data: Dict[str, Any]) -> None:
+        """結果を保存し、リスナーへ通知"""
+        record = {"timestamp": datetime.utcnow().isoformat(), **data}
         async with self._lock:
-            current: List[Dict[str, Any]] = json.loads(self.path.read_text(encoding="utf-8"))
-            current.append(data)
-            self.path.write_text(json.dumps(current), encoding="utf-8")
+            await asyncio.to_thread(self._insert_record, record)
+            self._recent.append(record)
         for q in list(self._listeners):
-            q.put_nowait(data)
+            q.put_nowait(record)
+
+    def _insert_record(self, record: Dict[str, Any]) -> None:
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute(
+                "INSERT INTO results (timestamp, data) VALUES (?, ?)",
+                (record["timestamp"], json.dumps(record)),
+            )
+            conn.commit()
 
     def get_all(self) -> List[Dict[str, Any]]:
-        return json.loads(self.path.read_text(encoding="utf-8"))
+        """現在のスキャンセッションの結果を取得"""
+        return list(self._recent)
+
+    def fetch_results(self, start: str, end: str) -> List[Dict[str, Any]]:
+        """指定期間の結果を取得"""
+        with sqlite3.connect(self.db_path) as conn:
+            rows = conn.execute(
+                "SELECT data FROM results WHERE date(timestamp) BETWEEN ? AND ? ORDER BY timestamp",
+                (start, end),
+            ).fetchall()
+        return [json.loads(r[0]) for r in rows]

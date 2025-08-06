@@ -26,4 +26,11 @@ class DynamicScanApi {
       return List<String>.from(results);
     });
   }
+
+  /// 指定期間の履歴を取得する。
+  static Future<List<String>> fetchHistory(DateTime from, DateTime to) async {
+    // TODO: 実際のAPI呼び出しを実装
+    await Future.delayed(const Duration(milliseconds: 300));
+    return ['History ${from.toIso8601String()} - ${to.toIso8601String()}'];
+  }
 }

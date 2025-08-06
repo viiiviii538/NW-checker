@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'history_page.dart';
 import 'services/dynamic_scan_api.dart';
 
 /// 動的スキャンタブのウィジェット。
@@ -44,6 +45,16 @@ class _DynamicScanTabState extends State<DynamicScanTab> {
             ElevatedButton(
               onPressed: _isScanning ? _stopScan : null,
               child: const Text('スキャン停止'),
+            ),
+            const SizedBox(width: 8),
+            ElevatedButton(
+              key: const Key('historyButton'),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const HistoryPage()),
+                );
+              },
+              child: const Text('履歴'),
             ),
           ],
         ),
