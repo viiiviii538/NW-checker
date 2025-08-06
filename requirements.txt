@@ -10,3 +10,4 @@ httpx
 reportlab
 PyPDF2
 apscheduler
+pytest-benchmark

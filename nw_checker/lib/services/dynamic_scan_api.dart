@@ -1,24 +1,60 @@
 import 'dart:async';
+import 'dart:convert';
 import '../models/scan_report.dart';
+import 'package:http/http.dart' as http;
 
 /// ダミーの動的スキャンAPI。
 /// 実際のバックエンドとの通信は今後実装予定。
 class DynamicScanApi {
+  static const _baseUrl = 'http://localhost:8000';
+  static const String _token = String.fromEnvironment('API_TOKEN', defaultValue: '');
+
+  static Map<String, String> _headers() => _token.isEmpty
+      ? {'Content-Type': 'application/json'}
+      : {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_token',
+        };
+
   /// スキャンを開始する。
   static Future<void> startScan() async {
-    // TODO: 実際のAPI呼び出しを実装
+    try {
+      await http.post(
+        Uri.parse('$_baseUrl/scan/dynamic/start'),
+        headers: _headers(),
+        body: jsonEncode({}),
+      );
+    } catch (_) {
+      // 接続できない場合は無視（テスト環境など）
+    }
     await Future.delayed(const Duration(milliseconds: 300));
   }
 
   /// スキャンを停止する。
   static Future<void> stopScan() async {
-    // TODO: 実際のAPI呼び出しを実装
+    try {
+      await http.post(
+        Uri.parse('$_baseUrl/scan/dynamic/stop'),
+        headers: _headers(),
+      );
+    } catch (_) {}
     await Future.delayed(const Duration(milliseconds: 300));
   }
 
   /// スキャン結果をストリームで返す。
-  /// 現状は1秒後にダミーのJSONをパースして返す。
-  static Stream<ScanReport> fetchResults() {
+  /// 実際のAPI呼び出しを試み、失敗時はダミーデータを返す。
+  static Stream<ScanReport> fetchResults() async* {
+    try {
+      final resp = await http.get(
+        Uri.parse('$_baseUrl/scan/dynamic/results'),
+        headers: _headers(),
+      );
+      if (resp.statusCode == 200) {
+        yield ScanReport.fromJson(jsonDecode(resp.body));
+        return;
+      }
+    } catch (_) {}
+
     const dummyJson = {
       'riskScore': 87,
       'categories': [
@@ -39,17 +75,28 @@ class DynamicScanApi {
         },
       ],
     };
-    return Stream.fromFuture(
-      Future.delayed(
-        const Duration(seconds: 1),
-        () => ScanReport.fromJson(dummyJson),
-      ),
+    yield await Future.delayed(
+      const Duration(seconds: 1),
+      () => ScanReport.fromJson(dummyJson),
     );
   }
 
   /// 指定期間の履歴を取得する。
   static Future<List<String>> fetchHistory(DateTime from, DateTime to) async {
-    // TODO: 実際のAPI呼び出しを実装
+    try {
+      final resp = await http.get(
+        Uri.parse(
+            '$_baseUrl/scan/dynamic/history?start=${from.toIso8601String()}&end=${to.toIso8601String()}'),
+        headers: _headers(),
+      );
+      if (resp.statusCode == 200) {
+        final decoded = jsonDecode(resp.body) as Map<String, dynamic>;
+        final results = decoded['results'];
+        if (results is List) {
+          return results.cast<String>();
+        }
+      }
+    } catch (_) {}
     await Future.delayed(const Duration(milliseconds: 300));
     return ['History ${from.toIso8601String()} - ${to.toIso8601String()}'];
   }
