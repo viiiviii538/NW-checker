@@ -13,7 +13,7 @@ void main() {
     expect(find.text('スキャン停止'), findsOneWidget);
   });
 
-  testWidgets('DynamicScanTab streams results and stops', (tester) async {
+  testWidgets('DynamicScanTab streams report and stops', (tester) async {
     await tester.pumpWidget(_buildWidget());
 
     await tester.tap(find.text('スキャン開始'));
@@ -23,14 +23,14 @@ void main() {
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
     await tester.pump(const Duration(seconds: 1));
-    expect(find.byType(ListView), findsOneWidget);
-    expect(find.text('Result line 1'), findsOneWidget);
+    expect(find.text('Risk Score: 87'), findsOneWidget);
+    expect(find.text('Ports'), findsOneWidget);
 
     await tester.tap(find.text('スキャン停止'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pump();
     expect(find.byType(CircularProgressIndicator), findsNothing);
-    expect(find.text('Result line 1'), findsOneWidget);
+    expect(find.text('Risk Score: 87'), findsOneWidget);
   });
 }
