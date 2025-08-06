@@ -7,7 +7,7 @@ from src.dynamic_scan import capture, analyze, storage
 
 def test_dynamic_scan_start_stop(monkeypatch, tmp_path):
     client = TestClient(api.app)
-    store = storage.Storage(tmp_path / "res.json")
+    store = storage.Storage(tmp_path / "res.db")
     api.storage_obj = store
     # start_scan 内で新たな Storage() が生成されても同じものを使用させる
     monkeypatch.setattr(storage, "Storage", lambda *args, **kwargs: store)
@@ -29,17 +29,17 @@ def test_dynamic_scan_start_stop(monkeypatch, tmp_path):
     assert resp2.status_code == 200
     assert resp2.json()["status"] == "stopped"
 
-    asyncio.run(api.storage_obj.save({"key": "value"}))
+    asyncio.run(api.storage_obj.save_result({"key": "value"}))
     resp3 = client.get("/scan/dynamic/results")
-    assert resp3.json()["results"] == [{"key": "value"}]
+    assert resp3.json()["results"][0]["key"] == "value"
 
 
 def test_dynamic_scan_websocket_broadcast(tmp_path):
     client = TestClient(api.app)
-    api.storage_obj = storage.Storage(tmp_path / "res.json")
+    api.storage_obj = storage.Storage(tmp_path / "res.db")
 
     with client.websocket_connect("/ws/scan/dynamic") as websocket:
         # 保存すると WebSocket へプッシュされることを確認
-        asyncio.run(api.storage_obj.save({"foo": "bar"}))
+        asyncio.run(api.storage_obj.save_result({"foo": "bar"}))
         message = websocket.receive_json()
-        assert message == {"foo": "bar"}
+        assert message["foo"] == "bar"

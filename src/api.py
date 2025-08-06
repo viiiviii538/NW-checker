@@ -5,7 +5,7 @@ import os
 from contextlib import suppress
 from typing import Optional
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, Header, HTTPException
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -80,6 +80,15 @@ async def stop_scan(_: None = Depends(verify_token)):
 @app.get("/scan/dynamic/results")
 async def get_results(_: None = Depends(verify_token)):
     return {"results": storage_obj.get_all()}
+
+
+@app.get("/scan/dynamic/history")
+async def get_history(
+    from_date: str = Query(..., alias="from"),
+    to_date: str = Query(..., alias="to"),
+    _: None = Depends(verify_token),
+):
+    return {"results": storage_obj.fetch_results(from_date, to_date)}
 
 
 @app.websocket("/ws/scan/dynamic")
