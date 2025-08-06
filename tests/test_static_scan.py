@@ -9,7 +9,6 @@ from src.scans import (
     dns,
     ssl_cert,
 )
-from src.models import ScanResult, compute_total, compute_score
 import pytest
 
 
@@ -25,13 +24,28 @@ def test_run_all_returns_all_categories():
         "dns",
         "ssl_cert",
     }
-    assert set(results.keys()) == expected
-    for category, data in results.items():
-        assert isinstance(data, ScanResult)
-        assert data.category == category
-        assert isinstance(data.score, int)
-        assert isinstance(data.message, str)
-        assert isinstance(data.severity, str)
+    assert set(results["findings"].keys()) == expected
+    assert isinstance(results["risk_score"], int)
+    for category, data in results["findings"].items():
+        assert data["category"] == category
+        assert isinstance(data["score"], int)
+        assert isinstance(data["details"], dict)
+
+
+def test_run_all_totals_scores():
+    results = static_scan.run_all()
+    total = sum(item["score"] for item in results["findings"].values())
+    assert results["risk_score"] == total
+
+
+def test_run_all_propagates_scanner_exception(monkeypatch):
+    def boom():
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(static_scan, "SCANNERS", [boom])
+
+    with pytest.raises(RuntimeError):
+        static_scan.run_all()
 
 
 @pytest.mark.parametrize(
@@ -47,28 +61,8 @@ def test_run_all_returns_all_categories():
         (ssl_cert, "ssl_cert"),
     ],
 )
-def test_individual_scans_return_scanresult(module, category):
+def test_individual_scans_return_dict(module, category):
     result = module.scan()
-    assert isinstance(result, ScanResult)
-    assert result.category == category
-    assert isinstance(result.score, int)
-    assert isinstance(result.severity, str)
-
-
-def test_helper_functions_compute_scores_and_total():
-    low = compute_score("low")
-    high = compute_score("high")
-    assert high > low
-    results = [
-        ScanResult("a", "", low, "low"),
-        ScanResult("b", "", high, "high"),
-    ]
-    assert compute_total(results) == low + high
-
-
-def test_scanresult_factory_computes_score():
-    result = ScanResult.from_severity("cat", "msg", "medium")
-    assert result.score == compute_score("medium")
-    assert result.category == "cat"
-    assert result.message == "msg"
-    assert result.severity == "medium"
+    assert result["category"] == category
+    assert isinstance(result["score"], int)
+    assert isinstance(result["details"], dict)
