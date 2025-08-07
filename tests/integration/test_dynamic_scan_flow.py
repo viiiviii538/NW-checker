@@ -60,6 +60,7 @@ def test_dynamic_scan_full_flow(monkeypatch, tmp_path, benchmark):
     resp = client.get(
         "/scan/dynamic/results", headers={"Authorization": "Bearer testtoken"}
     )
+
     assert resp.status_code == 200
     assert len(resp.json()["results"]) == 5
     api.API_TOKEN = prev_token
