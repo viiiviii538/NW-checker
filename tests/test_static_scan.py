@@ -11,6 +11,7 @@ from src.scans import (
 )
 import pytest
 import time
+import json
 
 
 def _findings_by_category(results):
@@ -60,6 +61,30 @@ def test_run_all_handles_exceptions_and_timeouts(monkeypatch):
     assert by_cat["dns"]["score"] == 0
     assert by_cat["os_banner"]["details"]["error"] == "timeout"
     assert by_cat["os_banner"]["score"] == 0
+
+
+def test_run_all_populates_missing_fields(monkeypatch):
+    """スキャン結果の欠損フィールドを補完することを確認"""
+
+    def incomplete():
+        return {}
+
+    monkeypatch.setattr(dhcp, "scan", incomplete)
+
+    results = static_scan.run_all()
+    by_cat = _findings_by_category(results)
+    entry = by_cat["dhcp"]
+
+    assert entry["category"] == "dhcp"
+    assert entry["score"] == 0
+    assert entry["details"] == {}
+
+
+def test_run_all_is_json_serializable():
+    """run_all の返り値が JSON シリアル化可能であることを確認"""
+
+    results = static_scan.run_all()
+    json.dumps(results)  # 例外が発生しなければOK
 
 
 @pytest.mark.parametrize(
