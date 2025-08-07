@@ -3,8 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:nw_checker/static_scan_tab.dart';
 
 void main() {
-  Future<List<String>> mockScan() async =>
-      ['=== STATIC SCAN REPORT ===', 'No issues detected.'];
+  Future<List<String>> mockScan() async {
+    await Future.delayed(const Duration(milliseconds: 10));
+    return ['=== STATIC SCAN REPORT ===', 'No issues detected.'];
+  }
 
   Widget buildWidget() => MaterialApp(
         home: Scaffold(body: StaticScanTab(scanner: mockScan)),

@@ -24,24 +24,26 @@ class _StaticScanTabState extends State<StaticScanTab> {
   bool _showOutput = false;
   List<String> _outputLines = [];
 
-  void _startScan() {
+  void _startScan() async {
     setState(() {
       _isLoading = true;
       _showOutput = false;
     });
 
-    // Allow the progress indicator to render for at least one frame before
-    // kicking off the (potentially long) scan. Schedule the scan on the event
-    // queue without adding any frame time so tests can advance virtual time
-    // exactly to the scan duration without accounting for an extra delay.
-    Future<void>(() async {
-      final lines = await widget.scanner();
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-        _showOutput = true;
-        _outputLines = lines;
-      });
+// Allow the progress indicator to render for at least one frame before
+// kicking off the (potentially long) scan. Schedule the scan on the event
+// queue without adding any frame time so tests can advance virtual time
+// exactly to the scan duration without accounting for an extra delay.
+Future<void>(() async {
+  final lines = await widget.scanner();
+  if (!mounted) return;
+  setState(() {
+    _isLoading = false;
+    _showOutput = true;
+    _outputLines = lines;
+  });
+});
+
     });
   }
 

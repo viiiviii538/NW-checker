@@ -9,8 +9,13 @@ from src.scans import (
     dns,
     ssl_cert,
 )
-from src.models import ScanResult, compute_total, compute_score
 import pytest
+import time
+import json
+
+
+def _findings_by_category(results):
+    return {item["category"]: item for item in results["findings"]}
 
 
 def test_run_all_returns_all_categories():
@@ -25,23 +30,61 @@ def test_run_all_returns_all_categories():
         "dns",
         "ssl_cert",
     }
-    assert set(results.keys()) == expected
-    for category, data in results.items():
-        assert isinstance(data, ScanResult)
-        assert data.category == category
-        assert isinstance(data.score, int)
-        assert isinstance(data.message, str)
-        assert isinstance(data.severity, str)
+    categories = {item["category"] for item in results["findings"]}
+    assert categories == expected
+    assert isinstance(results["risk_score"], int)
+    for item in results["findings"]:
+        assert isinstance(item["score"], int)
+        assert isinstance(item["details"], dict)
 
 
-def test_run_all_propagates_scanner_exception(monkeypatch):
+def test_run_all_totals_scores():
+    results = static_scan.run_all()
+    total = sum(item["score"] for item in results["findings"])
+    assert results["risk_score"] == total
+
+
+def test_run_all_handles_exceptions_and_timeouts(monkeypatch):
     def boom():
         raise RuntimeError("boom")
 
-    monkeypatch.setattr(static_scan, "SCANNERS", [boom])
+    def slow():
+        time.sleep(2)
 
-    with pytest.raises(RuntimeError):
-        static_scan.run_all()
+    monkeypatch.setattr(dns, "scan", boom)
+    monkeypatch.setattr(os_banner, "scan", slow)
+
+    results = static_scan.run_all(timeout=0.5)
+    by_cat = _findings_by_category(results)
+
+    assert by_cat["dns"]["details"]["error"] == "boom"
+    assert by_cat["dns"]["score"] == 0
+    assert by_cat["os_banner"]["details"]["error"] == "timeout"
+    assert by_cat["os_banner"]["score"] == 0
+
+
+def test_run_all_populates_missing_fields(monkeypatch):
+    """スキャン結果の欠損フィールドを補完することを確認"""
+
+    def incomplete():
+        return {}
+
+    monkeypatch.setattr(dhcp, "scan", incomplete)
+
+    results = static_scan.run_all()
+    by_cat = _findings_by_category(results)
+    entry = by_cat["dhcp"]
+
+    assert entry["category"] == "dhcp"
+    assert entry["score"] == 0
+    assert entry["details"] == {}
+
+
+def test_run_all_is_json_serializable():
+    """run_all の返り値が JSON シリアル化可能であることを確認"""
+
+    results = static_scan.run_all()
+    json.dumps(results)  # 例外が発生しなければOK
 
 
 @pytest.mark.parametrize(
@@ -57,28 +100,8 @@ def test_run_all_propagates_scanner_exception(monkeypatch):
         (ssl_cert, "ssl_cert"),
     ],
 )
-def test_individual_scans_return_scanresult(module, category):
+def test_individual_scans_return_dict(module, category):
     result = module.scan()
-    assert isinstance(result, ScanResult)
-    assert result.category == category
-    assert isinstance(result.score, int)
-    assert isinstance(result.severity, str)
-
-
-def test_helper_functions_compute_scores_and_total():
-    low = compute_score("low")
-    high = compute_score("high")
-    assert high > low
-    results = [
-        ScanResult("a", "", low, "low"),
-        ScanResult("b", "", high, "high"),
-    ]
-    assert compute_total(results) == low + high
-
-
-def test_scanresult_factory_computes_score():
-    result = ScanResult.from_severity("cat", "msg", "medium")
-    assert result.score == compute_score("medium")
-    assert result.category == "cat"
-    assert result.message == "msg"
-    assert result.severity == "medium"
+    assert result["category"] == category
+    assert isinstance(result["score"], int)
+    assert isinstance(result["details"], dict)

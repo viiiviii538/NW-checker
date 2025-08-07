@@ -68,3 +68,33 @@ class Storage:
                 (start, end),
             ).fetchall()
         return [json.loads(r[0]) for r in rows]
+
+    def fetch_history(self, filters: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """保存された結果を期間・条件で検索する"""
+        query = "SELECT data FROM results WHERE 1=1"
+        params: List[Any] = []
+
+        start = filters.get("start")
+        if start:
+            query += " AND timestamp >= ?"
+            params.append(start)
+
+        end = filters.get("end")
+        if end:
+            query += " AND timestamp <= ?"
+            params.append(end)
+
+        device = filters.get("device")
+        if device:
+            query += " AND json_extract(data, '$.src_ip') = ?"
+            params.append(device)
+
+        protocol = filters.get("protocol")
+        if protocol:
+            query += " AND json_extract(data, '$.protocol') = ?"
+            params.append(protocol)
+
+        query += " ORDER BY timestamp"
+        with sqlite3.connect(self.db_path) as conn:
+            rows = conn.execute(query, params).fetchall()
+        return [json.loads(r[0]) for r in rows]
