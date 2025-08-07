@@ -24,18 +24,21 @@ class _StaticScanTabState extends State<StaticScanTab> {
   bool _showOutput = false;
   List<String> _outputLines = [];
 
-  void _startScan() {
+  void _startScan() async {
     setState(() {
       _isLoading = true;
       _showOutput = false;
     });
-    widget.scanner().then((lines) {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-        _showOutput = true;
-        _outputLines = lines;
-      });
+
+    // Allow UI to display progress indicator before starting the scan.
+    await Future<void>.delayed(Duration.zero);
+
+    final lines = await widget.scanner();
+    if (!mounted) return;
+    setState(() {
+      _isLoading = false;
+      _showOutput = true;
+      _outputLines = lines;
     });
   }
 

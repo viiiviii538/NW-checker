@@ -4,9 +4,11 @@ import asyncio
 import os
 from typing import Optional
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, Header, HTTPException, Query
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse
 
 from .dynamic_scan import scheduler
 
@@ -23,9 +25,16 @@ app.add_middleware(
 API_TOKEN = os.getenv("API_TOKEN")
 
 
-async def verify_token(authorization: str | None = Header(default=None)) -> None:
-    if API_TOKEN and authorization != f"Bearer {API_TOKEN}":
-        raise HTTPException(status_code=401, detail="Unauthorized")
+class AuthMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        if API_TOKEN:
+            auth = request.headers.get("Authorization")
+            if auth != f"Bearer {API_TOKEN}":
+                return JSONResponse({"detail": "Unauthorized"}, status_code=401)
+        return await call_next(request)
+
+
+app.add_middleware(AuthMiddleware)
 
 
 class StartParams(BaseModel):
@@ -39,7 +48,7 @@ scan_scheduler = scheduler.DynamicScanScheduler()
 
 
 @app.post("/scan/dynamic/start")
-async def start_scan(params: StartParams, _: None = Depends(verify_token)):
+async def start_scan(params: StartParams):
     if scan_scheduler.job:
         return {"status": "already_running"}
     scan_scheduler.start(
@@ -52,13 +61,13 @@ async def start_scan(params: StartParams, _: None = Depends(verify_token)):
 
 
 @app.post("/scan/dynamic/stop")
-async def stop_scan(_: None = Depends(verify_token)):
+async def stop_scan():
     await scan_scheduler.stop()
     return {"status": "stopped"}
 
 
 @app.get("/scan/dynamic/results")
-async def get_results(_: None = Depends(verify_token)):
+async def get_results():
     return {"results": scan_scheduler.storage.get_all()}
 
 
@@ -68,7 +77,6 @@ async def get_history(
     end: Optional[str] = Query(None),
     device: Optional[str] = None,
     protocol: Optional[str] = None,
-    _: None = Depends(verify_token),
 ):
     filters = {"start": start, "end": end, "device": device, "protocol": protocol}
     filters = {k: v for k, v in filters.items() if v is not None}
