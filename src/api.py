@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
-from .dynamic_scan import scheduler
+from .dynamic_scan import scheduler, analyze
 
 app = FastAPI()
 
@@ -66,9 +66,34 @@ async def stop_scan():
     return {"status": "stopped"}
 
 
+def _aggregate_results(records: list[dict]) -> dict:
+    """Aggregate scan records into a unified report.
+
+    現在は危険プロトコルの検出数を単純にリスクスコアとする。
+    危険プロトコルが存在する場合、その名称を issues に列挙する。
+    """
+
+    dangerous_list = [
+        r.get("protocol", "").lower()
+        for r in records
+        if r.get("protocol", "").lower() in analyze.DANGEROUS_PROTOCOLS
+    ]
+    score = len(dangerous_list)
+    dangerous = set(dangerous_list)
+    categories: list[dict] = []
+    if dangerous:
+        categories.append({
+            "name": "protocols",
+            "severity": "high",
+            "issues": sorted(dangerous),
+        })
+    return {"risk_score": score, "categories": categories}
+
+
 @app.get("/scan/dynamic/results")
 async def get_results():
-    return {"results": scan_scheduler.storage.get_all()}
+    records = scan_scheduler.storage.get_all()
+    return _aggregate_results(records)
 
 
 @app.get("/scan/dynamic/history")

@@ -50,34 +50,31 @@ class DynamicScanApi {
         headers: _headers(),
       );
       if (resp.statusCode == 200) {
-        yield ScanReport.fromJson(jsonDecode(resp.body));
+        final decoded = jsonDecode(resp.body) as Map<String, dynamic>;
+        yield ScanReport.fromJson({
+          'riskScore': decoded['risk_score'] ?? 0,
+          'categories': decoded['categories'] ?? [],
+        });
         return;
       }
     } catch (_) {}
 
     const dummyJson = {
-      'riskScore': 87,
+      'risk_score': 1,
       'categories': [
         {
-          'name': 'Ports',
+          'name': 'protocols',
           'severity': 'high',
-          'issues': ['22/tcp open', '23/tcp open'],
-        },
-        {
-          'name': 'SMB',
-          'severity': 'medium',
-          'issues': ['SMBv1 enabled'],
-        },
-        {
-          'name': 'DNS',
-          'severity': 'low',
-          'issues': ['Zone transfer allowed'],
-        },
+          'issues': ['ftp'],
+        }
       ],
     };
     yield await Future.delayed(
       const Duration(seconds: 1),
-      () => ScanReport.fromJson(dummyJson),
+      () => ScanReport.fromJson({
+        'riskScore': dummyJson['risk_score'] as int,
+        'categories': dummyJson['categories'],
+      }),
     );
   }
 

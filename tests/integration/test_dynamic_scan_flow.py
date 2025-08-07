@@ -62,5 +62,7 @@ def test_dynamic_scan_full_flow(monkeypatch, tmp_path, benchmark):
     )
 
     assert resp.status_code == 200
-    assert len(resp.json()["results"]) == 5
+    body = resp.json()
+    assert body["risk_score"] == 5
+    assert body["categories"][0]["issues"] == ["telnet"]
     api.API_TOKEN = prev_token

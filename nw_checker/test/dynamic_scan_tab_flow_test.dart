@@ -15,7 +15,7 @@ void main() {
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
     await tester.pump(const Duration(seconds: 1));
-    expect(find.text('Risk Score: 87'), findsOneWidget);
-    expect(find.text('Ports'), findsOneWidget);
+    expect(find.text('Risk Score: 1'), findsOneWidget);
+    expect(find.text('protocols'), findsOneWidget);
   });
 }
