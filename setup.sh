@@ -25,10 +25,11 @@ source .venv/bin/activate
 echo "=== Python依存関係インストール ==="
 pip install --upgrade pip
 pip install python-nmap pytest
-if [ -f requirements.txt ]; then
-    pip install -r requirements.txt
+REQ_FILE="../requirements.txt"
+if [ -f "$REQ_FILE" ]; then
+    pip install -r "$REQ_FILE"
 else
-    echo "requirements.txt が見つかりません。スキップします。"
+    echo "ルートの requirements.txt が見つかりません。スキップします。"
 fi
 
 # ===== Flutter SDK セットアップ =====
