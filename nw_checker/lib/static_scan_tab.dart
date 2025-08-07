@@ -44,8 +44,7 @@ Future<void>(() async {
   });
 });
 
-    });
-  }
+    } 
 
   @override
   Widget build(BuildContext context) {
