@@ -29,9 +29,15 @@ def test_dynamic_scan_start_stop(monkeypatch, tmp_path):
     assert resp2.status_code == 200
     assert resp2.json()["status"] == "stopped"
 
-    asyncio.run(api.scan_scheduler.storage.save_result({"key": "value"}))
+    asyncio.run(
+        api.scan_scheduler.storage.save_result(
+            {"protocol": "ftp", "src_ip": "1.1.1.1"}
+        )
+    )
     resp3 = client.get("/scan/dynamic/results")
-    assert resp3.json()["results"][0]["key"] == "value"
+    body = resp3.json()
+    assert body["risk_score"] == 1
+    assert body["categories"][0]["issues"] == ["ftp"]
 
 
 def test_dynamic_scan_websocket_broadcast(tmp_path):
