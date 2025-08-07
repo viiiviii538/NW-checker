@@ -40,7 +40,6 @@ def test_dynamic_scan_endpoints(monkeypatch, tmp_path):
             {"key": "other", "src_ip": "2.2.2.2", "protocol": "ftp"}
         )
     )
-=======
     resp3 = client.get("/scan/dynamic/results")
     assert resp3.status_code == 200
     assert len(resp3.json()["results"]) == 2
