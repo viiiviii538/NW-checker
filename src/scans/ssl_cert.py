@@ -19,7 +19,8 @@ def scan(host: str = "example.com", port: int = 443) -> dict:
                 not_after = cert.get("notAfter")
                 if not_after:
                     expiry = datetime.strptime(not_after, "%b %d %H:%M:%S %Y %Z")
-                    expired = expiry < datetime.utcnow()
+                    from datetime import datetime, timezone
+                    expired = expiry < datetime.now(timezone.utc)
     except Exception:  # pragma: no cover
         pass
 
