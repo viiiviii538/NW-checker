@@ -30,17 +30,21 @@ class _StaticScanTabState extends State<StaticScanTab> {
       _showOutput = false;
     });
 
-    // Allow UI to display progress indicator before starting the scan.
-    await Future<void>.delayed(Duration.zero);
+// Allow the progress indicator to render for at least one frame before
+// kicking off the (potentially long) scan. Schedule the scan on the event
+// queue without adding any frame time so tests can advance virtual time
+// exactly to the scan duration without accounting for an extra delay.
+Future<void>(() async {
+  final lines = await widget.scanner();
+  if (!mounted) return;
+  setState(() {
+    _isLoading = false;
+    _showOutput = true;
+    _outputLines = lines;
+  });
+});
 
-    final lines = await widget.scanner();
-    if (!mounted) return;
-    setState(() {
-      _isLoading = false;
-      _showOutput = true;
-      _outputLines = lines;
-    });
-  }
+    } 
 
   @override
   Widget build(BuildContext context) {

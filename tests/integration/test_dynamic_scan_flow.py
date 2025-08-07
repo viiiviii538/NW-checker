@@ -55,7 +55,12 @@ def test_dynamic_scan_full_flow(monkeypatch, tmp_path, benchmark):
     prev_token = api.API_TOKEN
     api.API_TOKEN = "testtoken"
     client = TestClient(api.app)
-    resp = client.get("/scan/dynamic/results", headers={"Authorization": "Bearer testtoken"})
+    resp_noauth = client.get("/scan/dynamic/results")
+    assert resp_noauth.status_code == 401
+    resp = client.get(
+        "/scan/dynamic/results", headers={"Authorization": "Bearer testtoken"}
+    )
+
     assert resp.status_code == 200
     body = resp.json()
     assert body["risk_score"] == 5
