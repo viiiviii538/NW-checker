@@ -3,13 +3,26 @@
 from __future__ import annotations
 
 import socket
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 # 一般的に危険とされるポート番号のリスト
-RISKY_PORTS = [21, 22, 23, 25, 53, 80, 110, 139, 143, 443, 445, 3389]
+RISKY_PORTS: Tuple[int, ...] = (
+    21,
+    22,
+    23,
+    25,
+    53,
+    80,
+    110,
+    139,
+    143,
+    443,
+    445,
+    3389,
+)
 
 
-def scan(target_host: str = "127.0.0.1") -> Dict:
+def scan(target_host: str = "127.0.0.1") -> Dict[str, object]:
     """Check common risky ports on *target_host*.
 
     Returns
@@ -32,3 +45,11 @@ def scan(target_host: str = "127.0.0.1") -> Dict:
         "score": len(open_ports),
         "details": {"target": target_host, "open_ports": open_ports},
     }
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    host = sys.argv[1] if len(sys.argv) > 1 else "127.0.0.1"
+    print(json.dumps(scan(host), indent=2, ensure_ascii=False))

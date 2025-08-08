@@ -63,10 +63,10 @@ flutter test || echo "Flutterテスト失敗（続行）"
 
 # ===== Python動作確認 =====
 echo "=== 動作確認（Python） ==="
-if [ -f src/port_scan.py ]; then
-    python src/port_scan.py || echo "Pythonスクリプト実行失敗（続行）"
+if [ -f src/scans/ports.py ]; then
+    python src/scans/ports.py || echo "Pythonスクリプト実行失敗（続行）"
 else
-    echo "src/port_scan.py が見つかりません。スキップします。"
+    echo "src/scans/ports.py が見つかりません。スキップします。"
 fi
 
 # ===== Flutter動作確認（Windowsのみ） =====
