@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'static_scan_tab.dart';
+import 'json_fetch_tab.dart';
 
 void main() {
   runApp(const MyApp());
@@ -179,7 +180,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           style = infoStyle;
         } else if (text == '[OK]') {
           style = okStyle;
-
         }
         spans.add(TextSpan(text: text, style: style));
         start = match.end;
@@ -249,27 +249,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         controller: _tabController,
         children: [
           const StaticScanTab(),
-          Center(
-            child: ElevatedButton(
-              key: const Key('dynamicButton'),
-              onPressed: () {
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(const SnackBar(content: Text('動的スキャンを実行しました')));
-              },
-              child: const Text('動的スキャンを実行'),
-            ),
+          JsonFetchTab(
+            buttonText: '動的スキャンを実行',
+            fetcher: runDynamicCli,
+            buttonKey: const Key('dynamicButton'),
           ),
-          Center(
-            child: ElevatedButton(
-              key: const Key('networkButton'),
-              onPressed: () {
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(const SnackBar(content: Text('ネットワーク図を表示しました')));
-              },
-              child: const Text('ネットワーク図を表示'),
-            ),
+          JsonFetchTab(
+            buttonText: 'ネットワーク図を表示',
+            fetcher: runNetworkCli,
+            buttonKey: const Key('networkButton'),
           ),
           Padding(
             padding: const EdgeInsets.all(8.0),
@@ -325,7 +313,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                       color: Colors.white,
                                       boxShadow: [
                                         BoxShadow(
-                                          color: Colors.black.withValues(alpha: 0.15),
+                                          color: Colors.black.withValues(
+                                            alpha: 0.15,
+                                          ),
                                           blurRadius: 8,
                                         ),
                                       ],

@@ -74,7 +74,7 @@ void main() {
     expect(find.text('=== STATIC SCAN REPORT ==='), findsOneWidget);
   });
 
-  testWidgets('Dynamic scan button shows a SnackBar', (
+  testWidgets('Dynamic scan tab runs and displays JSON', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const MyApp());
@@ -83,17 +83,25 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('動的スキャンを実行'));
     await tester.pump();
-    expect(find.text('動的スキャンを実行しました'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pump();
+    expect(find.textContaining('dynamic'), findsOneWidget);
   });
 
-  testWidgets('Network button shows a SnackBar', (WidgetTester tester) async {
+  testWidgets('Network tab runs and displays JSON', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(const MyApp());
 
     await tester.tap(find.byKey(const Key('networkTab')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('networkButton')));
     await tester.pump();
-    expect(find.text('ネットワーク図を表示しました'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pump();
+    expect(find.textContaining('network'), findsOneWidget);
   });
 
   testWidgets('Test tab shows monospaced diagnostic text', (
