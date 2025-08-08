@@ -8,6 +8,6 @@ fastapi
 uvicorn
 httpx
 reportlab
-PyPDF2
+pypdf
 apscheduler
 pytest-benchmark
