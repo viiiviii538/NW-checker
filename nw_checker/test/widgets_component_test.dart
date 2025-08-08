@@ -55,5 +55,4 @@ group('AlertComponent', () {
   });
 });
 
-  });
-}
+  }
