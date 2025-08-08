@@ -8,12 +8,16 @@ void main() {
     return ['=== STATIC SCAN REPORT ===', 'No issues detected.'];
   }
 
-  Widget buildWidget() => MaterialApp(
-        home: Scaffold(body: StaticScanTab(scanner: mockScan)),
-      );
+  Widget buildWidget() =>
+      MaterialApp(home: Scaffold(body: StaticScanTab(scanner: mockScan)));
 
-  testWidgets('button tap shows progress then results', (tester) async {
+  testWidgets('button tap shows progress then results and categories', (
+    tester,
+  ) async {
     await tester.pumpWidget(buildWidget());
+
+    // Initial status badges
+    expect(find.text('未実行'), findsNWidgets(2));
 
     await tester.tap(find.byKey(const Key('staticButton')));
     await tester.pump();
@@ -24,5 +28,18 @@ void main() {
     expect(find.byType(CircularProgressIndicator), findsNothing);
     expect(find.text('=== STATIC SCAN REPORT ==='), findsOneWidget);
     expect(find.text('No issues detected.'), findsOneWidget);
+
+    // Category order
+    final portDy = tester.getTopLeft(find.text('Port Scan')).dy;
+    final sslDy = tester.getTopLeft(find.text('SSL証明書')).dy;
+    expect(portDy < sslDy, isTrue);
+
+    // Status badges after scan
+    expect(find.text('OK'), findsOneWidget);
+    expect(find.text('警告'), findsOneWidget);
+
+    await tester.tap(find.text('SSL証明書'));
+    await tester.pumpAndSettle();
+    expect(find.text('証明書の期限が30日以内です'), findsOneWidget);
   });
 }
