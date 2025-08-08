@@ -18,6 +18,10 @@ void main() {
             'category': 'ports',
             'details': {'open_ports': []},
           },
+          {
+            'category': 'os_banner',
+            'details': {'os': 'Linux', 'banners': {}},
+          },
         ],
       };
     }
@@ -30,7 +34,7 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
-    expect(find.text('OK'), findsOneWidget);
+    expect(find.text('OK'), findsNWidgets(2));
     expect(find.text('警告'), findsOneWidget);
   });
 }

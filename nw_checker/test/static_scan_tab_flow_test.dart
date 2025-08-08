@@ -14,6 +14,13 @@ void main() {
             'open_ports': [22, 80],
           },
         },
+        {
+          'category': 'os_banner',
+          'details': {
+            'os': 'Linux',
+            'banners': {'22': 'ssh', '80': 'http'},
+          },
+        },
       ],
     };
   }
@@ -30,7 +37,7 @@ void main() {
     expect(find.text('スキャン未実施'), findsOneWidget);
     expect(find.byType(ListView), findsOneWidget);
     final initialChips = tester.widgetList<Chip>(find.byType(Chip)).toList();
-    expect(initialChips, hasLength(2));
+    expect(initialChips, hasLength(3));
     expect(initialChips.every((c) => c.backgroundColor == Colors.grey), isTrue);
 
     await tester.tap(find.byKey(const Key('staticButton')));
@@ -45,17 +52,22 @@ void main() {
 
     // Category order
     final portDy = tester.getTopLeft(find.text('Port Scan')).dy;
+    final osDy = tester.getTopLeft(find.text('OS / Services')).dy;
     final sslDy = tester.getTopLeft(find.text('SSL証明書')).dy;
-    expect(portDy < sslDy, isTrue);
+    expect(portDy < osDy, isTrue);
+    expect(osDy < sslDy, isTrue);
 
 // ステータスバッジと色
 final chipsAfter = tester.widgetList<Chip>(find.byType(Chip)).toList();
 final firstLabel = chipsAfter[0].label as Text;
 final secondLabel = chipsAfter[1].label as Text;
-expect(firstLabel.data, 'OK');
-expect(chipsAfter[0].backgroundColor, Colors.blueGrey);
-expect(secondLabel.data, '警告');
-expect(chipsAfter[1].backgroundColor, Colors.orange);
+final thirdLabel = chipsAfter[2].label as Text;
+expect(firstLabel.data, '警告');
+expect(chipsAfter[0].backgroundColor, Colors.orange);
+expect(secondLabel.data, 'OK');
+expect(chipsAfter[1].backgroundColor, Colors.blueGrey);
+expect(thirdLabel.data, '警告');
+expect(chipsAfter[2].backgroundColor, Colors.orange);
 
 // 警告ラベルが2つあること
 expect(find.text('警告'), findsNWidgets(2));
@@ -66,6 +78,11 @@ await tester.pumpAndSettle();
 expect(find.text('ポート 22: open'), findsOneWidget);
 expect(find.text('ポート 80: open'), findsOneWidget);
 
+    await tester.tap(find.text('OS / Services'));
+    await tester.pumpAndSettle();
+    expect(find.text('OS: Linux'), findsOneWidget);
+    expect(find.text('ポート 22: ssh'), findsOneWidget);
+    expect(find.text('ポート 80: http'), findsOneWidget);
 
     await tester.tap(find.text('SSL証明書'));
     await tester.pumpAndSettle();
