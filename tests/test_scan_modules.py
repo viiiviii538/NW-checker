@@ -65,15 +65,23 @@ def test_ports_scan_no_open_ports(monkeypatch):
     assert result["details"]["open_ports"] == []
 
 
-def test_os_banner_scan_collects_banners(monkeypatch):
+def test_os_banner_scan_collects_os_and_banners(monkeypatch):
     class MockScanner:
         def scan(self, target, arguments=""):
-            return {"scan": {target: {"tcp": {"80": {"name": "http", "version": "Apache"}}}}}
+            return {
+                "scan": {
+                    target: {
+                        "tcp": {"80": {"name": "http", "version": "Apache"}},
+                        "osmatch": [{"name": "Linux"}],
+                    }
+                }
+            }
 
     monkeypatch.setattr(os_banner.nmap, "PortScanner", lambda: MockScanner())
     result = os_banner.scan("host")
-    assert result["score"] == 1
+    assert result["score"] == 2
     assert result["details"]["banners"] == {80: "http Apache"}
+    assert result["details"]["os"] == "Linux"
 
 
 def test_smb_netbios_scan_lists_open_ports(monkeypatch):
