@@ -1,25 +1,14 @@
-import sys
 import time
-import types
-import importlib
 
 from fastapi.testclient import TestClient
-
-
-def _import_server(monkeypatch, run_all):
-    module = types.ModuleType('static_scan')
-    module.run_all = run_all
-    monkeypatch.setitem(sys.modules, 'static_scan', module)
-    from src import server
-    importlib.reload(server)
-    return server
+from src import server
 
 
 def test_static_scan_success(monkeypatch):
     def fake_run_all():
         return {'findings': {'ports': ['22']}, 'risk_score': 5}
 
-    server = _import_server(monkeypatch, fake_run_all)
+    monkeypatch.setattr(server.static_scan, 'run_all', fake_run_all)
     client = TestClient(server.app)
 
     resp = client.get('/static_scan')
@@ -34,7 +23,7 @@ def test_static_scan_timeout(monkeypatch):
     def slow_run_all():
         time.sleep(0.2)
 
-    server = _import_server(monkeypatch, slow_run_all)
+    monkeypatch.setattr(server.static_scan, 'run_all', slow_run_all)
     monkeypatch.setattr(server, 'STATIC_SCAN_TIMEOUT', 0.05)
     client = TestClient(server.app)
 
@@ -47,7 +36,7 @@ def test_static_scan_error(monkeypatch):
     def bad_run_all():
         raise RuntimeError('boom')
 
-    server = _import_server(monkeypatch, bad_run_all)
+    monkeypatch.setattr(server.static_scan, 'run_all', bad_run_all)
     client = TestClient(server.app)
 
     resp = client.get('/static_scan')
@@ -63,7 +52,7 @@ def test_static_scan_non_dict(monkeypatch):
     def weird_run_all():
         return ['80/tcp open http']
 
-    server = _import_server(monkeypatch, weird_run_all)
+    monkeypatch.setattr(server.static_scan, 'run_all', weird_run_all)
     client = TestClient(server.app)
 
     resp = client.get('/static_scan')
@@ -80,7 +69,7 @@ def test_static_scan_pdf_report(monkeypatch):
     def fake_run_all():
         return {'findings': {'ports': {'score': 5}}, 'risk_score': 5}
 
-    server = _import_server(monkeypatch, fake_run_all)
+    monkeypatch.setattr(server.static_scan, 'run_all', fake_run_all)
 
     called: dict = {}
 
