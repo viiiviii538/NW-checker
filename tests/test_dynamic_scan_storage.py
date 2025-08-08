@@ -20,7 +20,9 @@ def test_storage_save_and_fetch(tmp_path):
     assert len(store.get_all()) == 2
     assert q.empty()
 
-    now = datetime.utcnow()
+    from datetime import datetime, timedelta, timezone
+
+    now = datetime.now(timezone.utc)
     start = (now - timedelta(days=1)).isoformat()
     end = (now + timedelta(days=1)).isoformat()
     history = store.fetch_history({"start": start, "end": end})
@@ -39,7 +41,9 @@ def test_storage_fetch_out_of_range(tmp_path):
     store = Storage(tmp_path / "res.db")
     # 保存された結果の日付より後ろの期間を指定
     asyncio.run(store.save_result({"foo": "bar"}))
-    now = datetime.utcnow()
+    from datetime import datetime, timedelta, timezone
+
+    now = datetime.now(timezone.utc)
     start = (now + timedelta(days=1)).isoformat()
     end = (now + timedelta(days=2)).isoformat()
     history = store.fetch_history({"start": start, "end": end})

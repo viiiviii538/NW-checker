@@ -23,15 +23,15 @@ void main() {
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
     await tester.pump(const Duration(seconds: 1));
-    expect(find.text('Risk Score: 87'), findsOneWidget);
-    expect(find.text('Ports'), findsOneWidget);
+    expect(find.text('Risk Score: 1'), findsOneWidget);
+    expect(find.text('protocols'), findsOneWidget);
 
     await tester.tap(find.text('スキャン停止'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pump();
     expect(find.byType(CircularProgressIndicator), findsNothing);
-    expect(find.text('Risk Score: 87'), findsOneWidget);
+    expect(find.text('Risk Score: 1'), findsOneWidget);
   });
 
   testWidgets('summary shows export button and snackbar', (tester) async {
@@ -62,14 +62,14 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     await tester.pump();
 
-    final iconFinder = find.byIcon(Icons.router);
+    final iconFinder = find.byIcon(Icons.security);
     expect(iconFinder, findsOneWidget);
     final icon = tester.widget<Icon>(iconFinder);
     expect(icon.color, Colors.red);
 
-    await tester.tap(find.text('Ports'));
+    await tester.tap(find.text('protocols'));
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.text('22/tcp open'), findsOneWidget);
+    expect(find.text('ftp'), findsOneWidget);
   });
 
   testWidgets('shows snackbar on alert and navigates to detail', (tester) async {

@@ -1,6 +1,6 @@
 """Static scan for SSL certificate issues."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 import socket
 import ssl
 
@@ -18,8 +18,10 @@ def scan(host: str = "example.com", port: int = 443) -> dict:
                 cert_data = cert
                 not_after = cert.get("notAfter")
                 if not_after:
-                    expiry = datetime.strptime(not_after, "%b %d %H:%M:%S %Y %Z")
-                    expired = expiry < datetime.utcnow()
+                    expiry = datetime.strptime(not_after, "%b %d %H:%M:%S %Y %Z").replace(
+                        tzinfo=timezone.utc
+                    )
+                    expired = expiry < datetime.now(timezone.utc)
     except Exception:  # pragma: no cover
         pass
 

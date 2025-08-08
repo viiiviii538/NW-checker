@@ -41,7 +41,9 @@ class Storage:
 
     async def save_result(self, data: Dict[str, Any]) -> None:
         """結果を保存し、リスナーへ通知"""
-        record = {"timestamp": datetime.utcnow().isoformat(), **data}
+        from datetime import datetime, timezone
+        record = {"timestamp": datetime.now(timezone.utc).isoformat(), **data}
+
         async with self._lock:
             await asyncio.to_thread(self._insert_record, record)
             self._recent.append(record)

@@ -2,6 +2,7 @@ import nmap
 import pytest
 from src.port_scan import scan_ports
 
+
 def test_scan_ports_returns_only_open_ports(monkeypatch):
     fake_result = {
         "scan": {
@@ -45,6 +46,8 @@ def test_scan_ports_all_closed_ports(monkeypatch):
 
     result = scan_ports("127.0.0.1")
     assert result == []
+
+
 def test_scan_ports_handles_scan_errors(monkeypatch):
     class ErrorScanner:
         def scan(self, target_ip, arguments=""):
