@@ -3,9 +3,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:nw_checker/static_scan_tab.dart';
 
 void main() {
-  Future<List<String>> mockScan() async {
+  Future<Map<String, dynamic>> mockScan() async {
     await Future.delayed(const Duration(milliseconds: 10));
-    return ['=== STATIC SCAN REPORT ===', 'No issues detected.'];
+    return {
+      'summary': ['=== STATIC SCAN REPORT ===', 'No issues detected.'],
+      'findings': [
+        {
+          'category': 'ports',
+          'details': {
+            'open_ports': [22, 80],
+          },
+        },
+      ],
+    };
   }
 
   Widget buildWidget() =>
@@ -35,8 +45,12 @@ void main() {
     expect(portDy < sslDy, isTrue);
 
     // Status badges after scan
-    expect(find.text('OK'), findsOneWidget);
-    expect(find.text('警告'), findsOneWidget);
+    expect(find.text('警告'), findsNWidgets(2));
+
+    await tester.tap(find.text('Port Scan'));
+    await tester.pumpAndSettle();
+    expect(find.text('ポート 22: open'), findsOneWidget);
+    expect(find.text('ポート 80: open'), findsOneWidget);
 
     await tester.tap(find.text('SSL証明書'));
     await tester.pumpAndSettle();

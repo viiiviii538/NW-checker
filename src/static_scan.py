@@ -34,6 +34,8 @@ def run_all(timeout: float = 5.0) -> Dict[str, List[Dict]]:
 
     findings: List[Dict] = []
     scanners = _load_scanners()
+    # ポートスキャンを最優先で実行するために先頭へ配置
+    scanners.sort(key=lambda x: 0 if x[0] == "ports" else 1)
 
     with ThreadPoolExecutor() as executor:
         future_map = {executor.submit(scan): name for name, scan in scanners}
