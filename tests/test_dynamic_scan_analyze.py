@@ -61,6 +61,20 @@ def test_assign_geoip_info(monkeypatch):
     assert res.geoip == {"country": "Wonderland", "ip": "203.0.113.1"}
 
 
+def test_attach_geoip(monkeypatch):
+    class FakeResp:
+        ok = True
+
+        def json(self):  # pragma: no cover - 単純な dict 返却
+            return {"country_name": "Wonderland"}
+
+    monkeypatch.setattr(analyze.requests, "get", lambda url, timeout=5: FakeResp())
+    res = analyze.AnalysisResult()
+    updated = analyze.attach_geoip(res, "203.0.113.1")
+    assert updated.geoip == {"country": "Wonderland", "ip": "203.0.113.1"}
+    assert updated.src_ip == "203.0.113.1"
+
+
 def test_record_dns_history(monkeypatch):
     analyze._dns_history.clear()
     monkeypatch.setattr(analyze, "reverse_dns_lookup", lambda ip: "host.example")
