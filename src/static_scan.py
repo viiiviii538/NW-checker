@@ -9,20 +9,24 @@ from . import scans
 
 
 def _load_scanners() -> List[Tuple[str, callable]]:
-    """Discover scan functions under :mod:`src.scans`.
+    """Discover scan functions under :mod:`src.scans` with ordering.
 
-    Returns a list of ``(module_name, scan_callable)`` tuples.
+    ``ports`` を最初、``os_banner`` を2番目に配置し、残りはアルファベット順。
     """
 
-    scanners: List[Tuple[str, callable]] = []
+    available: Dict[str, callable] = {}
     for mod_info in iter_modules(scans.__path__):
         if mod_info.name.startswith("_"):
             continue
         module = import_module(f"{scans.__name__}.{mod_info.name}")
         scan_func = getattr(module, "scan", None)
         if callable(scan_func):
-            scanners.append((mod_info.name, scan_func))
-    return scanners
+            available[mod_info.name] = scan_func
+
+    order = ["ports", "os_banner"]
+    remaining = sorted(name for name in available if name not in order)
+    ordered = [name for name in order if name in available] + remaining
+    return [(name, available[name]) for name in ordered]
 
 
 def run_all(timeout: float = 5.0) -> Dict[str, List[Dict]]:
@@ -36,8 +40,8 @@ def run_all(timeout: float = 5.0) -> Dict[str, List[Dict]]:
     scanners = _load_scanners()
 
     with ThreadPoolExecutor() as executor:
-        future_map = {executor.submit(scan): name for name, scan in scanners}
-        for future, name in future_map.items():
+        futures = [(executor.submit(scan), name) for name, scan in scanners]
+        for future, name in futures:
             try:
                 result = future.result(timeout=timeout)
                 # フィールド欠損時のフォールバック

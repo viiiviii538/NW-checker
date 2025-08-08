@@ -38,6 +38,14 @@ def test_run_all_returns_all_categories():
         assert isinstance(item["details"], dict)
 
 
+def test_run_all_orders_port_then_os_banner():
+    """ポートスキャンの次にOSバナーが実行されることを確認"""
+
+    results = static_scan.run_all()
+    categories = [item["category"] for item in results["findings"]]
+    assert categories[:2] == ["ports", "os_banner"]
+
+
 def test_run_all_totals_scores():
     results = static_scan.run_all()
     total = sum(item["score"] for item in results["findings"])

@@ -54,6 +54,4 @@ group('AlertComponent', () {
     expect(find.text('warning'), findsOneWidget);
   });
 });
-
-  });
 }

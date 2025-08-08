@@ -44,6 +44,7 @@ class _StaticScanTabState extends State<StaticScanTab> {
     super.initState();
     _categories = [
       CategoryTile(title: 'Port Scan', icon: Icons.router),
+      CategoryTile(title: 'OS/Service', icon: Icons.computer),
       CategoryTile(title: 'SSL証明書', icon: Icons.security),
     ];
   }
@@ -69,6 +70,9 @@ class _StaticScanTabState extends State<StaticScanTab> {
           ..status = ScanStatus.ok
           ..details = ['ポート 22: open', 'ポート 80: open'];
         _categories[1]
+          ..status = ScanStatus.ok
+          ..details = ['OS: Linux', 'サービス: sshd 8.2'];
+        _categories[2]
           ..status = ScanStatus.warning
           ..details = ['証明書の期限が30日以内です'];
       });
