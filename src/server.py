@@ -7,7 +7,7 @@ import asyncio
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
-import static_scan
+from . import static_scan
 from .report.pdf import create_pdf
 
 STATIC_SCAN_TIMEOUT = 60  # seconds
