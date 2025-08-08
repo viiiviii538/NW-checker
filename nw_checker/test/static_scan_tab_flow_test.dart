@@ -16,8 +16,12 @@ void main() {
   ) async {
     await tester.pumpWidget(buildWidget());
 
-    // Initial status badges
-    expect(find.text('未実行'), findsNWidgets(2));
+    // Initial summary and status badges
+    expect(find.text('スキャン未実施'), findsOneWidget);
+    expect(find.byType(ListView), findsOneWidget);
+    final initialChips = tester.widgetList<Chip>(find.byType(Chip)).toList();
+    expect(initialChips, hasLength(2));
+    expect(initialChips.every((c) => c.backgroundColor == Colors.grey), isTrue);
 
     await tester.tap(find.byKey(const Key('staticButton')));
     await tester.pump();
@@ -34,9 +38,14 @@ void main() {
     final sslDy = tester.getTopLeft(find.text('SSL証明書')).dy;
     expect(portDy < sslDy, isTrue);
 
-    // Status badges after scan
-    expect(find.text('OK'), findsOneWidget);
-    expect(find.text('警告'), findsOneWidget);
+    // Status badges and colors after scan
+    final chipsAfter = tester.widgetList<Chip>(find.byType(Chip)).toList();
+    final firstLabel = chipsAfter[0].label as Text;
+    final secondLabel = chipsAfter[1].label as Text;
+    expect(firstLabel.data, 'OK');
+    expect(chipsAfter[0].backgroundColor, Colors.blueGrey);
+    expect(secondLabel.data, '警告');
+    expect(chipsAfter[1].backgroundColor, Colors.orange);
 
     await tester.tap(find.text('SSL証明書'));
     await tester.pumpAndSettle();
