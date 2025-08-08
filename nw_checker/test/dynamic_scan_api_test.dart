@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:nw_checker/models/scan_report.dart';
 import 'package:nw_checker/services/dynamic_scan_api.dart';
 
 void main() {
