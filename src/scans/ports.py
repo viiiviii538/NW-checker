@@ -1,27 +1,55 @@
-"""Static scan for open ports using nmap."""
+"""Static scan for risky open ports using basic socket checks."""
 
-import nmap
+from __future__ import annotations
+
+import socket
+from typing import Dict, List, Tuple
+
+# 一般的に危険とされるポート番号のリスト
+RISKY_PORTS: Tuple[int, ...] = (
+    21,
+    22,
+    23,
+    25,
+    53,
+    80,
+    110,
+    139,
+    143,
+    443,
+    445,
+    3389,
+)
 
 
-def scan(target: str = "127.0.0.1") -> dict:
-    """Scan top ports on *target* and return a unified result dict.
+def scan(target_host: str = "127.0.0.1") -> Dict[str, object]:
+    """Check common risky ports on *target_host*.
 
-    The scan is best-effort; if ``nmap`` is unavailable or fails, the
-    function falls back to reporting no open ports.
+    Returns
+    -------
+    dict
+        結果は ``{category, score, details}`` の形式で返す。
     """
 
-    scanner = nmap.PortScanner()
-    open_ports = []
-    try:
-        result = scanner.scan(target, arguments="-T4 --top-ports 10")
-        tcp_info = result.get("scan", {}).get(target, {}).get("tcp", {})
-        open_ports = [int(p) for p, data in tcp_info.items() if data.get("state") == "open"]
-    except Exception:  # pragma: no cover - nmap failures are non-fatal
-        pass
+    open_ports: List[int] = []
+    for port in RISKY_PORTS:
+        try:
+            # ソケット接続を試み、成功すればポートは開いているとみなす
+            with socket.create_connection((target_host, port), timeout=0.5):
+                open_ports.append(port)
+        except OSError:
+            continue
 
     return {
         "category": "ports",
         "score": len(open_ports),
-        "details": {"target": target, "open_ports": open_ports},
+        "details": {"target": target_host, "open_ports": open_ports},
     }
 
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    host = sys.argv[1] if len(sys.argv) > 1 else "127.0.0.1"
+    print(json.dumps(scan(host), indent=2, ensure_ascii=False))

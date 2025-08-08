@@ -25,7 +25,7 @@ Python: 3.11.x
 Flutter: 3.19.x
 Platform: Windows / macOS / Linux
 
-python src/port_scan.py
+python src/scans/ports.py
 
 flutter run -d windows
 

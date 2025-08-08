@@ -34,15 +34,35 @@ class DummySock:
 
 # --- nmap based scans ----------------------------------------------------
 
-def test_ports_scan_counts_open_ports(monkeypatch):
-    class MockScanner:
-        def scan(self, target, arguments=""):
-            return {"scan": {target: {"tcp": {"22": {"state": "open"}, "80": {"state": "closed"}}}}}
 
-    monkeypatch.setattr(ports.nmap, "PortScanner", lambda: MockScanner())
+def test_ports_scan_counts_open_ports(monkeypatch):
+    def fake_create_connection(addr, timeout=0.5):  # noqa: ARG001
+        if addr[1] == 22:
+            class Dummy:
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, exc_type, exc, tb):  # noqa: D401, ARG002
+                    return False
+
+            return Dummy()
+        raise OSError
+
+    monkeypatch.setattr(ports.socket, "create_connection", fake_create_connection)
     result = ports.scan("host")
     assert result["score"] == 1
     assert result["details"]["open_ports"] == [22]
+
+
+def test_ports_scan_no_open_ports(monkeypatch):
+    monkeypatch.setattr(
+        ports.socket,
+        "create_connection",
+        lambda *_, **__: (_ for _ in ()).throw(OSError()),
+    )
+    result = ports.scan("host")
+    assert result["score"] == 0
+    assert result["details"]["open_ports"] == []
 
 
 def test_os_banner_scan_collects_banners(monkeypatch):

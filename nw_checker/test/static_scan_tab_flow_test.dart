@@ -3,9 +3,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:nw_checker/static_scan_tab.dart';
 
 void main() {
-  Future<List<String>> mockScan() async {
+  Future<Map<String, dynamic>> mockScan() async {
     await Future.delayed(const Duration(milliseconds: 10));
-    return ['=== STATIC SCAN REPORT ===', 'No issues detected.'];
+    return {
+      'summary': ['=== STATIC SCAN REPORT ===', 'No issues detected.'],
+      'findings': [
+        {
+          'category': 'ports',
+          'details': {
+            'open_ports': [22, 80],
+          },
+        },
+      ],
+    };
   }
 
   Widget buildWidget() =>
@@ -38,14 +48,24 @@ void main() {
     final sslDy = tester.getTopLeft(find.text('SSL証明書')).dy;
     expect(portDy < sslDy, isTrue);
 
-    // Status badges and colors after scan
-    final chipsAfter = tester.widgetList<Chip>(find.byType(Chip)).toList();
-    final firstLabel = chipsAfter[0].label as Text;
-    final secondLabel = chipsAfter[1].label as Text;
-    expect(firstLabel.data, 'OK');
-    expect(chipsAfter[0].backgroundColor, Colors.blueGrey);
-    expect(secondLabel.data, '警告');
-    expect(chipsAfter[1].backgroundColor, Colors.orange);
+// ステータスバッジと色
+final chipsAfter = tester.widgetList<Chip>(find.byType(Chip)).toList();
+final firstLabel = chipsAfter[0].label as Text;
+final secondLabel = chipsAfter[1].label as Text;
+expect(firstLabel.data, 'OK');
+expect(chipsAfter[0].backgroundColor, Colors.blueGrey);
+expect(secondLabel.data, '警告');
+expect(chipsAfter[1].backgroundColor, Colors.orange);
+
+// 警告ラベルが2つあること
+expect(find.text('警告'), findsNWidgets(2));
+
+// ポートスキャン結果の表示確認
+await tester.tap(find.text('Port Scan'));
+await tester.pumpAndSettle();
+expect(find.text('ポート 22: open'), findsOneWidget);
+expect(find.text('ポート 80: open'), findsOneWidget);
+
 
     await tester.tap(find.text('SSL証明書'));
     await tester.pumpAndSettle();
