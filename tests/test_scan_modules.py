@@ -54,6 +54,17 @@ def test_ports_scan_counts_open_ports(monkeypatch):
     assert result["details"]["open_ports"] == [22]
 
 
+def test_ports_scan_no_open_ports(monkeypatch):
+    monkeypatch.setattr(
+        ports.socket,
+        "create_connection",
+        lambda *_, **__: (_ for _ in ()).throw(OSError()),
+    )
+    result = ports.scan("host")
+    assert result["score"] == 0
+    assert result["details"]["open_ports"] == []
+
+
 def test_os_banner_scan_collects_banners(monkeypatch):
     class MockScanner:
         def scan(self, target, arguments=""):
