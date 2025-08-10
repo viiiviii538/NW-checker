@@ -48,8 +48,23 @@ _known_devices: set[str] = set()
 
 def geoip_lookup(ip: str) -> Dict[str, Any]:
     """GeoIP 情報を取得する。
-    外部 API を利用し、取得できない場合は空 dict を返す。
+    ローカル GeoIP2 DB が利用可能であれば優先し、
+    それ以外は外部 API を利用する。取得できない場合は空 dict を返す。
     """
+    # GeoIP2 データベースの利用を試みる
+    try:  # pragma: no cover - 環境により存在しない可能性が高いため
+        import geoip2.database
+
+        reader = geoip2.database.Reader("/usr/share/GeoIP/GeoLite2-Country.mmdb")
+        try:
+            resp = reader.country(ip)
+            return {"country": resp.country.name, "ip": ip}
+        finally:
+            reader.close()
+    except Exception:
+        pass
+
+    # 外部 API へのフォールバック
     try:
         response = requests.get(f"https://ipapi.co/{ip}/json/", timeout=5)
         if response.ok:
@@ -90,12 +105,21 @@ def is_night_traffic(timestamp: float, start_hour: int = 0, end_hour: int = 6) -
     return start_hour <= hour < end_hour
 
 
+def attach_geoip(result: AnalysisResult, ip: str | None) -> AnalysisResult:
+    """指定 IP の GeoIP 情報を解析結果に保存する"""
+    if ip:
+        result.geoip = geoip_lookup(ip)
+        if result.src_ip is None:
+            result.src_ip = ip
+    return result
+
+
 def assign_geoip_info(packet) -> AnalysisResult:
     """GeoIP 情報をパケットに付与する"""
     src_ip = getattr(packet, "src_ip", getattr(packet, "ip_src", None))
     dst_ip = getattr(packet, "dst_ip", getattr(packet, "ip_dst", None))
-    geoip = geoip_lookup(src_ip) if src_ip else {}
-    return AnalysisResult(src_ip=src_ip, dst_ip=dst_ip, geoip=geoip)
+    result = AnalysisResult(src_ip=src_ip, dst_ip=dst_ip)
+    return attach_geoip(result, src_ip)
 
 
 def record_dns_history(packet) -> AnalysisResult:
