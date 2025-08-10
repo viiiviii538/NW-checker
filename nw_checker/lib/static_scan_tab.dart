@@ -60,6 +60,7 @@ class _StaticScanTabState extends State<StaticScanTab> {
     super.initState();
     _categories = [
       CategoryTile(title: 'Port Scan', icon: Icons.router),
+      CategoryTile(title: 'OS / Services', icon: Icons.computer),
       CategoryTile(title: 'SSL証明書', icon: Icons.security),
     ];
   }
@@ -97,8 +98,26 @@ class _StaticScanTabState extends State<StaticScanTab> {
           ..details =
               openPorts.map((p) => 'ポート $p: open').toList();
 
-        // 既存のSSL証明書タイルはダミー情報を表示
+        final osFinding = findings.firstWhere(
+          (f) => f['category'] == 'os_banner',
+          orElse: () => <String, dynamic>{},
+        );
+        final osName = osFinding['details']?['os'] as String? ?? '';
+        final bannerMap =
+            (osFinding['details']?['banners'] as Map? ?? {}).cast<String, dynamic>();
         _categories[1]
+          ..status =
+              (osName.isNotEmpty || bannerMap.isNotEmpty) ? ScanStatus.ok : ScanStatus.error
+          ..details = [
+            if (osName.isNotEmpty) 'OS: $osName',
+            ...bannerMap.entries
+                .map((e) => 'ポート ${e.key}: ${e.value}')
+                .toList(),
+            if (osName.isEmpty && bannerMap.isEmpty) '情報取得失敗',
+          ];
+
+        // 既存のSSL証明書タイルはダミー情報を表示
+        _categories[2]
           ..status = ScanStatus.warning
           ..details = ['証明書の期限が30日以内です'];
       });

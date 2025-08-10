@@ -110,3 +110,8 @@ def test_individual_scans_return_dict(module, category):
 def test_ports_result_is_first():
     results = static_scan.run_all()
     assert results["findings"][0]["category"] == "ports"
+
+
+def test_os_banner_result_is_second():
+    results = static_scan.run_all()
+    assert results["findings"][1]["category"] == "os_banner"

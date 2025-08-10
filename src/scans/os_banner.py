@@ -1,30 +1,40 @@
-"""Static scan for service banners using nmap."""
+"""Static scan for OS and service banners using nmap."""
 
 import nmap
 
 
 def scan(target: str = "127.0.0.1") -> dict:
-    """Attempt to grab service banners from *target*.
+    """Attempt to grab OS and service banners from *target*.
 
-    Returns a result dictionary containing discovered banners. The score is the
-    number of distinct banners captured.
+    Returns a result dictionary containing discovered information. The score is
+    the number of distinct banners plus one if the OS could be identified.
     """
 
     scanner = nmap.PortScanner()
     banners: dict[int, str] = {}
+    os_name = ""
     try:
-        result = scanner.scan(target, arguments="-sV --top-ports 10")
-        tcp_info = result.get("scan", {}).get(target, {}).get("tcp", {})
+        result = scanner.scan(target, arguments="-O -sV --top-ports 10")
+        host_info = result.get("scan", {}).get(target, {})
+
+        # サービスバナー取得
+        tcp_info = host_info.get("tcp", {})
         for port, data in tcp_info.items():
             banner = " ".join(filter(None, [data.get("name"), data.get("version")])).strip()
             if banner:
                 banners[int(port)] = banner
-    except Exception:  # pragma: no cover
+
+        # OS情報取得
+        os_match = host_info.get("osmatch", [])
+        if os_match:
+            os_name = os_match[0].get("name", "")
+    except Exception:  # pragma: no cover - 外部コマンド失敗時は無視
         pass
 
+    score = len(banners) + (1 if os_name else 0)
     return {
         "category": "os_banner",
-        "score": len(banners),
-        "details": {"target": target, "banners": banners},
+        "score": score,
+        "details": {"target": target, "os": os_name, "banners": banners},
     }
 
