@@ -37,4 +37,39 @@ void main() {
     expect(find.text('OK'), findsNWidgets(2));
     expect(find.text('警告'), findsOneWidget);
   });
+
+  testWidgets('no OS info shows error in tile', (tester) async {
+    Future<Map<String, dynamic>> mockScan() async {
+      return {
+        'summary': [],
+        'findings': [
+          {
+            'category': 'ports',
+            'details': {'open_ports': []},
+          },
+          {
+            'category': 'os_banner',
+            'details': {'os': '', 'banners': {}},
+          },
+        ],
+      };
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(home: StaticScanTab(scanner: mockScan)),
+    );
+
+    await tester.tap(find.byKey(const Key('staticButton')));
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    final chips = tester.widgetList<Chip>(find.byType(Chip)).toList();
+    final osLabel = chips[1].label as Text;
+    expect(osLabel.data, 'エラー');
+    expect(chips[1].backgroundColor, Colors.red);
+
+    await tester.tap(find.text('OS / Services'));
+    await tester.pumpAndSettle();
+    expect(find.text('情報取得失敗'), findsOneWidget);
+  });
 }
