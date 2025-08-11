@@ -237,23 +237,24 @@ def test_dhcp_scan_detects_servers(monkeypatch):
     assert result["details"]["servers"] == ["10.0.0.1"]
 
 
-def test_arp_spoof_scan_finds_conflicts(monkeypatch):
-    class FakePkt:
-        def __init__(self, ip, mac):
-            self.ip = ip
-            self.mac = mac
+def test_arp_spoof_scan_detects_table_change(monkeypatch):
+    tables = [
+        {"1.2.3.4": "aa:aa"},
+        {"1.2.3.4": arp_spoof.FAKE_MAC},
+    ]
+    monkeypatch.setattr(arp_spoof, "_get_arp_table", lambda: tables.pop(0))
+    monkeypatch.setattr(arp_spoof, "send", lambda *_, **__: None)
+    result = arp_spoof.scan(wait=0)
+    assert result["score"] == 5
+    assert result["details"]["vulnerable"] is True
 
-        def __contains__(self, item):
-            return True
 
-        def __getitem__(self, layer):
-            return SimpleNamespace(op=2, psrc=self.ip, hwsrc=self.mac)
-
-    packets = [FakePkt("1.1.1.1", "aa:aa"), FakePkt("1.1.1.1", "bb:bb")]
-    monkeypatch.setattr(arp_spoof, "sniff", lambda *_, **__: packets)
-    result = arp_spoof.scan()
-    assert result["score"] == 1
-    assert result["details"]["suspects"] == ["1.1.1.1"]
+def test_arp_spoof_scan_no_change(monkeypatch):
+    monkeypatch.setattr(arp_spoof, "_get_arp_table", lambda: {"1.2.3.4": "aa:aa"})
+    monkeypatch.setattr(arp_spoof, "send", lambda *_, **__: None)
+    result = arp_spoof.scan(wait=0)
+    assert result["score"] == 0
+    assert result["details"]["vulnerable"] is False
 
 
 # --- SSL certificate -----------------------------------------------------

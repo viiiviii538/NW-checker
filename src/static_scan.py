@@ -35,7 +35,7 @@ def run_all(timeout: float = 5.0) -> Dict[str, List[Dict]]:
     findings: List[Dict] = []
     scanners = _load_scanners()
     # スキャン実行順序: ポートスキャン→OS/サービス→その他
-    order = {"ports": 0, "os_banner": 1}
+    order = {"ports": 0, "os_banner": 1, "dhcp": 2, "dns": 3, "arp_spoof": 4}
     scanners.sort(key=lambda x: order.get(x[0], 2))
 
     with ThreadPoolExecutor() as executor:
