@@ -191,6 +191,15 @@ def test_upnp_scan_flags_misconfigured(monkeypatch):
     assert "Misconfigured" in result["details"]["warnings"][0]
 
 
+def test_upnp_scan_handles_no_response(monkeypatch):
+    """No responder should yield empty findings."""
+    monkeypatch.setattr(upnp, "sr1", lambda *_, **__: None)
+    result = upnp.scan()
+    assert result["score"] == 0
+    assert result["details"]["responders"] == []
+    assert result["details"]["warnings"] == []
+
+
 def test_dns_scan_collects_answers(monkeypatch):
     class FakeAnswer:
         def __init__(self, rdata):

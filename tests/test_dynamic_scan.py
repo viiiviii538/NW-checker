@@ -31,6 +31,12 @@ def test_is_dangerous_protocol():
     assert not analyze.is_dangerous_protocol(None)
 
 
+def test_detect_dangerous_protocols_none():
+    pkt = SimpleNamespace(protocol=None)
+    res = analyze.detect_dangerous_protocols(pkt)
+    assert res.dangerous_protocol is False
+
+
 def test_is_unapproved_device():
     assert analyze.is_unapproved_device("00:aa", {"00:bb"})
     assert not analyze.is_unapproved_device("00:aa", {"00:aa"})

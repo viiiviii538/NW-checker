@@ -215,6 +215,12 @@ def test_detect_dangerous_protocols_safe_protocol():
     assert res.dangerous_protocol is False
 
 
+def test_detect_dangerous_protocols_none_protocol():
+    pkt = type("Pkt", (), {"protocol": None})
+    res = analyze.detect_dangerous_protocols(pkt)
+    assert res.dangerous_protocol is False
+
+
 def test_detect_traffic_anomalies_normal():
     stats = defaultdict(int)
     pkt = type("Pkt", (), {"src_ip": "1.1.1.1", "size": 500_000})

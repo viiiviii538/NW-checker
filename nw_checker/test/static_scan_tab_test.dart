@@ -200,6 +200,7 @@ void main() {
   });
 
   testWidgets('ARP spoof detection shows warning in tile', (tester) async {
+  testWidgets('misconfigured UPnP response shows warning in tile', (tester,) async {
     Future<Map<String, dynamic>> mockScan() async {
       return {
         'summary': [],
@@ -218,13 +219,19 @@ void main() {
           },
           {
             'category': 'upnp',
-            'details': {'responders': [], 'warnings': []},
+            'details': {
+              'responders': ['1.1.1.1'],
+              'warnings': ['Misconfigured SSDP response from 1.1.1.1'],
+            },
           },
           {
             'category': 'arp_spoof',
             'details': {
               'vulnerable': true,
               'explanation': 'ARP table updated with spoofed entry',
+            },
+          },
+
             },
           },
         ],
@@ -240,12 +247,24 @@ void main() {
     await tester.pumpAndSettle();
 
     final chips = tester.widgetList<Chip>(find.byType(Chip)).toList();
+    final upnpLabel = chips[3].label as Text;
+    expect(upnpLabel.data, '警告');
+    await tester.tap(find.text('UPnP'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Misconfigured SSDP response from 1.1.1.1'),
+      findsOneWidget,
+    );
+
     final arpLabel = chips[4].label as Text;
     expect(arpLabel.data, '警告');
     await tester.tap(find.text('ARP Spoof'));
     await tester.pumpAndSettle();
     expect(
       find.text('ARP table updated with spoofed entry'),
+      findsOneWidget,
+    );
+
       findsOneWidget,
     );
   });
