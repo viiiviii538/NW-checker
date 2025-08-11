@@ -1,5 +1,6 @@
 from collections import defaultdict
 from datetime import datetime
+import json
 import types
 
 import pytest
@@ -85,6 +86,15 @@ def test_detect_traffic_anomaly():
     stats = defaultdict(int)
     assert analyze.detect_traffic_anomaly(stats, "host", 500_000, threshold=1_000_000) is False
     assert analyze.detect_traffic_anomaly(stats, "host", 600_000, threshold=1_000_000) is True
+
+
+def test_detect_traffic_anomaly_from_config(tmp_path, monkeypatch):
+    stats = defaultdict(int)
+    cfg = tmp_path / "config.json"
+    cfg.write_text(json.dumps({"traffic_threshold": 700_000}))
+    monkeypatch.setattr(analyze, "CONFIG_PATH", cfg)
+    assert analyze.detect_traffic_anomaly(stats, "host", 400_000) is False
+    assert analyze.detect_traffic_anomaly(stats, "host", 400_000) is True
 
 
 def test_is_night_traffic():

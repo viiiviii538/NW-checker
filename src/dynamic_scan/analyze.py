@@ -4,6 +4,8 @@ from dataclasses import asdict, dataclass
 from datetime import datetime
 from collections import defaultdict
 from typing import Any, Dict, Iterable
+import json
+from pathlib import Path
 
 import requests
 
@@ -11,6 +13,8 @@ import requests
 DANGEROUS_PROTOCOLS = {"telnet", "ftp", "rdp"}
 # DNS 逆引きのブラックリスト
 DNS_BLACKLIST = {"malicious.example"}
+
+CONFIG_PATH = Path(__file__).with_name("config.json")
 
 
 @dataclass
@@ -104,8 +108,26 @@ def is_unapproved_device(mac: str, approved_macs: Iterable[str]) -> bool:
     return mac not in set(approved_macs)
 
 
-def detect_traffic_anomaly(traffic_stats: Dict[str, int], key: str, size: int, threshold: int = 1_000_000) -> bool:
+def load_threshold(path: Path | None = None, default: int = 1_000_000) -> int:
+    """設定ファイルから閾値を読み込む。存在しない場合はデフォルト値を返す。"""
+    path = path or CONFIG_PATH
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+            return int(data.get("traffic_threshold", default))
+    except Exception:
+        return default
+
+
+def detect_traffic_anomaly(
+    traffic_stats: Dict[str, int],
+    key: str,
+    size: int,
+    threshold: int | None = None,
+) -> bool:
     """通信量を集計し、閾値を超えた場合に異常とみなす。"""
+    if threshold is None:
+        threshold = load_threshold()
     traffic_stats[key] += size
     return traffic_stats[key] > threshold
 
@@ -159,7 +181,7 @@ def track_new_devices(packet) -> AnalysisResult:
     return AnalysisResult(new_device=is_new)
 
 
-def detect_traffic_anomalies(packet, stats, threshold: int = 1_000_000) -> AnalysisResult:
+def detect_traffic_anomalies(packet, stats, threshold: int | None = None) -> AnalysisResult:
     """通信量の異常を検出"""
     key = getattr(packet, "src_ip", getattr(packet, "ip_src", getattr(packet, "src_mac", "")))
     size = getattr(packet, "size", getattr(packet, "len", 0))
