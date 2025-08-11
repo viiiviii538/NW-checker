@@ -26,6 +26,10 @@ void main() {
             'category': 'smb_netbios',
             'details': {'smb1_enabled': false, 'netbios_names': []},
           },
+          {
+            'category': 'upnp',
+            'details': {'responders': [], 'warnings': []},
+          },
         ],
       };
     }
@@ -38,7 +42,7 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
-    expect(find.text('OK'), findsNWidgets(3));
+    expect(find.text('OK'), findsNWidgets(4));
     expect(find.text('警告'), findsNothing);
   });
 
@@ -58,6 +62,10 @@ void main() {
           {
             'category': 'smb_netbios',
             'details': {'smb1_enabled': false, 'netbios_names': []},
+          },
+          {
+            'category': 'upnp',
+            'details': {'responders': [], 'warnings': []},
           },
         ],
       };
@@ -98,6 +106,10 @@ void main() {
             'category': 'smb_netbios',
             'details': {'smb1_enabled': true, 'netbios_names': []},
           },
+          {
+            'category': 'upnp',
+            'details': {'responders': [], 'warnings': []},
+          },
         ],
       };
     }
@@ -113,5 +125,98 @@ void main() {
     final chips = tester.widgetList<Chip>(find.byType(Chip)).toList();
     final smbLabel = chips[2].label as Text;
     expect(smbLabel.data, '警告');
+  });
+
+  testWidgets('UPnP responder shows warning in tile', (tester) async {
+    Future<Map<String, dynamic>> mockScan() async {
+      return {
+        'summary': [],
+        'findings': [
+          {
+            'category': 'ports',
+            'details': {'open_ports': []},
+          },
+          {
+            'category': 'os_banner',
+            'details': {'os': 'Linux', 'banners': {}},
+          },
+          {
+            'category': 'smb_netbios',
+            'details': {'smb1_enabled': false, 'netbios_names': []},
+          },
+          {
+            'category': 'upnp',
+            'details': {
+              'responders': ['1.1.1.1'],
+              'warnings': ['UPnP service responded from 1.1.1.1'],
+            },
+          },
+        ],
+      };
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(home: StaticScanTab(scanner: mockScan)),
+    );
+
+    await tester.tap(find.byKey(const Key('staticButton')));
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    final chips = tester.widgetList<Chip>(find.byType(Chip)).toList();
+    final upnpLabel = chips[3].label as Text;
+    expect(upnpLabel.data, '警告');
+    await tester.tap(find.text('UPnP'));
+    await tester.pumpAndSettle();
+    expect(find.text('UPnP service responded from 1.1.1.1'), findsOneWidget);
+  });
+
+  testWidgets('misconfigured UPnP response shows warning in tile', (
+    tester,
+  ) async {
+    Future<Map<String, dynamic>> mockScan() async {
+      return {
+        'summary': [],
+        'findings': [
+          {
+            'category': 'ports',
+            'details': {'open_ports': []},
+          },
+          {
+            'category': 'os_banner',
+            'details': {'os': 'Linux', 'banners': {}},
+          },
+          {
+            'category': 'smb_netbios',
+            'details': {'smb1_enabled': false, 'netbios_names': []},
+          },
+          {
+            'category': 'upnp',
+            'details': {
+              'responders': ['1.1.1.1'],
+              'warnings': ['Misconfigured SSDP response from 1.1.1.1'],
+            },
+          },
+        ],
+      };
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(home: StaticScanTab(scanner: mockScan)),
+    );
+
+    await tester.tap(find.byKey(const Key('staticButton')));
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    final chips = tester.widgetList<Chip>(find.byType(Chip)).toList();
+    final upnpLabel = chips[3].label as Text;
+    expect(upnpLabel.data, '警告');
+    await tester.tap(find.text('UPnP'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Misconfigured SSDP response from 1.1.1.1'),
+      findsOneWidget,
+    );
   });
 }

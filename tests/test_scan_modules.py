@@ -123,13 +123,81 @@ def test_smb_netbios_scan_detects_smb1(monkeypatch):
     assert result["details"]["netbios_names"] == ["HOST"]
 
 
+def test_smb_netbios_scan_no_smb1(monkeypatch):
+    class DummyNB:
+        def queryIPForName(self, target, timeout=2):  # noqa: D401, ARG002
+            return []
+
+        def close(self):
+            pass
+
+    class DummyConn:
+        def __init__(self, *args, **kwargs):  # noqa: D401, ARG002
+            pass
+
+        def getDialect(self):
+            return 0x0300  # SMB2
+
+        def logoff(self):
+            pass
+
+    monkeypatch.setattr(smb_netbios, "NetBIOS", lambda: DummyNB())
+    monkeypatch.setattr(smb_netbios, "SMBConnection", DummyConn)
+
+    result = smb_netbios.scan("host")
+    assert result["score"] == 0
+    assert result["details"]["smb1_enabled"] is False
+    assert result["details"]["netbios_names"] == []
+
+
+def test_smb_netbios_scan_handles_errors(monkeypatch):
+    def failing_nb():
+        raise RuntimeError("nb fail")
+
+    class DummyConn:
+        def __init__(self, *args, **kwargs):  # noqa: D401, ARG002
+            raise OSError("connection refused")
+
+    monkeypatch.setattr(smb_netbios, "NetBIOS", failing_nb)
+    monkeypatch.setattr(smb_netbios, "SMBConnection", DummyConn)
+
+    result = smb_netbios.scan("host")
+    assert result["score"] == 0
+    assert result["details"]["smb1_enabled"] is False
+    assert result["details"]["netbios_names"] == []
+    assert "connection refused" in result["details"]["error"]
+
+
 # --- scapy based scans ---------------------------------------------------
 
-def test_upnp_scan_records_responder(monkeypatch):
-    monkeypatch.setattr(upnp, "sr1", lambda *_, **__: SimpleNamespace(src="1.2.3.4"))
+
+def test_upnp_scan_flags_open_service(monkeypatch):
+    response = SimpleNamespace(
+        src="1.2.3.4", load=b"HTTP/1.1 200 OK\r\nSERVER: upnp\r\n\r\n"
+    )
+    monkeypatch.setattr(upnp, "sr1", lambda *_, **__: response)
     result = upnp.scan()
     assert result["score"] == 1
     assert result["details"]["responders"] == ["1.2.3.4"]
+    assert "1.2.3.4" in result["details"]["warnings"][0]
+
+
+def test_upnp_scan_flags_misconfigured(monkeypatch):
+    response = SimpleNamespace(src="5.6.7.8", load=b"BAD RESPONSE")
+    monkeypatch.setattr(upnp, "sr1", lambda *_, **__: response)
+    result = upnp.scan()
+    assert result["score"] == 1
+    assert result["details"]["responders"] == ["5.6.7.8"]
+    assert "Misconfigured" in result["details"]["warnings"][0]
+
+
+def test_upnp_scan_handles_no_response(monkeypatch):
+    """No responder should yield empty findings."""
+    monkeypatch.setattr(upnp, "sr1", lambda *_, **__: None)
+    result = upnp.scan()
+    assert result["score"] == 0
+    assert result["details"]["responders"] == []
+    assert result["details"]["warnings"] == []
 
 
 def test_dns_scan_collects_answers(monkeypatch):
