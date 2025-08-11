@@ -97,6 +97,18 @@ def test_detect_traffic_anomaly_from_config(tmp_path, monkeypatch):
     assert analyze.detect_traffic_anomaly(stats, "host", 400_000) is True
 
 
+def test_load_threshold_from_file(tmp_path):
+    cfg = tmp_path / "config.json"
+    cfg.write_text(json.dumps({"traffic_threshold": 123_456}))
+    assert analyze.load_threshold(cfg, default=1) == 123_456
+
+
+def test_load_threshold_default_when_missing(tmp_path, monkeypatch):
+    missing = tmp_path / "missing.json"
+    monkeypatch.setattr(analyze, "CONFIG_PATH", missing)
+    assert analyze.load_threshold(default=654_321) == 654_321
+
+
 def test_is_night_traffic():
     night_ts = datetime(2024, 1, 1, 3, 0).timestamp()
     day_ts = datetime(2024, 1, 1, 7, 0).timestamp()
