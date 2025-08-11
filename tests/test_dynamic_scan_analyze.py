@@ -1,5 +1,6 @@
 from collections import defaultdict
 from datetime import datetime
+import types
 
 import pytest
 
@@ -18,6 +19,39 @@ def test_geoip_lookup(monkeypatch):
         "country": "Wonderland",
         "ip": "203.0.113.1",
     }
+
+
+def test_geoip_lookup_local_db(monkeypatch):
+    class FakeReader:
+        def __init__(self, path):
+            pass
+
+        def country(self, ip):
+            return types.SimpleNamespace(
+                country=types.SimpleNamespace(name="Wonderland")
+            )
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(
+        analyze.requests, "get", lambda *a, **k: pytest.fail("API called")
+    )
+    import geoip2.database
+
+    monkeypatch.setattr(geoip2.database, "Reader", FakeReader)
+    assert analyze.geoip_lookup("203.0.113.1") == {
+        "country": "Wonderland",
+        "ip": "203.0.113.1",
+    }
+
+
+def test_geoip_lookup_failure(monkeypatch):
+    class FailResp:
+        ok = False
+
+    monkeypatch.setattr(analyze.requests, "get", lambda url, timeout=5: FailResp())
+    assert analyze.geoip_lookup("203.0.113.1") == {}
 
 
 def test_reverse_dns_lookup(monkeypatch):
@@ -73,6 +107,13 @@ def test_attach_geoip(monkeypatch):
     updated = analyze.attach_geoip(res, "203.0.113.1")
     assert updated.geoip == {"country": "Wonderland", "ip": "203.0.113.1"}
     assert updated.src_ip == "203.0.113.1"
+
+
+def test_attach_geoip_no_ip():
+    res = analyze.AnalysisResult()
+    updated = analyze.attach_geoip(res, None)
+    assert updated.geoip is None
+    assert updated.src_ip is None
 
 
 def test_record_dns_history(monkeypatch):
