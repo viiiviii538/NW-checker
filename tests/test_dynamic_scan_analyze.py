@@ -55,7 +55,18 @@ def test_geoip_lookup_failure(monkeypatch):
 
 
 def test_reverse_dns_lookup(monkeypatch):
+    analyze._dns_history.clear()
     monkeypatch.setattr(analyze.socket, "gethostbyaddr", lambda ip: ("host.example", [], []))
+    assert analyze.reverse_dns_lookup("1.1.1.1") == "host.example"
+    assert analyze._dns_history["1.1.1.1"] == "host.example"
+
+
+def test_reverse_dns_lookup_cached(monkeypatch):
+    analyze._dns_history.clear()
+    monkeypatch.setattr(analyze.socket, "gethostbyaddr", lambda ip: ("host.example", [], []))
+    analyze.reverse_dns_lookup("1.1.1.1")
+    # キャッシュが使われるため、以降のソケット呼び出しは発生しない
+    monkeypatch.setattr(analyze.socket, "gethostbyaddr", lambda ip: (_ for _ in ()).throw(AssertionError))
     assert analyze.reverse_dns_lookup("1.1.1.1") == "host.example"
 
 
@@ -118,10 +129,12 @@ def test_attach_geoip_no_ip():
 
 def test_record_dns_history(monkeypatch):
     analyze._dns_history.clear()
-    monkeypatch.setattr(analyze, "reverse_dns_lookup", lambda ip: "host.example")
+    analyze.DNS_BLACKLIST.clear()
+    monkeypatch.setattr(analyze.socket, "gethostbyaddr", lambda ip: ("host.example", [], []))
     pkt = type("Pkt", (), {"src_ip": "1.1.1.1"})
     res = analyze.record_dns_history(pkt)
     assert res.reverse_dns == "host.example"
+    assert res.reverse_dns_blacklisted is False
     assert analyze._dns_history["1.1.1.1"] == "host.example"
 
 
@@ -157,7 +170,19 @@ def test_record_dns_history_no_hostname(monkeypatch):
     pkt = type("Pkt", (), {"src_ip": "1.1.1.1"})
     res = analyze.record_dns_history(pkt)
     assert res.reverse_dns is None
+    assert res.reverse_dns_blacklisted is None
     assert analyze._dns_history == {}
+
+
+def test_record_dns_history_blacklisted(monkeypatch):
+    analyze._dns_history.clear()
+    analyze.DNS_BLACKLIST.clear()
+    analyze.DNS_BLACKLIST.add("bad.example")
+    monkeypatch.setattr(analyze.socket, "gethostbyaddr", lambda ip: ("bad.example", [], []))
+    pkt = type("Pkt", (), {"src_ip": "2.2.2.2"})
+    res = analyze.record_dns_history(pkt)
+    assert res.reverse_dns == "bad.example"
+    assert res.reverse_dns_blacklisted is True
 
 
 def test_detect_dangerous_protocols_safe_protocol():
