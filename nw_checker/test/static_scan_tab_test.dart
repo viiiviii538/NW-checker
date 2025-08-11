@@ -231,9 +231,6 @@ void main() {
               'explanation': 'ARP table updated with spoofed entry',
             },
           },
-
-            },
-          },
         ],
       };
     }
@@ -265,7 +262,6 @@ void main() {
       findsOneWidget,
     );
 
-      findsOneWidget,
     );
   });
 }
