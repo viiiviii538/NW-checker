@@ -35,6 +35,13 @@ void main() {
             'warnings': ['UPnP service responded from 1.1.1.1'],
           },
         },
+        {
+          'category': 'arp_spoof',
+          'details': {
+            'vulnerable': true,
+            'explanation': 'ARP table updated with spoofed entry',
+          },
+        },
       ],
     };
   }
@@ -51,7 +58,7 @@ void main() {
     expect(find.text('スキャン未実施'), findsOneWidget);
     expect(find.byType(ListView), findsOneWidget);
     final initialChips = tester.widgetList<Chip>(find.byType(Chip)).toList();
-    expect(initialChips, hasLength(4));
+    expect(initialChips, hasLength(5));
     expect(initialChips.every((c) => c.backgroundColor == Colors.grey), isTrue);
 
     await tester.tap(find.byKey(const Key('staticButton')));
@@ -69,9 +76,11 @@ void main() {
     final osDy = tester.getTopLeft(find.text('OS / Services')).dy;
     final smbDy = tester.getTopLeft(find.text('SMB / NetBIOS')).dy;
     final upnpDy = tester.getTopLeft(find.text('UPnP')).dy;
+    final arpDy = tester.getTopLeft(find.text('ARP Spoof')).dy;
     expect(portDy < osDy, isTrue);
     expect(osDy < smbDy, isTrue);
     expect(smbDy < upnpDy, isTrue);
+    expect(upnpDy < arpDy, isTrue);
 
     // ステータスバッジと色
     final chipsAfter = tester.widgetList<Chip>(find.byType(Chip)).toList();
@@ -79,6 +88,7 @@ void main() {
     final secondLabel = chipsAfter[1].label as Text;
     final thirdLabel = chipsAfter[2].label as Text;
     final fourthLabel = chipsAfter[3].label as Text;
+    final fifthLabel = chipsAfter[4].label as Text;
     expect(firstLabel.data, '警告');
     expect(chipsAfter[0].backgroundColor, Colors.orange);
     expect(secondLabel.data, 'OK');
@@ -87,9 +97,11 @@ void main() {
     expect(chipsAfter[2].backgroundColor, Colors.blueGrey);
     expect(fourthLabel.data, '警告');
     expect(chipsAfter[3].backgroundColor, Colors.orange);
+    expect(fifthLabel.data, '警告');
+    expect(chipsAfter[4].backgroundColor, Colors.orange);
 
-    // 警告ラベルが2つあること
-    expect(find.text('警告'), findsNWidgets(2));
+    // 警告ラベルが3つあること
+    expect(find.text('警告'), findsNWidgets(3));
 
     // ポートスキャン結果の表示確認
     await tester.tap(find.text('Port Scan'));
@@ -108,8 +120,19 @@ void main() {
     expect(find.text('SMBv1: 無効'), findsOneWidget);
     expect(find.text('NetBIOS: HOST'), findsOneWidget);
 
+    await tester.drag(find.byType(ListView), const Offset(0, -300));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('UPnP'));
     await tester.pumpAndSettle();
     expect(find.text('UPnP service responded from 1.1.1.1'), findsOneWidget);
+
+    await tester.drag(find.byType(ListView), const Offset(0, -300));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('ARP Spoof'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('ARP table updated with spoofed entry'),
+      findsOneWidget,
+    );
   });
 }

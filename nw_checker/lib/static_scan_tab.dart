@@ -58,11 +58,12 @@ class _StaticScanTabState extends State<StaticScanTab> {
   @override
   void initState() {
     super.initState();
-    _categories = [
+      _categories = [
       CategoryTile(title: 'Port Scan', icon: Icons.router),
       CategoryTile(title: 'OS / Services', icon: Icons.computer),
       CategoryTile(title: 'SMB / NetBIOS', icon: Icons.folder),
       CategoryTile(title: 'UPnP', icon: Icons.cast),
+      CategoryTile(title: 'ARP Spoof', icon: Icons.security),
     ];
   }
 
@@ -157,6 +158,22 @@ class _StaticScanTabState extends State<StaticScanTab> {
             ...upnpWarnings,
             ...upnpResponders.map((ip) => 'ホスト $ip'),
             if (upnpWarnings.isEmpty && upnpResponders.isEmpty) '応答なし',
+          ];
+
+        final arpFinding = findings.firstWhere(
+          (f) => f['category'] == 'arp_spoof',
+          orElse: () => <String, dynamic>{},
+        );
+        final arpDetails =
+            (arpFinding['details'] as Map?)?.cast<String, dynamic>() ?? {};
+        final arpVuln = arpDetails['vulnerable'] as bool?;
+        final arpExplain = arpDetails['explanation'] as String?;
+        _categories[4]
+          ..status = arpVuln == null
+              ? ScanStatus.error
+              : (arpVuln ? ScanStatus.warning : ScanStatus.ok)
+          ..details = [
+            if (arpExplain != null) arpExplain else '情報取得失敗',
           ];
       });
     });

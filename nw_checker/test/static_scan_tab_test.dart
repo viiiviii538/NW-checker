@@ -30,6 +30,13 @@ void main() {
             'category': 'upnp',
             'details': {'responders': [], 'warnings': []},
           },
+          {
+            'category': 'arp_spoof',
+            'details': {
+              'vulnerable': false,
+              'explanation': 'No ARP poisoning detected',
+            },
+          },
         ],
       };
     }
@@ -42,7 +49,7 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
-    expect(find.text('OK'), findsNWidgets(4));
+    expect(find.text('OK'), findsNWidgets(5));
     expect(find.text('警告'), findsNothing);
   });
 
@@ -66,6 +73,13 @@ void main() {
           {
             'category': 'upnp',
             'details': {'responders': [], 'warnings': []},
+          },
+          {
+            'category': 'arp_spoof',
+            'details': {
+              'vulnerable': false,
+              'explanation': 'No ARP poisoning detected',
+            },
           },
         ],
       };
@@ -110,6 +124,13 @@ void main() {
             'category': 'upnp',
             'details': {'responders': [], 'warnings': []},
           },
+          {
+            'category': 'arp_spoof',
+            'details': {
+              'vulnerable': false,
+              'explanation': 'No ARP poisoning detected',
+            },
+          },
         ],
       };
     }
@@ -151,6 +172,13 @@ void main() {
               'warnings': ['UPnP service responded from 1.1.1.1'],
             },
           },
+          {
+            'category': 'arp_spoof',
+            'details': {
+              'vulnerable': false,
+              'explanation': 'No ARP poisoning detected',
+            },
+          },
         ],
       };
     }
@@ -169,5 +197,56 @@ void main() {
     await tester.tap(find.text('UPnP'));
     await tester.pumpAndSettle();
     expect(find.text('UPnP service responded from 1.1.1.1'), findsOneWidget);
+  });
+
+  testWidgets('ARP spoof detection shows warning in tile', (tester) async {
+    Future<Map<String, dynamic>> mockScan() async {
+      return {
+        'summary': [],
+        'findings': [
+          {
+            'category': 'ports',
+            'details': {'open_ports': []},
+          },
+          {
+            'category': 'os_banner',
+            'details': {'os': 'Linux', 'banners': {}},
+          },
+          {
+            'category': 'smb_netbios',
+            'details': {'smb1_enabled': false, 'netbios_names': []},
+          },
+          {
+            'category': 'upnp',
+            'details': {'responders': [], 'warnings': []},
+          },
+          {
+            'category': 'arp_spoof',
+            'details': {
+              'vulnerable': true,
+              'explanation': 'ARP table updated with spoofed entry',
+            },
+          },
+        ],
+      };
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(home: StaticScanTab(scanner: mockScan)),
+    );
+
+    await tester.tap(find.byKey(const Key('staticButton')));
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    final chips = tester.widgetList<Chip>(find.byType(Chip)).toList();
+    final arpLabel = chips[4].label as Text;
+    expect(arpLabel.data, '警告');
+    await tester.tap(find.text('ARP Spoof'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('ARP table updated with spoofed entry'),
+      findsOneWidget,
+    );
   });
 }
