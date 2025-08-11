@@ -42,6 +42,13 @@ void main() {
             'explanation': 'ARP table updated with spoofed entry',
           },
         },
+        {
+          'category': 'dhcp',
+          'details': {
+            'servers': ['10.0.0.1'],
+            'warnings': []
+          },
+        },
       ],
     };
   }
@@ -56,9 +63,10 @@ void main() {
 
     // Initial summary and status badges
     expect(find.text('スキャン未実施'), findsOneWidget);
-    expect(find.byType(ListView), findsOneWidget);
+    final listFinder = find.byType(Scrollable);
+    expect(listFinder, findsOneWidget);
     final initialChips = tester.widgetList<Chip>(find.byType(Chip)).toList();
-    expect(initialChips, hasLength(5));
+    expect(initialChips, hasLength(6));
     expect(initialChips.every((c) => c.backgroundColor == Colors.grey), isTrue);
 
     await tester.tap(find.byKey(const Key('staticButton')));
@@ -77,10 +85,12 @@ void main() {
     final smbDy = tester.getTopLeft(find.text('SMB / NetBIOS')).dy;
     final upnpDy = tester.getTopLeft(find.text('UPnP')).dy;
     final arpDy = tester.getTopLeft(find.text('ARP Spoof')).dy;
+    final dhcpDy = tester.getTopLeft(find.text('DHCP')).dy;
     expect(portDy < osDy, isTrue);
     expect(osDy < smbDy, isTrue);
     expect(smbDy < upnpDy, isTrue);
     expect(upnpDy < arpDy, isTrue);
+    expect(arpDy < dhcpDy, isTrue);
 
     // ステータスバッジと色
     final chipsAfter = tester.widgetList<Chip>(find.byType(Chip)).toList();
@@ -89,6 +99,7 @@ void main() {
     final thirdLabel = chipsAfter[2].label as Text;
     final fourthLabel = chipsAfter[3].label as Text;
     final fifthLabel = chipsAfter[4].label as Text;
+    final sixthLabel = chipsAfter[5].label as Text;
     expect(firstLabel.data, '警告');
     expect(chipsAfter[0].backgroundColor, Colors.orange);
     expect(secondLabel.data, 'OK');
@@ -99,6 +110,8 @@ void main() {
     expect(chipsAfter[3].backgroundColor, Colors.orange);
     expect(fifthLabel.data, '警告');
     expect(chipsAfter[4].backgroundColor, Colors.orange);
+    expect(sixthLabel.data, 'OK');
+    expect(chipsAfter[5].backgroundColor, Colors.blueGrey);
 
     // 警告ラベルが3つあること
     expect(find.text('警告'), findsNWidgets(3));
@@ -120,15 +133,26 @@ void main() {
     expect(find.text('SMBv1: 無効'), findsOneWidget);
     expect(find.text('NetBIOS: HOST'), findsOneWidget);
 
+    await tester.scrollUntilVisible(find.text('UPnP'), 500, scrollable: listFinder);
     await tester.tap(find.text('UPnP'));
     await tester.pumpAndSettle();
     expect(find.text('UPnP service responded from 1.1.1.1'), findsOneWidget);
+    await tester.tap(find.text('UPnP'));
+    await tester.pumpAndSettle();
 
+    await tester.scrollUntilVisible(find.text('ARP Spoof'), 500, scrollable: listFinder);
     await tester.tap(find.text('ARP Spoof'));
     await tester.pumpAndSettle();
     expect(
       find.text('ARP table updated with spoofed entry'),
       findsOneWidget,
     );
+    await tester.tap(find.text('ARP Spoof'));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(find.text('DHCP'), 500, scrollable: listFinder);
+    await tester.tap(find.text('DHCP'));
+    await tester.pumpAndSettle();
+    expect(find.text('サーバー 10.0.0.1'), findsOneWidget);
   });
 }

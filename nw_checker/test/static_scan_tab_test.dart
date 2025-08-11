@@ -37,6 +37,13 @@ void main() {
               'explanation': 'No ARP poisoning detected',
             },
           },
+          {
+            'category': 'dhcp',
+            'details': {
+              'servers': ['10.0.0.1'],
+              'warnings': []
+            },
+          },
         ],
       };
     }
@@ -49,7 +56,7 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
-    expect(find.text('OK'), findsNWidgets(5));
+    expect(find.text('OK'), findsNWidgets(6));
     expect(find.text('警告'), findsNothing);
   });
 
@@ -79,6 +86,13 @@ void main() {
             'details': {
               'vulnerable': false,
               'explanation': 'No ARP poisoning detected',
+            },
+          },
+          {
+            'category': 'dhcp',
+            'details': {
+              'servers': ['10.0.0.1'],
+              'warnings': []
             },
           },
         ],
@@ -131,6 +145,13 @@ void main() {
               'explanation': 'No ARP poisoning detected',
             },
           },
+          {
+            'category': 'dhcp',
+            'details': {
+              'servers': ['10.0.0.1'],
+              'warnings': []
+            },
+          },
         ],
       };
     }
@@ -179,6 +200,13 @@ void main() {
               'explanation': 'No ARP poisoning detected',
             },
           },
+          {
+            'category': 'dhcp',
+            'details': {
+              'servers': ['10.0.0.1'],
+              'warnings': []
+            },
+          },
         ],
       };
     }
@@ -225,6 +253,20 @@ void main() {
               'warnings': ['Misconfigured SSDP response from 1.1.1.1'],
             },
           },
+          {
+            'category': 'arp_spoof',
+            'details': {
+              'vulnerable': false,
+              'explanation': 'No ARP poisoning detected',
+            },
+          },
+          {
+            'category': 'dhcp',
+            'details': {
+              'servers': ['10.0.0.1'],
+              'warnings': []
+            },
+          },
         ],
       };
     }
@@ -244,6 +286,64 @@ void main() {
     await tester.pumpAndSettle();
     expect(
       find.text('Misconfigured SSDP response from 1.1.1.1'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('multiple DHCP servers show warning in tile', (tester) async {
+    Future<Map<String, dynamic>> mockScan() async {
+      return {
+        'summary': [],
+        'findings': [
+          {
+            'category': 'ports',
+            'details': {'open_ports': []},
+          },
+          {
+            'category': 'os_banner',
+            'details': {'os': 'Linux', 'banners': {}},
+          },
+          {
+            'category': 'smb_netbios',
+            'details': {'smb1_enabled': false, 'netbios_names': []},
+          },
+          {
+            'category': 'upnp',
+            'details': {'responders': [], 'warnings': []},
+          },
+          {
+            'category': 'arp_spoof',
+            'details': {
+              'vulnerable': false,
+              'explanation': 'No ARP poisoning detected',
+            },
+          },
+          {
+            'category': 'dhcp',
+            'details': {
+              'servers': ['1.1.1.1', '2.2.2.2'],
+              'warnings': ['Multiple DHCP servers detected: 1.1.1.1, 2.2.2.2'],
+            },
+          },
+        ],
+      };
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(home: StaticScanTab(scanner: mockScan)),
+    );
+
+    await tester.tap(find.byKey(const Key('staticButton')));
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    final chips = tester.widgetList<Chip>(find.byType(Chip)).toList();
+    final dhcpLabel = chips[5].label as Text;
+    expect(dhcpLabel.data, '警告');
+    await tester.tap(find.text('DHCP'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Multiple DHCP servers detected: 1.1.1.1, 2.2.2.2'),
       findsOneWidget,
     );
   });

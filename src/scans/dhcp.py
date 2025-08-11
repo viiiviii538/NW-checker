@@ -1,11 +1,11 @@
 """Static scan for rogue DHCP servers using scapy."""
 
 from scapy.all import (  # type: ignore
+    BOOTP,
+    DHCP,
     Ether,
     IP,
     UDP,
-    BOOTP,
-    DHCP,
     srp,
 )
 
@@ -14,6 +14,7 @@ def scan(timeout: int = 2) -> dict:
     """Broadcast a DHCP discover and return responding servers."""
 
     servers = []
+    warnings = []
     try:
         discover = (
             Ether(dst="ff:ff:ff:ff:ff:ff")
@@ -29,9 +30,12 @@ def scan(timeout: int = 2) -> dict:
     except Exception:  # pragma: no cover
         pass
 
+    if len(servers) > 1:
+        warnings.append("Multiple DHCP servers detected: " + ", ".join(servers))
+
     return {
         "category": "dhcp",
         "score": len(servers),
-        "details": {"servers": servers},
+        "details": {"servers": servers, "warnings": warnings},
     }
 
