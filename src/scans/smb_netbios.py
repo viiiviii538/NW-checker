@@ -1,30 +1,50 @@
-"""Static scan for SMB/NetBIOS services using nmap."""
+"""Probe SMB/NetBIOS services using impacket.
 
-import nmap
+This scan attempts a NetBIOS name query and negotiates an SMB connection to
+determine whether SMBv1 is enabled on the target host.
+"""
+
+from __future__ import annotations
+
+from impacket.nmb import NetBIOS
+from impacket.smbconnection import SMBConnection
 
 
 def scan(target: str = "127.0.0.1") -> dict:
-    """Check for open SMB-related ports on *target*.
+    """Inspect *target* for SMB/NetBIOS exposure.
 
-    Ports 137-139 and 445 are inspected. The score equals the number of open
-    SMB/NetBIOS ports detected.
+    The function gathers NetBIOS names and checks if the server accepts the
+    legacy SMBv1 dialect. Presence of SMBv1 increases the returned score.
     """
 
-    scanner = nmap.PortScanner()
-    open_ports = []
+    details = {"target": target, "netbios_names": []}
+    smb1_enabled = False
+
+    # --- NetBIOS name lookup -------------------------------------------------
     try:
-        result = scanner.scan(target, arguments="-p 137,138,139,445 -sU -sT")
-        host_info = result.get("scan", {}).get(target, {})
-        for proto in ("tcp", "udp"):
-            for port, data in host_info.get(proto, {}).items():
-                if data.get("state") == "open":
-                    open_ports.append(int(port))
-    except Exception:  # pragma: no cover
+        nb = NetBIOS()
+        try:
+            names = nb.queryIPForName(target, timeout=2)
+            if names:
+                details["netbios_names"] = names
+        finally:
+            nb.close()
+    except Exception:  # pragma: no cover - ネットワークエラー等は無視
         pass
 
-    return {
-        "category": "smb_netbios",
-        "score": len(open_ports),
-        "details": {"target": target, "open_ports": open_ports},
-    }
+    # --- SMB dialect negotiation --------------------------------------------
+    try:
+        conn = SMBConnection(target, target, sess_port=445, timeout=2)
+        try:
+            dialect = conn.getDialect()
+            # SMBv1 のダイアレクトIDは SMB2(0x0202) 未満
+            smb1_enabled = isinstance(dialect, int) and dialect < 0x0202
+        finally:
+            conn.logoff()
+    except Exception as exc:
+        details["error"] = str(exc)
+
+    details["smb1_enabled"] = smb1_enabled
+    score = 5 if smb1_enabled else 0
+    return {"category": "smb_netbios", "score": score, "details": details}
 

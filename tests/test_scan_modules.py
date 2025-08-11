@@ -96,22 +96,31 @@ def test_os_banner_scan_handles_no_results(monkeypatch):
     assert result["details"]["os"] == ""
 
 
-def test_smb_netbios_scan_lists_open_ports(monkeypatch):
-    class MockScanner:
-        def scan(self, target, arguments=""):
-            return {
-                "scan": {
-                    target: {
-                        "tcp": {"445": {"state": "open"}},
-                        "udp": {"137": {"state": "open"}, "138": {"state": "closed"}},
-                    }
-                }
-            }
+def test_smb_netbios_scan_detects_smb1(monkeypatch):
+    class DummyNB:
+        def queryIPForName(self, target, timeout=2):  # noqa: D401, ARG002
+            return ["HOST"]
 
-    monkeypatch.setattr(smb_netbios.nmap, "PortScanner", lambda: MockScanner())
+        def close(self):
+            pass
+
+    class DummyConn:
+        def __init__(self, *args, **kwargs):  # noqa: D401, ARG002
+            pass
+
+        def getDialect(self):
+            return 0x0000  # SMBv1
+
+        def logoff(self):
+            pass
+
+    monkeypatch.setattr(smb_netbios, "NetBIOS", lambda: DummyNB())
+    monkeypatch.setattr(smb_netbios, "SMBConnection", DummyConn)
+
     result = smb_netbios.scan("host")
-    assert result["score"] == 2
-    assert set(result["details"]["open_ports"]) == {445, 137}
+    assert result["score"] == 5
+    assert result["details"]["smb1_enabled"] is True
+    assert result["details"]["netbios_names"] == ["HOST"]
 
 
 # --- scapy based scans ---------------------------------------------------
