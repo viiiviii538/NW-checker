@@ -9,6 +9,8 @@ import requests
 
 # 危険とされるプロトコルの名称
 DANGEROUS_PROTOCOLS = {"telnet", "ftp", "rdp"}
+# DNS 逆引きのブラックリスト
+DNS_BLACKLIST = {"malicious.example"}
 
 
 @dataclass
@@ -20,6 +22,7 @@ class AnalysisResult:
     protocol: str | None = None
     geoip: Dict[str, Any] | None = None
     reverse_dns: str | None = None
+    reverse_dns_blacklisted: bool | None = None
     dangerous_protocol: bool | None = None
     new_device: bool | None = None
     unapproved_device: bool | None = None
@@ -76,9 +79,13 @@ def geoip_lookup(ip: str) -> Dict[str, Any]:
 
 
 def reverse_dns_lookup(ip: str) -> str | None:
-    """DNS 逆引きを行い、ホスト名を返す。失敗時は None。"""
+    """DNS 逆引きを行い、結果を履歴に保持する。"""
+    if ip in _dns_history:
+        return _dns_history[ip]
     try:
-        return socket.gethostbyaddr(ip)[0]
+        hostname = socket.gethostbyaddr(ip)[0]
+        _dns_history[ip] = hostname
+        return hostname
     except Exception:
         return None
 
@@ -123,12 +130,13 @@ def assign_geoip_info(packet) -> AnalysisResult:
 
 
 def record_dns_history(packet) -> AnalysisResult:
-    """DNS 履歴を記録する"""
+    """DNS 履歴を記録しブラックリストを確認"""
     src_ip = getattr(packet, "src_ip", getattr(packet, "ip_src", None))
-    hostname = reverse_dns_lookup(src_ip) if src_ip else None
-    if hostname:
-        _dns_history[src_ip] = hostname
-    return AnalysisResult(reverse_dns=hostname)
+    if not src_ip:
+        return AnalysisResult()
+    hostname = reverse_dns_lookup(src_ip)
+    blacklisted = hostname in DNS_BLACKLIST if hostname else None
+    return AnalysisResult(reverse_dns=hostname, reverse_dns_blacklisted=blacklisted)
 
 
 def detect_dangerous_protocols(packet) -> AnalysisResult:
