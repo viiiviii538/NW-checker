@@ -21,6 +21,13 @@ void main() {
             'banners': {'22': 'ssh', '80': 'http'},
           },
         },
+        {
+          'category': 'smb_netbios',
+          'details': {
+            'smb1_enabled': false,
+            'netbios_names': ['HOST'],
+          },
+        },
       ],
     };
   }
@@ -53,30 +60,30 @@ void main() {
     // Category order
     final portDy = tester.getTopLeft(find.text('Port Scan')).dy;
     final osDy = tester.getTopLeft(find.text('OS / Services')).dy;
-    final sslDy = tester.getTopLeft(find.text('SSL証明書')).dy;
+    final smbDy = tester.getTopLeft(find.text('SMB / NetBIOS')).dy;
     expect(portDy < osDy, isTrue);
-    expect(osDy < sslDy, isTrue);
+    expect(osDy < smbDy, isTrue);
 
-// ステータスバッジと色
-final chipsAfter = tester.widgetList<Chip>(find.byType(Chip)).toList();
-final firstLabel = chipsAfter[0].label as Text;
-final secondLabel = chipsAfter[1].label as Text;
-final thirdLabel = chipsAfter[2].label as Text;
-expect(firstLabel.data, '警告');
-expect(chipsAfter[0].backgroundColor, Colors.orange);
-expect(secondLabel.data, 'OK');
-expect(chipsAfter[1].backgroundColor, Colors.blueGrey);
-expect(thirdLabel.data, '警告');
-expect(chipsAfter[2].backgroundColor, Colors.orange);
+    // ステータスバッジと色
+    final chipsAfter = tester.widgetList<Chip>(find.byType(Chip)).toList();
+    final firstLabel = chipsAfter[0].label as Text;
+    final secondLabel = chipsAfter[1].label as Text;
+    final thirdLabel = chipsAfter[2].label as Text;
+    expect(firstLabel.data, '警告');
+    expect(chipsAfter[0].backgroundColor, Colors.orange);
+    expect(secondLabel.data, 'OK');
+    expect(chipsAfter[1].backgroundColor, Colors.blueGrey);
+    expect(thirdLabel.data, 'OK');
+    expect(chipsAfter[2].backgroundColor, Colors.blueGrey);
 
-// 警告ラベルが2つあること
-expect(find.text('警告'), findsNWidgets(2));
+    // 警告ラベルが1つあること
+    expect(find.text('警告'), findsOneWidget);
 
-// ポートスキャン結果の表示確認
-await tester.tap(find.text('Port Scan'));
-await tester.pumpAndSettle();
-expect(find.text('ポート 22: open'), findsOneWidget);
-expect(find.text('ポート 80: open'), findsOneWidget);
+    // ポートスキャン結果の表示確認
+    await tester.tap(find.text('Port Scan'));
+    await tester.pumpAndSettle();
+    expect(find.text('ポート 22: open'), findsOneWidget);
+    expect(find.text('ポート 80: open'), findsOneWidget);
 
     await tester.tap(find.text('OS / Services'));
     await tester.pumpAndSettle();
@@ -84,8 +91,9 @@ expect(find.text('ポート 80: open'), findsOneWidget);
     expect(find.text('ポート 22: ssh'), findsOneWidget);
     expect(find.text('ポート 80: http'), findsOneWidget);
 
-    await tester.tap(find.text('SSL証明書'));
+    await tester.tap(find.text('SMB / NetBIOS'));
     await tester.pumpAndSettle();
-    expect(find.text('証明書の期限が30日以内です'), findsOneWidget);
+    expect(find.text('SMBv1: 無効'), findsOneWidget);
+    expect(find.text('NetBIOS: HOST'), findsOneWidget);
   });
 }
