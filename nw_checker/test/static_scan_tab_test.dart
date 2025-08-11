@@ -30,6 +30,13 @@ void main() {
             'category': 'upnp',
             'details': {'responders': [], 'warnings': []},
           },
+          {
+            'category': 'arp_spoof',
+            'details': {
+              'vulnerable': false,
+              'explanation': 'No ARP poisoning detected',
+            },
+          },
         ],
       };
     }
@@ -42,7 +49,7 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
-    expect(find.text('OK'), findsNWidgets(4));
+    expect(find.text('OK'), findsNWidgets(5));
     expect(find.text('警告'), findsNothing);
   });
 
@@ -66,6 +73,13 @@ void main() {
           {
             'category': 'upnp',
             'details': {'responders': [], 'warnings': []},
+          },
+          {
+            'category': 'arp_spoof',
+            'details': {
+              'vulnerable': false,
+              'explanation': 'No ARP poisoning detected',
+            },
           },
         ],
       };
@@ -110,6 +124,13 @@ void main() {
             'category': 'upnp',
             'details': {'responders': [], 'warnings': []},
           },
+          {
+            'category': 'arp_spoof',
+            'details': {
+              'vulnerable': false,
+              'explanation': 'No ARP poisoning detected',
+            },
+          },
         ],
       };
     }
@@ -149,6 +170,13 @@ void main() {
             'details': {
               'responders': ['1.1.1.1'],
               'warnings': ['UPnP service responded from 1.1.1.1'],
+            },
+          },
+          {
+            'category': 'arp_spoof',
+            'details': {
+              'vulnerable': false,
+              'explanation': 'No ARP poisoning detected',
             },
           },
         ],
