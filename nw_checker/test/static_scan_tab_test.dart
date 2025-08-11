@@ -22,6 +22,10 @@ void main() {
             'category': 'os_banner',
             'details': {'os': 'Linux', 'banners': {}},
           },
+          {
+            'category': 'smb_netbios',
+            'details': {'smb1_enabled': false, 'netbios_names': []},
+          },
         ],
       };
     }
@@ -34,8 +38,8 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
-    expect(find.text('OK'), findsNWidgets(2));
-    expect(find.text('警告'), findsOneWidget);
+    expect(find.text('OK'), findsNWidgets(3));
+    expect(find.text('警告'), findsNothing);
   });
 
   testWidgets('no OS info shows error in tile', (tester) async {
@@ -50,6 +54,10 @@ void main() {
           {
             'category': 'os_banner',
             'details': {'os': '', 'banners': {}},
+          },
+          {
+            'category': 'smb_netbios',
+            'details': {'smb1_enabled': false, 'netbios_names': []},
           },
         ],
       };
@@ -71,5 +79,39 @@ void main() {
     await tester.tap(find.text('OS / Services'));
     await tester.pumpAndSettle();
     expect(find.text('情報取得失敗'), findsOneWidget);
+  });
+
+  testWidgets('SMBv1 enabled shows warning in tile', (tester) async {
+    Future<Map<String, dynamic>> mockScan() async {
+      return {
+        'summary': [],
+        'findings': [
+          {
+            'category': 'ports',
+            'details': {'open_ports': []},
+          },
+          {
+            'category': 'os_banner',
+            'details': {'os': 'Linux', 'banners': {}},
+          },
+          {
+            'category': 'smb_netbios',
+            'details': {'smb1_enabled': true, 'netbios_names': []},
+          },
+        ],
+      };
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(home: StaticScanTab(scanner: mockScan)),
+    );
+
+    await tester.tap(find.byKey(const Key('staticButton')));
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    final chips = tester.widgetList<Chip>(find.byType(Chip)).toList();
+    final smbLabel = chips[2].label as Text;
+    expect(smbLabel.data, '警告');
   });
 }
