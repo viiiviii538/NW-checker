@@ -73,6 +73,7 @@ def test_reverse_dns_lookup_cached(monkeypatch):
 def test_is_dangerous_protocol():
     assert analyze.is_dangerous_protocol("telnet")
     assert not analyze.is_dangerous_protocol("http")
+    assert not analyze.is_dangerous_protocol(None)
 
 
 def test_is_unapproved_device():
@@ -183,6 +184,29 @@ def test_record_dns_history_blacklisted(monkeypatch):
     res = analyze.record_dns_history(pkt)
     assert res.reverse_dns == "bad.example"
     assert res.reverse_dns_blacklisted is True
+
+
+def test_record_dns_history_blacklisted_cached(monkeypatch):
+    analyze._dns_history.clear()
+    analyze.DNS_BLACKLIST.clear()
+    analyze.DNS_BLACKLIST.add("bad.example")
+
+    # 1回目の呼び出しで DNS を解決して履歴に保存
+    monkeypatch.setattr(
+        analyze.socket, "gethostbyaddr", lambda ip: ("bad.example", [], [])
+    )
+    pkt = type("Pkt", (), {"src_ip": "3.3.3.3"})
+    analyze.record_dns_history(pkt)
+
+    # キャッシュされた結果を利用するため、ソケットは呼び出されない
+    monkeypatch.setattr(
+        analyze.socket,
+        "gethostbyaddr",
+        lambda ip: (_ for _ in ()).throw(AssertionError),
+    )
+    res_cached = analyze.record_dns_history(pkt)
+    assert res_cached.reverse_dns == "bad.example"
+    assert res_cached.reverse_dns_blacklisted is True
 
 
 def test_detect_dangerous_protocols_safe_protocol():
