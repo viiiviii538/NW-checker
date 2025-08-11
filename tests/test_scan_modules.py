@@ -34,26 +34,66 @@ class DummySock:
 
 # --- nmap based scans ----------------------------------------------------
 
-def test_ports_scan_counts_open_ports(monkeypatch):
-    class MockScanner:
-        def scan(self, target, arguments=""):
-            return {"scan": {target: {"tcp": {"22": {"state": "open"}, "80": {"state": "closed"}}}}}
 
-    monkeypatch.setattr(ports.nmap, "PortScanner", lambda: MockScanner())
+def test_ports_scan_counts_open_ports(monkeypatch):
+    def fake_create_connection(addr, timeout=0.5):  # noqa: ARG001
+        if addr[1] == 22:
+            class Dummy:
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, exc_type, exc, tb):  # noqa: D401, ARG002
+                    return False
+
+            return Dummy()
+        raise OSError
+
+    monkeypatch.setattr(ports.socket, "create_connection", fake_create_connection)
     result = ports.scan("host")
     assert result["score"] == 1
     assert result["details"]["open_ports"] == [22]
 
 
-def test_os_banner_scan_collects_banners(monkeypatch):
+def test_ports_scan_no_open_ports(monkeypatch):
+    monkeypatch.setattr(
+        ports.socket,
+        "create_connection",
+        lambda *_, **__: (_ for _ in ()).throw(OSError()),
+    )
+    result = ports.scan("host")
+    assert result["score"] == 0
+    assert result["details"]["open_ports"] == []
+
+
+def test_os_banner_scan_collects_os_and_banners(monkeypatch):
     class MockScanner:
         def scan(self, target, arguments=""):
-            return {"scan": {target: {"tcp": {"80": {"name": "http", "version": "Apache"}}}}}
+            return {
+                "scan": {
+                    target: {
+                        "tcp": {"80": {"name": "http", "version": "Apache"}},
+                        "osmatch": [{"name": "Linux"}],
+                    }
+                }
+            }
 
     monkeypatch.setattr(os_banner.nmap, "PortScanner", lambda: MockScanner())
     result = os_banner.scan("host")
-    assert result["score"] == 1
+    assert result["score"] == 2
     assert result["details"]["banners"] == {80: "http Apache"}
+    assert result["details"]["os"] == "Linux"
+
+
+def test_os_banner_scan_handles_no_results(monkeypatch):
+    class MockScanner:
+        def scan(self, target, arguments=""):
+            return {"scan": {target: {"tcp": {}, "osmatch": []}}}
+
+    monkeypatch.setattr(os_banner.nmap, "PortScanner", lambda: MockScanner())
+    result = os_banner.scan("host")
+    assert result["score"] == 0
+    assert result["details"]["banners"] == {}
+    assert result["details"]["os"] == ""
 
 
 def test_smb_netbios_scan_lists_open_ports(monkeypatch):

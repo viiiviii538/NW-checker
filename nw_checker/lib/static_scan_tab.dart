@@ -1,10 +1,26 @@
-import 'package:flutter/material.dart';
+import 'dart:convert';
 
-/// ダミーの静的スキャン処理（後でPython側へ接続予定）
-Future<List<String>> performStaticScan() async {
-  // 擬似的に時間のかかる処理を再現
-  await Future.delayed(const Duration(seconds: 90));
-  return ['=== STATIC SCAN REPORT ===', 'No issues detected.'];
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+
+/// 静的スキャンAPIを呼び出し結果を返す
+Future<Map<String, dynamic>> performStaticScan() async {
+  try {
+    final resp = await http
+        .get(Uri.parse('http://localhost:8000/static_scan'))
+        .timeout(const Duration(seconds: 5));
+    if (resp.statusCode == 200) {
+      final decoded = jsonDecode(resp.body) as Map<String, dynamic>;
+      return {
+        'summary': ['リスクスコア: ${decoded['risk_score'] ?? 0}'],
+        'findings': decoded['findings'] ?? [],
+      };
+    }
+  } catch (_) {}
+  return {
+    'summary': ['スキャン失敗'],
+    'findings': [],
+  };
 }
 
 /// カテゴリごとのスキャン状態。
@@ -28,7 +44,7 @@ class CategoryTile {
 class StaticScanTab extends StatefulWidget {
   const StaticScanTab({super.key, this.scanner = performStaticScan});
 
-  final Future<List<String>> Function() scanner;
+  final Future<Map<String, dynamic>> Function() scanner;
 
   @override
   State<StaticScanTab> createState() => _StaticScanTabState();
@@ -44,6 +60,7 @@ class _StaticScanTabState extends State<StaticScanTab> {
     super.initState();
     _categories = [
       CategoryTile(title: 'Port Scan', icon: Icons.router),
+      CategoryTile(title: 'OS / Services', icon: Icons.computer),
       CategoryTile(title: 'SSL証明書', icon: Icons.security),
     ];
   }
@@ -60,15 +77,47 @@ class _StaticScanTabState extends State<StaticScanTab> {
 
     // Allow progress indicator to render before kicking off scan.
     Future<void>(() async {
-      final lines = await widget.scanner();
+      final result = await widget.scanner();
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _summaryLines = lines;
+        _summaryLines =
+            List<String>.from(result['summary'] as List? ?? const []);
+
+        final findings =
+            (result['findings'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+        final portsFinding = findings.firstWhere(
+          (f) => f['category'] == 'ports',
+          orElse: () => <String, dynamic>{},
+        );
+        final openPorts =
+            (portsFinding['details']?['open_ports'] as List? ?? []).cast<int>();
         _categories[0]
-          ..status = ScanStatus.ok
-          ..details = ['ポート 22: open', 'ポート 80: open'];
+          ..status =
+              openPorts.isEmpty ? ScanStatus.ok : ScanStatus.warning
+          ..details =
+              openPorts.map((p) => 'ポート $p: open').toList();
+
+        final osFinding = findings.firstWhere(
+          (f) => f['category'] == 'os_banner',
+          orElse: () => <String, dynamic>{},
+        );
+        final osName = osFinding['details']?['os'] as String? ?? '';
+        final bannerMap =
+            (osFinding['details']?['banners'] as Map? ?? {}).cast<String, dynamic>();
         _categories[1]
+          ..status =
+              (osName.isNotEmpty || bannerMap.isNotEmpty) ? ScanStatus.ok : ScanStatus.error
+          ..details = [
+            if (osName.isNotEmpty) 'OS: $osName',
+            ...bannerMap.entries
+                .map((e) => 'ポート ${e.key}: ${e.value}')
+                .toList(),
+            if (osName.isEmpty && bannerMap.isEmpty) '情報取得失敗',
+          ];
+
+        // 既存のSSL証明書タイルはダミー情報を表示
+        _categories[2]
           ..status = ScanStatus.warning
           ..details = ['証明書の期限が30日以内です'];
       });

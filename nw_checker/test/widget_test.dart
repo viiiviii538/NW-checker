@@ -70,8 +70,9 @@ void main() {
     await tester.pump();
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
-    await tester.pump(const Duration(seconds: 90));
-    expect(find.text('=== STATIC SCAN REPORT ==='), findsOneWidget);
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+    expect(find.text('スキャン失敗'), findsOneWidget);
   });
 
   testWidgets('Dynamic scan tab runs and displays JSON', (
