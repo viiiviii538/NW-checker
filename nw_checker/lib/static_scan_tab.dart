@@ -116,7 +116,7 @@ class _StaticScanTabState extends State<StaticScanTab> {
             if (osName.isNotEmpty) 'OS: $osName',
             ...bannerMap.entries
                 .map((e) => 'ポート ${e.key}: ${e.value}')
-                .toList(),
+                ,
             if (osName.isEmpty && bannerMap.isEmpty) '情報取得失敗',
           ];
 

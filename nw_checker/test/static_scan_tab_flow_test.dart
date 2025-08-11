@@ -120,10 +120,14 @@ void main() {
     expect(find.text('SMBv1: 無効'), findsOneWidget);
     expect(find.text('NetBIOS: HOST'), findsOneWidget);
 
+    await tester.drag(find.byType(ListView), const Offset(0, -300));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('UPnP'));
     await tester.pumpAndSettle();
     expect(find.text('UPnP service responded from 1.1.1.1'), findsOneWidget);
 
+    await tester.drag(find.byType(ListView), const Offset(0, -300));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('ARP Spoof'));
     await tester.pumpAndSettle();
     expect(
