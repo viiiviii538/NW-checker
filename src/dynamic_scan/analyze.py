@@ -90,8 +90,12 @@ def reverse_dns_lookup(ip: str) -> str | None:
         return None
 
 
-def is_dangerous_protocol(protocol: str) -> bool:
-    """危険プロトコルか判定する。"""
+def is_dangerous_protocol(protocol: str | None) -> bool:
+    """危険プロトコルか判定する。
+    文字列以外が渡された場合は危険ではないとみなす。
+    """
+    if not isinstance(protocol, str):
+        return False
     return protocol.lower() in DANGEROUS_PROTOCOLS
 
 

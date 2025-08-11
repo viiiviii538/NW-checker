@@ -73,6 +73,7 @@ def test_reverse_dns_lookup_cached(monkeypatch):
 def test_is_dangerous_protocol():
     assert analyze.is_dangerous_protocol("telnet")
     assert not analyze.is_dangerous_protocol("http")
+    assert not analyze.is_dangerous_protocol(None)
 
 
 def test_is_unapproved_device():
