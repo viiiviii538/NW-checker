@@ -96,31 +96,108 @@ def test_os_banner_scan_handles_no_results(monkeypatch):
     assert result["details"]["os"] == ""
 
 
-def test_smb_netbios_scan_lists_open_ports(monkeypatch):
-    class MockScanner:
-        def scan(self, target, arguments=""):
-            return {
-                "scan": {
-                    target: {
-                        "tcp": {"445": {"state": "open"}},
-                        "udp": {"137": {"state": "open"}, "138": {"state": "closed"}},
-                    }
-                }
-            }
+def test_smb_netbios_scan_detects_smb1(monkeypatch):
+    class DummyNB:
+        def queryIPForName(self, target, timeout=2):  # noqa: D401, ARG002
+            return ["HOST"]
 
-    monkeypatch.setattr(smb_netbios.nmap, "PortScanner", lambda: MockScanner())
+        def close(self):
+            pass
+
+    class DummyConn:
+        def __init__(self, *args, **kwargs):  # noqa: D401, ARG002
+            pass
+
+        def getDialect(self):
+            return 0x0000  # SMBv1
+
+        def logoff(self):
+            pass
+
+    monkeypatch.setattr(smb_netbios, "NetBIOS", lambda: DummyNB())
+    monkeypatch.setattr(smb_netbios, "SMBConnection", DummyConn)
+
     result = smb_netbios.scan("host")
-    assert result["score"] == 2
-    assert set(result["details"]["open_ports"]) == {445, 137}
+    assert result["score"] == 5
+    assert result["details"]["smb1_enabled"] is True
+    assert result["details"]["netbios_names"] == ["HOST"]
+
+
+def test_smb_netbios_scan_no_smb1(monkeypatch):
+    class DummyNB:
+        def queryIPForName(self, target, timeout=2):  # noqa: D401, ARG002
+            return []
+
+        def close(self):
+            pass
+
+    class DummyConn:
+        def __init__(self, *args, **kwargs):  # noqa: D401, ARG002
+            pass
+
+        def getDialect(self):
+            return 0x0300  # SMB2
+
+        def logoff(self):
+            pass
+
+    monkeypatch.setattr(smb_netbios, "NetBIOS", lambda: DummyNB())
+    monkeypatch.setattr(smb_netbios, "SMBConnection", DummyConn)
+
+    result = smb_netbios.scan("host")
+    assert result["score"] == 0
+    assert result["details"]["smb1_enabled"] is False
+    assert result["details"]["netbios_names"] == []
+
+
+def test_smb_netbios_scan_handles_errors(monkeypatch):
+    def failing_nb():
+        raise RuntimeError("nb fail")
+
+    class DummyConn:
+        def __init__(self, *args, **kwargs):  # noqa: D401, ARG002
+            raise OSError("connection refused")
+
+    monkeypatch.setattr(smb_netbios, "NetBIOS", failing_nb)
+    monkeypatch.setattr(smb_netbios, "SMBConnection", DummyConn)
+
+    result = smb_netbios.scan("host")
+    assert result["score"] == 0
+    assert result["details"]["smb1_enabled"] is False
+    assert result["details"]["netbios_names"] == []
+    assert "connection refused" in result["details"]["error"]
 
 
 # --- scapy based scans ---------------------------------------------------
 
-def test_upnp_scan_records_responder(monkeypatch):
-    monkeypatch.setattr(upnp, "sr1", lambda *_, **__: SimpleNamespace(src="1.2.3.4"))
+
+def test_upnp_scan_flags_open_service(monkeypatch):
+    response = SimpleNamespace(
+        src="1.2.3.4", load=b"HTTP/1.1 200 OK\r\nSERVER: upnp\r\n\r\n"
+    )
+    monkeypatch.setattr(upnp, "sr1", lambda *_, **__: response)
     result = upnp.scan()
     assert result["score"] == 1
     assert result["details"]["responders"] == ["1.2.3.4"]
+    assert "1.2.3.4" in result["details"]["warnings"][0]
+
+
+def test_upnp_scan_flags_misconfigured(monkeypatch):
+    response = SimpleNamespace(src="5.6.7.8", load=b"BAD RESPONSE")
+    monkeypatch.setattr(upnp, "sr1", lambda *_, **__: response)
+    result = upnp.scan()
+    assert result["score"] == 1
+    assert result["details"]["responders"] == ["5.6.7.8"]
+    assert "Misconfigured" in result["details"]["warnings"][0]
+
+
+def test_upnp_scan_handles_no_response(monkeypatch):
+    """No responder should yield empty findings."""
+    monkeypatch.setattr(upnp, "sr1", lambda *_, **__: None)
+    result = upnp.scan()
+    assert result["score"] == 0
+    assert result["details"]["responders"] == []
+    assert result["details"]["warnings"] == []
 
 
 def test_dns_scan_collects_answers(monkeypatch):
@@ -160,23 +237,24 @@ def test_dhcp_scan_detects_servers(monkeypatch):
     assert result["details"]["servers"] == ["10.0.0.1"]
 
 
-def test_arp_spoof_scan_finds_conflicts(monkeypatch):
-    class FakePkt:
-        def __init__(self, ip, mac):
-            self.ip = ip
-            self.mac = mac
+def test_arp_spoof_scan_detects_table_change(monkeypatch):
+    tables = [
+        {"1.2.3.4": "aa:aa"},
+        {"1.2.3.4": arp_spoof.FAKE_MAC},
+    ]
+    monkeypatch.setattr(arp_spoof, "_get_arp_table", lambda: tables.pop(0))
+    monkeypatch.setattr(arp_spoof, "send", lambda *_, **__: None)
+    result = arp_spoof.scan(wait=0)
+    assert result["score"] == 5
+    assert result["details"]["vulnerable"] is True
 
-        def __contains__(self, item):
-            return True
 
-        def __getitem__(self, layer):
-            return SimpleNamespace(op=2, psrc=self.ip, hwsrc=self.mac)
-
-    packets = [FakePkt("1.1.1.1", "aa:aa"), FakePkt("1.1.1.1", "bb:bb")]
-    monkeypatch.setattr(arp_spoof, "sniff", lambda *_, **__: packets)
-    result = arp_spoof.scan()
-    assert result["score"] == 1
-    assert result["details"]["suspects"] == ["1.1.1.1"]
+def test_arp_spoof_scan_no_change(monkeypatch):
+    monkeypatch.setattr(arp_spoof, "_get_arp_table", lambda: {"1.2.3.4": "aa:aa"})
+    monkeypatch.setattr(arp_spoof, "send", lambda *_, **__: None)
+    result = arp_spoof.scan(wait=0)
+    assert result["score"] == 0
+    assert result["details"]["vulnerable"] is False
 
 
 # --- SSL certificate -----------------------------------------------------

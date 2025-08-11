@@ -1,5 +1,6 @@
 from collections import defaultdict
 from datetime import datetime
+import types
 
 import pytest
 
@@ -20,14 +21,59 @@ def test_geoip_lookup(monkeypatch):
     }
 
 
+def test_geoip_lookup_local_db(monkeypatch):
+    class FakeReader:
+        def __init__(self, path):
+            pass
+
+        def country(self, ip):
+            return types.SimpleNamespace(
+                country=types.SimpleNamespace(name="Wonderland")
+            )
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(
+        analyze.requests, "get", lambda *a, **k: pytest.fail("API called")
+    )
+    import geoip2.database
+
+    monkeypatch.setattr(geoip2.database, "Reader", FakeReader)
+    assert analyze.geoip_lookup("203.0.113.1") == {
+        "country": "Wonderland",
+        "ip": "203.0.113.1",
+    }
+
+
+def test_geoip_lookup_failure(monkeypatch):
+    class FailResp:
+        ok = False
+
+    monkeypatch.setattr(analyze.requests, "get", lambda url, timeout=5: FailResp())
+    assert analyze.geoip_lookup("203.0.113.1") == {}
+
+
 def test_reverse_dns_lookup(monkeypatch):
+    analyze._dns_history.clear()
     monkeypatch.setattr(analyze.socket, "gethostbyaddr", lambda ip: ("host.example", [], []))
+    assert analyze.reverse_dns_lookup("1.1.1.1") == "host.example"
+    assert analyze._dns_history["1.1.1.1"] == "host.example"
+
+
+def test_reverse_dns_lookup_cached(monkeypatch):
+    analyze._dns_history.clear()
+    monkeypatch.setattr(analyze.socket, "gethostbyaddr", lambda ip: ("host.example", [], []))
+    analyze.reverse_dns_lookup("1.1.1.1")
+    # キャッシュが使われるため、以降のソケット呼び出しは発生しない
+    monkeypatch.setattr(analyze.socket, "gethostbyaddr", lambda ip: (_ for _ in ()).throw(AssertionError))
     assert analyze.reverse_dns_lookup("1.1.1.1") == "host.example"
 
 
 def test_is_dangerous_protocol():
     assert analyze.is_dangerous_protocol("telnet")
     assert not analyze.is_dangerous_protocol("http")
+    assert not analyze.is_dangerous_protocol(None)
 
 
 def test_is_unapproved_device():
@@ -75,12 +121,21 @@ def test_attach_geoip(monkeypatch):
     assert updated.src_ip == "203.0.113.1"
 
 
+def test_attach_geoip_no_ip():
+    res = analyze.AnalysisResult()
+    updated = analyze.attach_geoip(res, None)
+    assert updated.geoip is None
+    assert updated.src_ip is None
+
+
 def test_record_dns_history(monkeypatch):
     analyze._dns_history.clear()
-    monkeypatch.setattr(analyze, "reverse_dns_lookup", lambda ip: "host.example")
+    analyze.DNS_BLACKLIST.clear()
+    monkeypatch.setattr(analyze.socket, "gethostbyaddr", lambda ip: ("host.example", [], []))
     pkt = type("Pkt", (), {"src_ip": "1.1.1.1"})
     res = analyze.record_dns_history(pkt)
     assert res.reverse_dns == "host.example"
+    assert res.reverse_dns_blacklisted is False
     assert analyze._dns_history["1.1.1.1"] == "host.example"
 
 
@@ -116,11 +171,52 @@ def test_record_dns_history_no_hostname(monkeypatch):
     pkt = type("Pkt", (), {"src_ip": "1.1.1.1"})
     res = analyze.record_dns_history(pkt)
     assert res.reverse_dns is None
+    assert res.reverse_dns_blacklisted is None
     assert analyze._dns_history == {}
+
+
+def test_record_dns_history_blacklisted(monkeypatch):
+    analyze._dns_history.clear()
+    analyze.DNS_BLACKLIST.clear()
+    analyze.DNS_BLACKLIST.add("bad.example")
+    monkeypatch.setattr(analyze.socket, "gethostbyaddr", lambda ip: ("bad.example", [], []))
+    pkt = type("Pkt", (), {"src_ip": "2.2.2.2"})
+    res = analyze.record_dns_history(pkt)
+    assert res.reverse_dns == "bad.example"
+    assert res.reverse_dns_blacklisted is True
+
+
+def test_record_dns_history_blacklisted_cached(monkeypatch):
+    analyze._dns_history.clear()
+    analyze.DNS_BLACKLIST.clear()
+    analyze.DNS_BLACKLIST.add("bad.example")
+
+    # 1回目の呼び出しで DNS を解決して履歴に保存
+    monkeypatch.setattr(
+        analyze.socket, "gethostbyaddr", lambda ip: ("bad.example", [], [])
+    )
+    pkt = type("Pkt", (), {"src_ip": "3.3.3.3"})
+    analyze.record_dns_history(pkt)
+
+    # キャッシュされた結果を利用するため、ソケットは呼び出されない
+    monkeypatch.setattr(
+        analyze.socket,
+        "gethostbyaddr",
+        lambda ip: (_ for _ in ()).throw(AssertionError),
+    )
+    res_cached = analyze.record_dns_history(pkt)
+    assert res_cached.reverse_dns == "bad.example"
+    assert res_cached.reverse_dns_blacklisted is True
 
 
 def test_detect_dangerous_protocols_safe_protocol():
     pkt = type("Pkt", (), {"protocol": "HTTP"})
+    res = analyze.detect_dangerous_protocols(pkt)
+    assert res.dangerous_protocol is False
+
+
+def test_detect_dangerous_protocols_none_protocol():
+    pkt = type("Pkt", (), {"protocol": None})
     res = analyze.detect_dangerous_protocols(pkt)
     assert res.dangerous_protocol is False
 
