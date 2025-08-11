@@ -247,6 +247,10 @@ def test_arp_spoof_scan_detects_table_change(monkeypatch):
     result = arp_spoof.scan(wait=0)
     assert result["score"] == 5
     assert result["details"]["vulnerable"] is True
+    assert (
+        result["details"]["explanation"]
+        == "ARP table updated with spoofed entry"
+    )
 
 
 def test_arp_spoof_scan_no_change(monkeypatch):
@@ -255,6 +259,9 @@ def test_arp_spoof_scan_no_change(monkeypatch):
     result = arp_spoof.scan(wait=0)
     assert result["score"] == 0
     assert result["details"]["vulnerable"] is False
+    assert (
+        result["details"]["explanation"] == "No ARP poisoning detected"
+    )
 
 
 # --- SSL certificate -----------------------------------------------------
