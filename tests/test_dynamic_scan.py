@@ -28,6 +28,13 @@ def test_reverse_dns_lookup(monkeypatch):
 def test_is_dangerous_protocol():
     assert analyze.is_dangerous_protocol("telnet")
     assert not analyze.is_dangerous_protocol("http")
+    assert not analyze.is_dangerous_protocol(None)
+
+
+def test_detect_dangerous_protocols_none():
+    pkt = SimpleNamespace(protocol=None)
+    res = analyze.detect_dangerous_protocols(pkt)
+    assert res.dangerous_protocol is False
 
 
 def test_is_unapproved_device():

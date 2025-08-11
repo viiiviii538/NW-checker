@@ -73,6 +73,7 @@ def test_reverse_dns_lookup_cached(monkeypatch):
 def test_is_dangerous_protocol():
     assert analyze.is_dangerous_protocol("telnet")
     assert not analyze.is_dangerous_protocol("http")
+    assert not analyze.is_dangerous_protocol(None)
 
 
 def test_is_unapproved_device():
@@ -187,6 +188,12 @@ def test_record_dns_history_blacklisted(monkeypatch):
 
 def test_detect_dangerous_protocols_safe_protocol():
     pkt = type("Pkt", (), {"protocol": "HTTP"})
+    res = analyze.detect_dangerous_protocols(pkt)
+    assert res.dangerous_protocol is False
+
+
+def test_detect_dangerous_protocols_none_protocol():
+    pkt = type("Pkt", (), {"protocol": None})
     res = analyze.detect_dangerous_protocols(pkt)
     assert res.dangerous_protocol is False
 
