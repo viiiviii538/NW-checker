@@ -62,6 +62,7 @@ class _StaticScanTabState extends State<StaticScanTab> {
       CategoryTile(title: 'Port Scan', icon: Icons.router),
       CategoryTile(title: 'OS / Services', icon: Icons.computer),
       CategoryTile(title: 'SMB / NetBIOS', icon: Icons.folder),
+      CategoryTile(title: 'UPnP', icon: Icons.cast),
     ];
   }
 
@@ -137,6 +138,25 @@ class _StaticScanTabState extends State<StaticScanTab> {
             if (smb1 != null) 'SMBv1: ${smb1 ? '有効' : '無効'}',
             ...smbNames.map((n) => 'NetBIOS: $n'),
             if (smbError != null) '情報取得失敗',
+          ];
+
+        final upnpFinding = findings.firstWhere(
+          (f) => f['category'] == 'upnp',
+          orElse: () => <String, dynamic>{},
+        );
+        final upnpDetails =
+            (upnpFinding['details'] as Map?)?.cast<String, dynamic>() ?? {};
+        final upnpWarnings =
+            (upnpDetails['warnings'] as List? ?? []).cast<String>();
+        final upnpResponders =
+            (upnpDetails['responders'] as List? ?? []).cast<String>();
+        _categories[3]
+          ..status =
+              upnpWarnings.isEmpty ? ScanStatus.ok : ScanStatus.warning
+          ..details = [
+            ...upnpWarnings,
+            ...upnpResponders.map((ip) => 'ホスト $ip'),
+            if (upnpWarnings.isEmpty && upnpResponders.isEmpty) '応答なし',
           ];
       });
     });
