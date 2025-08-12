@@ -39,19 +39,28 @@ def scan(target_host: str = "127.0.0.1") -> Dict[str, object]:
     """
 
     open_ports: List[int] = []
-    for port in RISKY_PORTS:
-        try:
-            # ソケット接続を試み、成功すればポートは開いているとみなす
-            with socket.create_connection((target_host, port), timeout=0.5):
-                open_ports.append(port)
-        except OSError:
-            # 接続失敗時はポートが閉じていると判断
-            continue
+    error = ""
+    try:
+        for port in RISKY_PORTS:
+            try:
+                # ソケット接続を試み、成功すればポートは開いているとみなす
+                with socket.create_connection((target_host, port), timeout=0.5):
+                    open_ports.append(port)
+            except OSError:
+                # 接続失敗時はポートが閉じていると判断
+                continue
+    except Exception as exc:  # pragma: no cover - 想定外エラー
+        error = str(exc)
+        open_ports = []
+
+    details = {"target": target_host, "open_ports": open_ports}
+    if error:
+        details["error"] = error
 
     return {
         "category": "ports",
-        "score": len(open_ports),
-        "details": {"target": target_host, "open_ports": open_ports},
+        "score": 0 if error else len(open_ports),
+        "details": details,
     }
 
 
