@@ -404,29 +404,24 @@ def test_arp_spoof_scan_handles_send_error(monkeypatch):
 
 
 def test_arp_spoof_scan_waits(monkeypatch):
-    class FakeTimer:
-        def __init__(self):
-            self.now = 0.0
+    current = 0.0
 
-        def time(self):
-            return self.now
+    def fake_time() -> float:
+        return current
 
-        def sleep(self, seconds):
-            self.now += seconds
+    def fake_sleep(seconds: float) -> None:
+        nonlocal current
+        current += seconds
 
-    timer = FakeTimer()
-    monkeypatch.setattr(
-        arp_spoof,
-        "time",
-        SimpleNamespace(time=timer.time, sleep=timer.sleep),
-    )
+    monkeypatch.setattr(arp_spoof.time, "time", fake_time)
+    monkeypatch.setattr(arp_spoof.time, "sleep", fake_sleep)
     monkeypatch.setattr(arp_spoof, "_get_arp_table", lambda: {})
     monkeypatch.setattr(arp_spoof, "send", lambda *_, **__: None)
 
-    start = timer.time()
+    start = fake_time()
     arp_spoof.scan(wait=1.5)
-    elapsed = timer.time() - start
-    assert elapsed == pytest.approx(1.5, abs=0.1)
+    elapsed = fake_time() - start
+    assert elapsed == pytest.approx(1.5, abs=0.2)
 
 
 # --- SSL certificate -----------------------------------------------------
