@@ -42,6 +42,13 @@ void main() {
             'explanation': 'ARP table updated with spoofed entry',
           },
         },
+        {
+          'category': 'dhcp',
+          'details': {
+            'servers': ['10.0.0.1', '10.0.0.2'],
+            'warnings': ['Multiple DHCP servers detected'],
+          },
+        },
       ],
     };
   }
@@ -58,7 +65,7 @@ void main() {
     expect(find.text('スキャン未実施'), findsOneWidget);
     expect(find.byType(ListView), findsOneWidget);
     final initialChips = tester.widgetList<Chip>(find.byType(Chip)).toList();
-    expect(initialChips, hasLength(5));
+    expect(initialChips, hasLength(6));
     expect(initialChips.every((c) => c.backgroundColor == Colors.grey), isTrue);
 
     await tester.tap(find.byKey(const Key('staticButton')));
@@ -77,10 +84,12 @@ void main() {
     final smbDy = tester.getTopLeft(find.text('SMB / NetBIOS')).dy;
     final upnpDy = tester.getTopLeft(find.text('UPnP')).dy;
     final arpDy = tester.getTopLeft(find.text('ARP Spoof')).dy;
+    final dhcpDy = tester.getTopLeft(find.text('DHCP')).dy;
     expect(portDy < osDy, isTrue);
     expect(osDy < smbDy, isTrue);
     expect(smbDy < upnpDy, isTrue);
     expect(upnpDy < arpDy, isTrue);
+    expect(arpDy < dhcpDy, isTrue);
 
     // ステータスバッジと色
     final chipsAfter = tester.widgetList<Chip>(find.byType(Chip)).toList();
@@ -89,6 +98,7 @@ void main() {
     final thirdLabel = chipsAfter[2].label as Text;
     final fourthLabel = chipsAfter[3].label as Text;
     final fifthLabel = chipsAfter[4].label as Text;
+    final sixthLabel = chipsAfter[5].label as Text;
     expect(firstLabel.data, '警告');
     expect(chipsAfter[0].backgroundColor, Colors.orange);
     expect(secondLabel.data, 'OK');
@@ -99,9 +109,11 @@ void main() {
     expect(chipsAfter[3].backgroundColor, Colors.orange);
     expect(fifthLabel.data, '警告');
     expect(chipsAfter[4].backgroundColor, Colors.orange);
+    expect(sixthLabel.data, '警告');
+    expect(chipsAfter[5].backgroundColor, Colors.orange);
 
-    // 警告ラベルが3つあること
-    expect(find.text('警告'), findsNWidgets(3));
+    // 警告ラベルが4つあること
+    expect(find.text('警告'), findsNWidgets(4));
 
     // ポートスキャン結果の表示確認
     await tester.tap(find.text('Port Scan'));
@@ -134,5 +146,11 @@ void main() {
       find.text('ARP table updated with spoofed entry'),
       findsOneWidget,
     );
+
+    await tester.drag(find.byType(ListView), const Offset(0, -300));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('DHCP'));
+    await tester.pumpAndSettle();
+    expect(find.text('Multiple DHCP servers detected'), findsOneWidget);
   });
 }

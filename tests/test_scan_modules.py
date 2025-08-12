@@ -235,6 +235,26 @@ def test_dhcp_scan_detects_servers(monkeypatch):
     result = dhcp.scan()
     assert result["score"] == 1
     assert result["details"]["servers"] == ["10.0.0.1"]
+    assert result["details"]["warnings"] == []
+
+
+def test_dhcp_scan_multiple_servers_warns(monkeypatch):
+    class FakePkt:
+        def __init__(self, src):
+            self._src = src
+
+        def __contains__(self, item):  # noqa: D401
+            return True
+
+        def __getitem__(self, layer):  # noqa: D401
+            return SimpleNamespace(src=self._src)
+
+    answers = [(None, FakePkt("10.0.0.1")), (None, FakePkt("10.0.0.2"))]
+    monkeypatch.setattr(dhcp, "srp", lambda *_, **__: (answers, None))
+    result = dhcp.scan()
+    assert result["score"] == 2
+    assert set(result["details"]["servers"]) == {"10.0.0.1", "10.0.0.2"}
+    assert "Multiple DHCP servers" in result["details"]["warnings"][0]
 
 
 def test_arp_spoof_scan_detects_table_change(monkeypatch):

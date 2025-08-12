@@ -64,6 +64,7 @@ class _StaticScanTabState extends State<StaticScanTab> {
       CategoryTile(title: 'SMB / NetBIOS', icon: Icons.folder),
       CategoryTile(title: 'UPnP', icon: Icons.cast),
       CategoryTile(title: 'ARP Spoof', icon: Icons.security),
+      CategoryTile(title: 'DHCP', icon: Icons.dns),
     ];
   }
 
@@ -174,6 +175,26 @@ class _StaticScanTabState extends State<StaticScanTab> {
               : (arpVuln ? ScanStatus.warning : ScanStatus.ok)
           ..details = [
             if (arpExplain != null) arpExplain else '情報取得失敗',
+          ];
+
+        final dhcpFinding = findings.firstWhere(
+          (f) => f['category'] == 'dhcp',
+          orElse: () => <String, dynamic>{},
+        );
+        final dhcpDetails =
+            (dhcpFinding['details'] as Map?)?.cast<String, dynamic>() ?? {};
+        final dhcpServers =
+            (dhcpDetails['servers'] as List? ?? []).cast<String>();
+        final dhcpWarnings =
+            (dhcpDetails['warnings'] as List? ?? []).cast<String>();
+        _categories[5]
+          ..status = dhcpWarnings.isNotEmpty
+              ? ScanStatus.warning
+              : (dhcpServers.isEmpty ? ScanStatus.error : ScanStatus.ok)
+          ..details = [
+            ...dhcpWarnings,
+            ...dhcpServers.map((ip) => 'サーバー $ip'),
+            if (dhcpWarnings.isEmpty && dhcpServers.isEmpty) '応答なし',
           ];
       });
     });

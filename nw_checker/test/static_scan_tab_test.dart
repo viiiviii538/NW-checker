@@ -14,28 +14,23 @@ void main() {
       return {
         'summary': [],
         'findings': [
-          {
-            'category': 'ports',
-            'details': {'open_ports': []},
-          },
-          {
-            'category': 'os_banner',
-            'details': {'os': 'Linux', 'banners': {}},
-          },
+          {'category': 'ports', 'details': {'open_ports': []}},
+          {'category': 'os_banner', 'details': {'os': 'Linux', 'banners': {}}},
           {
             'category': 'smb_netbios',
-            'details': {'smb1_enabled': false, 'netbios_names': []},
+            'details': {'smb1_enabled': false, 'netbios_names': []}
           },
-          {
-            'category': 'upnp',
-            'details': {'responders': [], 'warnings': []},
-          },
+          {'category': 'upnp', 'details': {'responders': [], 'warnings': []}},
           {
             'category': 'arp_spoof',
             'details': {
               'vulnerable': false,
-              'explanation': 'No ARP poisoning detected',
-            },
+              'explanation': 'No ARP poisoning detected'
+            }
+          },
+          {
+            'category': 'dhcp',
+            'details': {'servers': ['1.1.1.1'], 'warnings': []}
           },
         ],
       };
@@ -49,7 +44,7 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
-    expect(find.text('OK'), findsNWidgets(5));
+    expect(find.text('OK'), findsNWidgets(6));
     expect(find.text('警告'), findsNothing);
   });
 
@@ -58,28 +53,23 @@ void main() {
       return {
         'summary': [],
         'findings': [
-          {
-            'category': 'ports',
-            'details': {'open_ports': []},
-          },
-          {
-            'category': 'os_banner',
-            'details': {'os': '', 'banners': {}},
-          },
+          {'category': 'ports', 'details': {'open_ports': []}},
+          {'category': 'os_banner', 'details': {'os': '', 'banners': {}}},
           {
             'category': 'smb_netbios',
-            'details': {'smb1_enabled': false, 'netbios_names': []},
+            'details': {'smb1_enabled': false, 'netbios_names': []}
           },
-          {
-            'category': 'upnp',
-            'details': {'responders': [], 'warnings': []},
-          },
+          {'category': 'upnp', 'details': {'responders': [], 'warnings': []}},
           {
             'category': 'arp_spoof',
             'details': {
               'vulnerable': false,
-              'explanation': 'No ARP poisoning detected',
-            },
+              'explanation': 'No ARP poisoning detected'
+            }
+          },
+          {
+            'category': 'dhcp',
+            'details': {'servers': ['1.1.1.1'], 'warnings': []}
           },
         ],
       };
@@ -108,28 +98,23 @@ void main() {
       return {
         'summary': [],
         'findings': [
-          {
-            'category': 'ports',
-            'details': {'open_ports': []},
-          },
-          {
-            'category': 'os_banner',
-            'details': {'os': 'Linux', 'banners': {}},
-          },
+          {'category': 'ports', 'details': {'open_ports': []}},
+          {'category': 'os_banner', 'details': {'os': 'Linux', 'banners': {}}},
           {
             'category': 'smb_netbios',
-            'details': {'smb1_enabled': true, 'netbios_names': []},
+            'details': {'smb1_enabled': true, 'netbios_names': []}
           },
-          {
-            'category': 'upnp',
-            'details': {'responders': [], 'warnings': []},
-          },
+          {'category': 'upnp', 'details': {'responders': [], 'warnings': []}},
           {
             'category': 'arp_spoof',
             'details': {
               'vulnerable': false,
-              'explanation': 'No ARP poisoning detected',
-            },
+              'explanation': 'No ARP poisoning detected'
+            }
+          },
+          {
+            'category': 'dhcp',
+            'details': {'servers': ['1.1.1.1'], 'warnings': []}
           },
         ],
       };
@@ -153,31 +138,29 @@ void main() {
       return {
         'summary': [],
         'findings': [
-          {
-            'category': 'ports',
-            'details': {'open_ports': []},
-          },
-          {
-            'category': 'os_banner',
-            'details': {'os': 'Linux', 'banners': {}},
-          },
+          {'category': 'ports', 'details': {'open_ports': []}},
+          {'category': 'os_banner', 'details': {'os': 'Linux', 'banners': {}}},
           {
             'category': 'smb_netbios',
-            'details': {'smb1_enabled': false, 'netbios_names': []},
+            'details': {'smb1_enabled': false, 'netbios_names': []}
           },
           {
             'category': 'upnp',
             'details': {
               'responders': ['1.1.1.1'],
-              'warnings': ['UPnP service responded from 1.1.1.1'],
-            },
+              'warnings': ['UPnP service responded from 1.1.1.1']
+            }
           },
           {
             'category': 'arp_spoof',
             'details': {
               'vulnerable': false,
-              'explanation': 'No ARP poisoning detected',
-            },
+              'explanation': 'No ARP poisoning detected'
+            }
+          },
+          {
+            'category': 'dhcp',
+            'details': {'servers': ['1.1.1.1'], 'warnings': []}
           },
         ],
       };
@@ -199,37 +182,32 @@ void main() {
     expect(find.text('UPnP service responded from 1.1.1.1'), findsOneWidget);
   });
 
-  testWidgets('ARP spoof detection shows warning in tile', (tester) async {
-  testWidgets('misconfigured UPnP response shows warning in tile', (tester,) async {
+  testWidgets('DHCP conflict shows warning in tile', (tester) async {
     Future<Map<String, dynamic>> mockScan() async {
       return {
         'summary': [],
         'findings': [
-          {
-            'category': 'ports',
-            'details': {'open_ports': []},
-          },
-          {
-            'category': 'os_banner',
-            'details': {'os': 'Linux', 'banners': {}},
-          },
+          {'category': 'ports', 'details': {'open_ports': []}},
+          {'category': 'os_banner', 'details': {'os': 'Linux', 'banners': {}}},
           {
             'category': 'smb_netbios',
-            'details': {'smb1_enabled': false, 'netbios_names': []},
+            'details': {'smb1_enabled': false, 'netbios_names': []}
           },
           {
-            'category': 'upnp',
-            'details': {
-              'responders': ['1.1.1.1'],
-              'warnings': ['Misconfigured SSDP response from 1.1.1.1'],
-            },
-          },
+            'category': 'upnp', 'details': {'responders': [], 'warnings': []}},
           {
             'category': 'arp_spoof',
             'details': {
-              'vulnerable': true,
-              'explanation': 'ARP table updated with spoofed entry',
-            },
+              'vulnerable': false,
+              'explanation': 'No ARP poisoning detected'
+            }
+          },
+          {
+            'category': 'dhcp',
+            'details': {
+              'servers': ['1.1.1.1', '2.2.2.2'],
+              'warnings': ['Multiple DHCP servers detected']
+            }
           },
         ],
       };
@@ -244,24 +222,10 @@ void main() {
     await tester.pumpAndSettle();
 
     final chips = tester.widgetList<Chip>(find.byType(Chip)).toList();
-    final upnpLabel = chips[3].label as Text;
-    expect(upnpLabel.data, '警告');
-    await tester.tap(find.text('UPnP'));
+    final dhcpLabel = chips[5].label as Text;
+    expect(dhcpLabel.data, '警告');
+    await tester.tap(find.text('DHCP'));
     await tester.pumpAndSettle();
-    expect(
-      find.text('Misconfigured SSDP response from 1.1.1.1'),
-      findsOneWidget,
-    );
-
-    final arpLabel = chips[4].label as Text;
-    expect(arpLabel.data, '警告');
-    await tester.tap(find.text('ARP Spoof'));
-    await tester.pumpAndSettle();
-    expect(
-      find.text('ARP table updated with spoofed entry'),
-      findsOneWidget,
-    );
-
-    );
+    expect(find.text('Multiple DHCP servers detected'), findsOneWidget);
   });
 }
