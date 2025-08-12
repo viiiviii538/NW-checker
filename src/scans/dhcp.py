@@ -1,4 +1,10 @@
-"""Static scan for rogue DHCP servers using scapy."""
+"""Static scan for rogue DHCP servers using scapy.
+
+This scan broadcasts a DHCP *discover* packet and counts how many
+servers answer. The IP address of each responding server is recorded and
+a warning is emitted when multiple servers respond, which may indicate a
+configuration conflict in the network.
+"""
 
 from scapy.all import (  # type: ignore
     Ether,
