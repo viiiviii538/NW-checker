@@ -47,6 +47,34 @@ def test_geoip_lookup_local_db(monkeypatch):
     }
 
 
+def test_geoip_lookup_custom_db_path(monkeypatch):
+    """渡した DB パスが Reader に渡されることを確認"""
+
+    used_paths = []
+
+    class FakeReader:
+        def __init__(self, path):
+            used_paths.append(path)
+
+        def country(self, ip):
+            return types.SimpleNamespace(
+                country=types.SimpleNamespace(name="Wonderland")
+            )
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(
+        analyze.requests, "get", lambda *a, **k: pytest.fail("API called")
+    )
+    import geoip2.database
+
+    monkeypatch.setattr(geoip2.database, "Reader", FakeReader)
+    res = analyze.geoip_lookup("203.0.113.1", db_path="/custom/path.mmdb")
+    assert used_paths == ["/custom/path.mmdb"]
+    assert res == {"country": "Wonderland", "ip": "203.0.113.1"}
+
+
 def test_geoip_lookup_failure(monkeypatch):
     class FailResp:
         ok = False

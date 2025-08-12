@@ -67,16 +67,21 @@ _dns_history: Dict[str, str] = {}
 _known_devices: set[str] = set()
 
 
-def geoip_lookup(ip: str) -> Dict[str, Any]:
-    """GeoIP 情報を取得する。
-    ローカル GeoIP2 DB が利用可能であれば優先し、
-    それ以外は外部 API を利用する。取得できない場合は空 dict を返す。
+def geoip_lookup(ip: str, db_path: str | None = None) -> Dict[str, Any]:
+    """指定 IP の GeoIP 情報を取得する。
+
+    1. ローカルの GeoIP2 データベース (デフォルトは
+       ``/usr/share/GeoIP/GeoLite2-Country.mmdb``) を参照。
+    2. 取得できなければ ``ipapi.co`` の外部 API を利用。
+
+    いずれも失敗した場合は空 dict を返す。
     """
     # GeoIP2 データベースの利用を試みる
+    db_path = db_path or "/usr/share/GeoIP/GeoLite2-Country.mmdb"
     try:  # pragma: no cover - 環境により存在しない可能性が高いため
         import geoip2.database
 
-        reader = geoip2.database.Reader("/usr/share/GeoIP/GeoLite2-Country.mmdb")
+        reader = geoip2.database.Reader(db_path)
         try:
             resp = reader.country(ip)
             return {"country": resp.country.name, "ip": ip}
