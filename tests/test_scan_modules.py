@@ -343,6 +343,21 @@ def test_arp_spoof_scan_no_change(monkeypatch):
     )
 
 
+def test_arp_spoof_scan_handles_send_error(monkeypatch):
+    """send() で例外が発生した場合のエラーハンドリングを検証"""
+
+    monkeypatch.setattr(arp_spoof, "_get_arp_table", lambda: {})
+
+    def boom(*args, **kwargs):  # noqa: D401, ARG001, ARG002
+        raise RuntimeError("send fail")
+
+    monkeypatch.setattr(arp_spoof, "send", boom)
+    result = arp_spoof.scan(wait=0)
+    assert result["score"] == 0
+    assert "error" in result["details"]
+    assert "send fail" in result["details"]["error"]
+
+
 # --- SSL certificate -----------------------------------------------------
 
 def test_ssl_cert_scan_flags_expired(monkeypatch):
