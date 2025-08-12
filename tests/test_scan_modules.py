@@ -420,6 +420,28 @@ def test_arp_spoof_scan_handles_table_error(monkeypatch):
     assert "explanation" not in result["details"]
 
 
+def test_arp_spoof_scan_handles_table_error_after_send(monkeypatch):
+    """send後のARPテーブル取得エラー時の挙動を確認。"""
+
+    tables = [{"1.2.3.4": "aa:aa"}]
+
+    def get_table():
+        if tables:
+            return tables.pop(0)
+        raise RuntimeError("table fail")
+
+    monkeypatch.setattr(arp_spoof, "_get_arp_table", get_table)
+    monkeypatch.setattr(arp_spoof, "send", lambda *_, **__: None)
+    result = arp_spoof.scan(wait=0)
+    assert result == {
+        "category": "arp_spoof",
+        "score": 0,
+        "details": {"error": "table fail"},
+    }
+    assert "vulnerable" not in result["details"]
+    assert "explanation" not in result["details"]
+
+
 # --- SSL certificate -----------------------------------------------------
 
 def test_ssl_cert_scan_flags_expired(monkeypatch):
