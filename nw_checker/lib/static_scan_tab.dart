@@ -65,6 +65,7 @@ class _StaticScanTabState extends State<StaticScanTab> {
       CategoryTile(title: 'UPnP', icon: Icons.cast),
       CategoryTile(title: 'ARP Spoof', icon: Icons.security),
       CategoryTile(title: 'DHCP', icon: Icons.dns),
+      CategoryTile(title: 'DNS', icon: Icons.language),
       CategoryTile(title: 'SSL証明書', icon: Icons.lock),
     ];
   }
@@ -196,6 +197,18 @@ class _StaticScanTabState extends State<StaticScanTab> {
             if (dhcpServers.isEmpty) '応答なし',
           ];
 
+        final dnsFinding = findings.firstWhere(
+          (f) => f['category'] == 'dns',
+          orElse: () => <String, dynamic>{},
+        );
+        final dnsDetails =
+            (dnsFinding['details'] as Map?)?.cast<String, dynamic>() ?? {};
+        final dnsWarnings = (dnsDetails['warnings'] as List? ?? [])
+            .cast<String>();
+        _categories[6]
+          ..status = dnsWarnings.isEmpty ? ScanStatus.ok : ScanStatus.warning
+          ..details = dnsWarnings.isEmpty ? ['設定に問題なし'] : dnsWarnings;
+
         final sslFinding = findings.firstWhere(
           (f) => f['category'] == 'ssl_cert',
           orElse: () => <String, dynamic>{},
@@ -204,7 +217,7 @@ class _StaticScanTabState extends State<StaticScanTab> {
             (sslFinding['details'] as Map?)?.cast<String, dynamic>() ?? {};
         final sslExpired = sslDetails['expired'] as bool?;
         final sslHost = sslDetails['host'] as String? ?? '';
-        _categories[6]
+        _categories[7]
           ..status = sslExpired == null
               ? ScanStatus.error
               : (sslExpired ? ScanStatus.warning : ScanStatus.ok)
