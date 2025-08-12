@@ -168,6 +168,52 @@ def test_smb_netbios_scan_handles_errors(monkeypatch):
     assert "connection refused" in result["details"]["error"]
 
 
+def test_smb_netbios_scan_uses_nmblookup(monkeypatch):
+    """Fallback to ``nmblookup`` when impacket NetBIOS fails."""
+
+    def failing_nb():
+        raise RuntimeError("nb fail")
+
+    class DummyConn:
+        def __init__(self, *args, **kwargs):  # noqa: D401, ARG002
+            raise OSError("conn fail")
+
+    sample = """
+Looking up status of 1.2.3.4
+    HOSTNAME        <00> -         B
+    MAC Address = 00-00-00-00-00-00
+"""
+
+    monkeypatch.setattr(smb_netbios, "NetBIOS", failing_nb)
+    monkeypatch.setattr(smb_netbios, "SMBConnection", DummyConn)
+    monkeypatch.setattr(smb_netbios.subprocess, "check_output", lambda *_, **__: sample)
+
+    result = smb_netbios.scan("host")
+    assert result["details"]["netbios_names"] == ["HOSTNAME"]
+
+
+# Additional tests for NetBIOS helper
+
+def test_nmblookup_names_parses_output(monkeypatch):
+    sample = """\
+Looking up status of 1.2.3.4
+    HOST1          <00> -         B
+    WORKGROUP      <00> - <GROUP>
+    MAC Address = 00-00-00-00-00-00
+"""
+    monkeypatch.setattr(
+        smb_netbios.subprocess, "check_output", lambda *_, **__: sample
+    )
+    assert smb_netbios._nmblookup_names("1.2.3.4") == ["HOST1", "WORKGROUP"]
+
+
+def test_nmblookup_names_handles_failure(monkeypatch):
+    def boom(*args, **kwargs):  # noqa: D401, ARG001, ARG002
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(smb_netbios.subprocess, "check_output", boom)
+    assert smb_netbios._nmblookup_names("1.2.3.4") == []
+
 # --- scapy based scans ---------------------------------------------------
 
 
