@@ -385,6 +385,22 @@ def test_arp_spoof_custom_ip_mac(monkeypatch):
     result = arp_spoof.scan(wait=0, fake_ip="5.6.7.8", fake_mac="bb:bb")
     assert result["score"] == 5
     assert result["details"]["vulnerable"] is True
+    assert (
+        result["details"]["explanation"]
+        == "ARP table updated with spoofed entry"
+    )
+
+
+def test_arp_spoof_scan_handles_send_error(monkeypatch):
+    """Injection failure should be reported with score 0."""
+
+    def boom(*args, **kwargs):  # noqa: D401, ARG001
+        raise RuntimeError("send error")
+
+    monkeypatch.setattr(arp_spoof, "send", boom)
+    result = arp_spoof.scan(wait=0)
+    assert result["score"] == 0
+    assert "send error" in result["details"].get("error", "")
 
 
 # --- SSL certificate -----------------------------------------------------
