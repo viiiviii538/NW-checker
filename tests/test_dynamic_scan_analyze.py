@@ -184,7 +184,7 @@ def test_detect_out_of_hours():
     pkt = type(
         "Pkt", (), {"timestamp": datetime(2024, 1, 1, 3, 0).timestamp()}
     )
-    res = analyze.detect_out_of_hours(pkt, (9, 17))
+    res = analyze.detect_out_of_hours(pkt, 9, 17)
     assert res.out_of_hours is True
 
 def test_record_dns_history_no_hostname(monkeypatch):
@@ -253,8 +253,20 @@ def test_detect_out_of_hours_within_schedule():
     pkt = type(
         "Pkt", (), {"timestamp": datetime(2024, 1, 1, 10, 0).timestamp()}
     )
-    res = analyze.detect_out_of_hours(pkt, (9, 17))
+    res = analyze.detect_out_of_hours(pkt, 9, 17)
     assert res.out_of_hours is False
+
+
+def test_detect_out_of_hours_boundaries():
+    start, end = 9, 17
+    pkt_start = type(
+        "Pkt", (), {"timestamp": datetime(2024, 1, 1, start, 0).timestamp()}
+    )
+    pkt_end = type(
+        "Pkt", (), {"timestamp": datetime(2024, 1, 1, end, 0).timestamp()}
+    )
+    assert analyze.detect_out_of_hours(pkt_start, start, end).out_of_hours is False
+    assert analyze.detect_out_of_hours(pkt_end, start, end).out_of_hours is True
 
 
 def test_analysis_result_merge_and_to_dict():
