@@ -65,6 +65,7 @@ class _StaticScanTabState extends State<StaticScanTab> {
       CategoryTile(title: 'UPnP', icon: Icons.cast),
       CategoryTile(title: 'ARP Spoof', icon: Icons.security),
       CategoryTile(title: 'DHCP', icon: Icons.dns),
+      CategoryTile(title: 'SSL証明書', icon: Icons.lock),
     ];
   }
 
@@ -194,6 +195,25 @@ class _StaticScanTabState extends State<StaticScanTab> {
             ...dhcpServers.map((ip) => 'サーバー $ip'),
             if (dhcpServers.isEmpty) '応答なし',
           ];
+
+        final sslFinding = findings.firstWhere(
+          (f) => f['category'] == 'ssl_cert',
+          orElse: () => <String, dynamic>{},
+        );
+        final sslDetails =
+            (sslFinding['details'] as Map?)?.cast<String, dynamic>() ?? {};
+        final sslExpired = sslDetails['expired'] as bool?;
+        final sslHost = sslDetails['host'] as String? ?? '';
+        _categories[6]
+          ..status = sslExpired == null
+              ? ScanStatus.error
+              : (sslExpired ? ScanStatus.warning : ScanStatus.ok)
+          ..details = [
+            if (sslHost.isNotEmpty) 'ホスト: $sslHost',
+            if (sslExpired == true) '証明書は期限切れ',
+            if (sslExpired == false) '証明書は有効',
+            if (sslExpired == null) '情報取得失敗',
+          ];
       });
     });
   }
@@ -271,6 +291,7 @@ class _StaticScanTabState extends State<StaticScanTab> {
         _buildSummaryCard(),
         ElevatedButton(
           key: const Key('staticButton'),
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.blueGrey),
           onPressed: _startScan,
           child: const Text('スキャン開始'),
         ),

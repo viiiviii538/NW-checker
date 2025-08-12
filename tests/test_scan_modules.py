@@ -96,6 +96,19 @@ def test_os_banner_scan_handles_no_results(monkeypatch):
     assert result["details"]["os"] == ""
 
 
+def test_os_banner_scan_handles_exception(monkeypatch):
+    class MockScanner:
+        def scan(self, target, arguments=""):
+            raise os_banner.nmap.PortScannerError("nmap error")
+
+    monkeypatch.setattr(os_banner.nmap, "PortScanner", lambda: MockScanner())
+    result = os_banner.scan("host")
+    assert result["score"] == 0
+    assert result["details"]["banners"] == {}
+    assert result["details"]["os"] == ""
+    assert "nmap error" in result["details"]["error"]
+
+
 def test_smb_netbios_scan_detects_smb1(monkeypatch):
     class DummyNB:
         def queryIPForName(self, target, timeout=2):  # noqa: D401, ARG002
@@ -166,6 +179,30 @@ def test_smb_netbios_scan_handles_errors(monkeypatch):
     assert result["details"]["smb1_enabled"] is False
     assert result["details"]["netbios_names"] == []
     assert "connection refused" in result["details"]["error"]
+
+
+def test_smb_netbios_scan_uses_nmblookup(monkeypatch):
+    """Fallback to ``nmblookup`` when impacket NetBIOS fails."""
+
+    def failing_nb():
+        raise RuntimeError("nb fail")
+
+    class DummyConn:
+        def __init__(self, *args, **kwargs):  # noqa: D401, ARG002
+            raise OSError("conn fail")
+
+    sample = """
+Looking up status of 1.2.3.4
+    HOSTNAME        <00> -         B
+    MAC Address = 00-00-00-00-00-00
+"""
+
+    monkeypatch.setattr(smb_netbios, "NetBIOS", failing_nb)
+    monkeypatch.setattr(smb_netbios, "SMBConnection", DummyConn)
+    monkeypatch.setattr(smb_netbios.subprocess, "check_output", lambda *_, **__: sample)
+
+    result = smb_netbios.scan("host")
+    assert result["details"]["netbios_names"] == ["HOSTNAME"]
 
 
 # --- scapy based scans ---------------------------------------------------

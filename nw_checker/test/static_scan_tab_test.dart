@@ -75,6 +75,10 @@ void main() {
               'warnings': [],
             },
           },
+          {
+            'category': 'ssl_cert',
+            'details': {'host': 'example.com', 'expired': false},
+          },
         ],
       };
     }
@@ -87,7 +91,7 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
-    expect(find.text('OK'), findsNWidgets(6));
+    expect(find.text('OK'), findsNWidgets(7));
     expect(find.text('警告'), findsNothing);
   });
 
@@ -125,6 +129,10 @@ void main() {
               'servers': ['1.1.1.1'],
               'warnings': [],
             },
+          },
+          {
+            'category': 'ssl_cert',
+            'details': {'host': 'example.com', 'expired': false},
           },
         ],
       };
@@ -183,6 +191,10 @@ void main() {
               'warnings': [],
             },
           },
+          {
+            'category': 'ssl_cert',
+            'details': {'host': 'example.com', 'expired': false},
+          },
         ],
       };
     }
@@ -237,6 +249,10 @@ void main() {
               'servers': ['1.1.1.1'],
               'warnings': [],
             },
+          },
+          {
+            'category': 'ssl_cert',
+            'details': {'host': 'example.com', 'expired': false},
           },
         ],
       };
@@ -297,6 +313,10 @@ void main() {
               'servers': ['1.1.1.1'],
               'warnings': [],
             },
+          },
+          {
+            'category': 'ssl_cert',
+            'details': {'host': 'example.com', 'expired': false},
           },
         ],
       };
@@ -362,6 +382,10 @@ void main() {
               'warnings': ['Multiple DHCP servers detected: 1.1.1.1, 2.2.2.2'],
             },
           },
+          {
+            'category': 'ssl_cert',
+            'details': {'host': 'example.com', 'expired': false},
+          },
         ],
       };
     }
@@ -383,5 +407,64 @@ void main() {
       find.text('Multiple DHCP servers detected: 1.1.1.1, 2.2.2.2'),
       findsOneWidget,
     );
+  });
+
+  testWidgets('expired SSL certificate shows warning in tile', (tester) async {
+    Future<Map<String, dynamic>> mockScan() async {
+      return {
+        'summary': [],
+        'findings': [
+          {
+            'category': 'ports',
+            'details': {'open_ports': []},
+          },
+          {
+            'category': 'os_banner',
+            'details': {'os': 'Linux', 'banners': {}},
+          },
+          {
+            'category': 'smb_netbios',
+            'details': {'smb1_enabled': false, 'netbios_names': []},
+          },
+          {
+            'category': 'upnp',
+            'details': {'responders': [], 'warnings': []},
+          },
+          {
+            'category': 'arp_spoof',
+            'details': {
+              'vulnerable': false,
+              'explanation': 'No ARP poisoning detected',
+            },
+          },
+          {
+            'category': 'dhcp',
+            'details': {
+              'servers': ['1.1.1.1'],
+              'warnings': [],
+            },
+          },
+          {
+            'category': 'ssl_cert',
+            'details': {'host': 'example.com', 'expired': true},
+          },
+        ],
+      };
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(home: StaticScanTab(scanner: mockScan)),
+    );
+
+    await tester.tap(find.byKey(const Key('staticButton')));
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    final chips = tester.widgetList<Chip>(find.byType(Chip)).toList();
+    final sslLabel = chips[6].label as Text;
+    expect(sslLabel.data, '警告');
+    await tester.tap(find.text('SSL証明書'));
+    await tester.pumpAndSettle();
+    expect(find.text('証明書は期限切れ'), findsOneWidget);
   });
 }
