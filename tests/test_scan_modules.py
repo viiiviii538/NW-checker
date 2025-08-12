@@ -355,23 +355,24 @@ def test_arp_spoof_scan_detects_table_change(monkeypatch):
     monkeypatch.setattr(arp_spoof, "_get_arp_table", lambda: tables.pop(0))
     monkeypatch.setattr(arp_spoof, "send", lambda *_, **__: None)
     result = arp_spoof.scan(wait=0)
+    assert result["category"] == "arp_spoof"
     assert result["score"] == 5
-    assert result["details"]["vulnerable"] is True
-    assert (
-        result["details"]["explanation"]
-        == "ARP table updated with spoofed entry"
-    )
+    assert result["details"] == {
+        "vulnerable": True,
+        "explanation": "ARP table updated with spoofed entry",
+    }
 
 
 def test_arp_spoof_scan_no_change(monkeypatch):
     monkeypatch.setattr(arp_spoof, "_get_arp_table", lambda: {"1.2.3.4": "aa:aa"})
     monkeypatch.setattr(arp_spoof, "send", lambda *_, **__: None)
     result = arp_spoof.scan(wait=0)
+    assert result["category"] == "arp_spoof"
     assert result["score"] == 0
-    assert result["details"]["vulnerable"] is False
-    assert (
-        result["details"]["explanation"] == "No ARP poisoning detected"
-    )
+    assert result["details"] == {
+        "vulnerable": False,
+        "explanation": "No ARP poisoning detected",
+    }
 
 
 def test_arp_spoof_custom_ip_mac(monkeypatch):
@@ -383,12 +384,12 @@ def test_arp_spoof_custom_ip_mac(monkeypatch):
     monkeypatch.setattr(arp_spoof, "_get_arp_table", lambda: tables.pop(0))
     monkeypatch.setattr(arp_spoof, "send", lambda *_, **__: None)
     result = arp_spoof.scan(wait=0, fake_ip="5.6.7.8", fake_mac="bb:bb")
+    assert result["category"] == "arp_spoof"
     assert result["score"] == 5
-    assert result["details"]["vulnerable"] is True
-    assert (
-        result["details"]["explanation"]
-        == "ARP table updated with spoofed entry"
-    )
+    assert result["details"] == {
+        "vulnerable": True,
+        "explanation": "ARP table updated with spoofed entry",
+    }
 
 
 def test_arp_spoof_scan_handles_send_error(monkeypatch):
