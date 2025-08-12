@@ -391,16 +391,20 @@ def test_arp_spoof_custom_ip_mac(monkeypatch):
     )
 
 
-def test_arp_spoof_scan_handles_send_error(monkeypatch):
-    """Injection failure should be reported with score 0."""
+import arp_spoof
 
-    def boom(*args, **kwargs):  # noqa: D401, ARG001
+
+def test_arp_spoof_scan_handles_send_error(monkeypatch):
+    """send() が失敗した場合は score=0 を返し、エラーメッセージに内容を含める。"""
+    
+    def failing_send(*args, **kwargs):  # noqa: D401, ARG001
         raise RuntimeError("send error")
 
-    monkeypatch.setattr(arp_spoof, "send", boom)
+    monkeypatch.setattr(arp_spoof, "send", failing_send)
     result = arp_spoof.scan(wait=0)
     assert result["score"] == 0
     assert "send error" in result["details"].get("error", "")
+
 
 
 # --- SSL certificate -----------------------------------------------------
