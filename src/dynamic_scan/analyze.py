@@ -189,10 +189,17 @@ def detect_traffic_anomalies(packet, stats, threshold: int | None = None) -> Ana
     return AnalysisResult(traffic_anomaly=anomaly)
 
 
-def detect_out_of_hours(packet, schedule) -> AnalysisResult:
-    """時間外通信を検出"""
-    timestamp = getattr(packet, "timestamp", getattr(packet, "time", datetime.now().timestamp()))
-    start_hour, end_hour = schedule
+def detect_out_of_hours(packet, start_hour: int, end_hour: int) -> AnalysisResult:
+    """時間外通信を検出
+
+    Args:
+        packet: タイムスタンプ情報を持つパケット
+        start_hour: 通常運用開始時刻（24時間表記）
+        end_hour: 通常運用終了時刻（24時間表記、start_hour < end_hour を想定）
+    """
+    timestamp = getattr(
+        packet, "timestamp", getattr(packet, "time", datetime.now().timestamp())
+    )
     hour = datetime.fromtimestamp(timestamp).hour
     out = hour < start_hour or hour >= end_hour
     return AnalysisResult(out_of_hours=out)
@@ -217,7 +224,7 @@ async def analyse_packets(
         dangerous_res = detect_dangerous_protocols(packet)
         new_dev_res = track_new_devices(packet)
         traffic_res = detect_traffic_anomalies(packet, traffic_stats)
-        out_res = detect_out_of_hours(packet, schedule)
+        out_res = detect_out_of_hours(packet, *schedule)
 
         mac = getattr(packet, "src_mac", getattr(packet, "mac", getattr(packet, "src", "")))
         unapproved = is_unapproved_device(mac, approved)
