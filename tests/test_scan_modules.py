@@ -449,6 +449,27 @@ def test_arp_spoof_scan_handles_table_error_after_send(monkeypatch):
     assert "explanation" not in result["details"]
 
 
+def test_arp_spoof_scan_waits(monkeypatch):
+    current = 0.0
+
+    def fake_time() -> float:
+        return current
+
+    def fake_sleep(seconds: float) -> None:
+        nonlocal current
+        current += seconds
+
+    monkeypatch.setattr(arp_spoof.time, "time", fake_time)
+    monkeypatch.setattr(arp_spoof.time, "sleep", fake_sleep)
+    monkeypatch.setattr(arp_spoof, "_get_arp_table", lambda: {})
+    monkeypatch.setattr(arp_spoof, "send", lambda *_, **__: None)
+
+    start = fake_time()
+    arp_spoof.scan(wait=1.5)
+    elapsed = fake_time() - start
+    assert elapsed == pytest.approx(1.5, abs=0.2)
+
+
 # --- SSL certificate -----------------------------------------------------
 
 def test_ssl_cert_scan_flags_expired(monkeypatch):
