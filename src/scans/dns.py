@@ -50,10 +50,11 @@ def scan() -> dict:
     details = {"servers": servers}
 
     if external:
-        warnings.append("外部DNSが検出されました: " + ", ".join(external))
+        # 外部DNSサーバーを使用している場合は警告
+        warnings.append("External DNS detected: " + ", ".join(external))
         details["external_servers"] = external
 
-    dnssec_enabled = False
+    dnssec_enabled = None
     try:
         pkt = (
             IP(dst=servers[0])
@@ -66,9 +67,9 @@ def scan() -> dict:
     except Exception as exc:  # pragma: no cover
         details["error"] = str(exc)
 
-    details["dnssec_enabled"] = dnssec_enabled
-    if not dnssec_enabled:
-        warnings.append("DNSSECが無効です")
+    details["dnssec_enabled"] = bool(dnssec_enabled)
+    if dnssec_enabled is False:
+        warnings.append("DNSSEC is disabled")
 
     details["warnings"] = warnings
     score = len(warnings)

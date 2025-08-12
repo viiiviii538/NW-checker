@@ -622,7 +622,7 @@ void main() {
           {
             'category': 'dns',
             'details': {
-              'warnings': ['外部DNSが検出されました: 8.8.8.8'],
+              'warnings': ['External DNS detected: 8.8.8.8'],
               'servers': ['8.8.8.8'],
               'dnssec_enabled': false,
             },
@@ -648,6 +648,6 @@ void main() {
     expect(dnsLabel.data, '警告');
     await tester.tap(find.text('DNS'));
     await tester.pumpAndSettle();
-    expect(find.text('外部DNSが検出されました: 8.8.8.8'), findsOneWidget);
+    expect(find.text('External DNS detected: 8.8.8.8'), findsOneWidget);
   });
 }
