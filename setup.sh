@@ -25,6 +25,8 @@ echo "=== Python依存関係インストール ==="
 pip install --upgrade pip
 pip install python-nmap pytest
 REQ_FILE="../requirements.txt"
+[ -f "requirements.txt" ] && REQ_FILE="requirements.txt"
+
 if [ -f "$REQ_FILE" ]; then
     pip install -r "$REQ_FILE"
 else
@@ -52,6 +54,8 @@ else
     # 追加: 念のためPATHを再反映
     export PATH="$FLUTTER_DIR/bin:$PATH"
 fi
+
+flutter precache || true
 
 # 追加: PATH 永続化（別シェルでも flutter を使えるように）
 if [ -w "$HOME" ] && ! grep -q "$FLUTTER_DIR/bin" "$HOME/.bashrc" 2>/dev/null; then

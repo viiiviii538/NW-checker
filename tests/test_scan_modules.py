@@ -392,23 +392,24 @@ def test_arp_spoof_scan_detects_table_change(monkeypatch):
     monkeypatch.setattr(arp_spoof, "_get_arp_table", lambda: tables.pop(0))
     monkeypatch.setattr(arp_spoof, "send", lambda *_, **__: None)
     result = arp_spoof.scan(wait=0)
+    assert result["category"] == "arp_spoof"
     assert result["score"] == 5
-    assert result["details"]["vulnerable"] is True
-    assert (
-        result["details"]["explanation"]
-        == "ARP table updated with spoofed entry"
-    )
+    assert result["details"] == {
+        "vulnerable": True,
+        "explanation": "ARP table updated with spoofed entry",
+    }
 
 
 def test_arp_spoof_scan_no_change(monkeypatch):
     monkeypatch.setattr(arp_spoof, "_get_arp_table", lambda: {"1.2.3.4": "aa:aa"})
     monkeypatch.setattr(arp_spoof, "send", lambda *_, **__: None)
     result = arp_spoof.scan(wait=0)
+    assert result["category"] == "arp_spoof"
     assert result["score"] == 0
-    assert result["details"]["vulnerable"] is False
-    assert (
-        result["details"]["explanation"] == "No ARP poisoning detected"
-    )
+    assert result["details"] == {
+        "vulnerable": False,
+        "explanation": "No ARP poisoning detected",
+    }
 
 
 def test_arp_spoof_custom_ip_mac(monkeypatch):
@@ -420,24 +421,91 @@ def test_arp_spoof_custom_ip_mac(monkeypatch):
     monkeypatch.setattr(arp_spoof, "_get_arp_table", lambda: tables.pop(0))
     monkeypatch.setattr(arp_spoof, "send", lambda *_, **__: None)
     result = arp_spoof.scan(wait=0, fake_ip="5.6.7.8", fake_mac="bb:bb")
+    assert result["category"] == "arp_spoof"
     assert result["score"] == 5
-    assert result["details"]["vulnerable"] is True
-    assert (
-        result["details"]["explanation"]
-        == "ARP table updated with spoofed entry"
-    )
+    assert result["details"] == {
+        "vulnerable": True,
+        "explanation": "ARP table updated with spoofed entry",
+    }
 
 
-def test_arp_spoof_scan_handles_send_error(monkeypatch):
-    """Injection failure should be reported with score 0."""
+import arp_spoof
+
+
+@pytest.mark.parametrize("message", ["send fail", "send error"])
+def test_arp_spoof_scan_handles_send_error(monkeypatch, message):
+    """send() が失敗した場合は score=0 を返し、エラーメッセージに内容を含める。"""
 
     def boom(*args, **kwargs):  # noqa: D401, ARG001
-        raise RuntimeError("send error")
+        raise RuntimeError(message)
 
-    monkeypatch.setattr(arp_spoof, "send", boom)
+    monkeypatch.setattr(arp_spoof, "send", failing_send)
     result = arp_spoof.scan(wait=0)
     assert result["score"] == 0
     assert "send error" in result["details"]["error"]
+    assert result["category"] == "arp_spoof"
+    assert result["details"] == {"error": "send fail"}
+
+
+
+def test_arp_spoof_scan_handles_table_error(monkeypatch):
+    """ARPテーブル取得エラー時の挙動を確認。"""
+
+    def boom():  # noqa: D401
+        raise RuntimeError("table fail")
+
+    monkeypatch.setattr(arp_spoof, "_get_arp_table", boom)
+    result = arp_spoof.scan(wait=0)
+    assert result == {
+        "category": "arp_spoof",
+        "score": 0,
+        "details": {"error": "table fail"},
+    }
+    assert "vulnerable" not in result["details"]
+    assert "explanation" not in result["details"]
+
+
+def test_arp_spoof_scan_handles_table_error_after_send(monkeypatch):
+    """send後のARPテーブル取得エラー時の挙動を確認。"""
+
+    tables = [{"1.2.3.4": "aa:aa"}]
+
+    def get_table():
+        if tables:
+            return tables.pop(0)
+        raise RuntimeError("table fail")
+
+    monkeypatch.setattr(arp_spoof, "_get_arp_table", get_table)
+    monkeypatch.setattr(arp_spoof, "send", lambda *_, **__: None)
+    result = arp_spoof.scan(wait=0)
+    assert result == {
+        "category": "arp_spoof",
+        "score": 0,
+        "details": {"error": "table fail"},
+    }
+    assert "vulnerable" not in result["details"]
+    assert "explanation" not in result["details"]
+
+
+def test_arp_spoof_scan_waits(monkeypatch):
+    current = 0.0
+
+    def fake_time() -> float:
+        return current
+
+    def fake_sleep(seconds: float) -> None:
+        nonlocal current
+        current += seconds
+
+    monkeypatch.setattr(arp_spoof.time, "time", fake_time)
+    monkeypatch.setattr(arp_spoof.time, "sleep", fake_sleep)
+    monkeypatch.setattr(arp_spoof, "_get_arp_table", lambda: {})
+    monkeypatch.setattr(arp_spoof, "send", lambda *_, **__: None)
+
+    start = fake_time()
+    arp_spoof.scan(wait=1.5)
+    elapsed = fake_time() - start
+    assert elapsed == pytest.approx(1.5, abs=0.2)
 
 
 # --- SSL certificate -----------------------------------------------------
