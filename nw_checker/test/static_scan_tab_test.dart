@@ -199,8 +199,7 @@ void main() {
     expect(find.text('UPnP service responded from 1.1.1.1'), findsOneWidget);
   });
 
-  testWidgets('ARP spoof detection shows warning in tile', (tester) async {
-  testWidgets('misconfigured UPnP response shows warning in tile', (tester,) async {
+  testWidgets('misconfigured UPnP response shows warning in tile', (tester) async {
     Future<Map<String, dynamic>> mockScan() async {
       return {
         'summary': [],
@@ -260,8 +259,6 @@ void main() {
     expect(
       find.text('ARP table updated with spoofed entry'),
       findsOneWidget,
-    );
-
     );
   });
 }
