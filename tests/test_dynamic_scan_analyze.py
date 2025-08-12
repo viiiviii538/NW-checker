@@ -116,6 +116,15 @@ def test_load_blacklist(tmp_path):
     assert result == {"foo.example", "bar.example"}
 
 
+def test_load_blacklist_missing_file(tmp_path):
+    missing = tmp_path / "no_such_file.txt"
+    assert analyze.load_blacklist(missing) == set()
+
+
+def test_load_blacklist_default_file():
+    assert "malicious.example" in analyze.load_blacklist()
+
+
 def test_is_night_traffic():
     night_ts = datetime(2024, 1, 1, 3, 0).timestamp()
     day_ts = datetime(2024, 1, 1, 7, 0).timestamp()
