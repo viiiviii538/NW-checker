@@ -403,6 +403,32 @@ def test_arp_spoof_scan_handles_send_error(monkeypatch):
     assert "send error" in result["details"].get("error", "")
 
 
+def test_arp_spoof_scan_waits(monkeypatch):
+    class FakeTimer:
+        def __init__(self):
+            self.now = 0.0
+
+        def time(self):
+            return self.now
+
+        def sleep(self, seconds):
+            self.now += seconds
+
+    timer = FakeTimer()
+    monkeypatch.setattr(
+        arp_spoof,
+        "time",
+        SimpleNamespace(time=timer.time, sleep=timer.sleep),
+    )
+    monkeypatch.setattr(arp_spoof, "_get_arp_table", lambda: {})
+    monkeypatch.setattr(arp_spoof, "send", lambda *_, **__: None)
+
+    start = timer.time()
+    arp_spoof.scan(wait=1.5)
+    elapsed = timer.time() - start
+    assert elapsed == pytest.approx(1.5, abs=0.1)
+
+
 # --- SSL certificate -----------------------------------------------------
 
 def test_ssl_cert_scan_flags_expired(monkeypatch):
