@@ -392,17 +392,22 @@ def test_arp_spoof_custom_ip_mac(monkeypatch):
     }
 
 
-def test_arp_spoof_scan_handles_send_error(monkeypatch):
-    """Injection failure should be reported with score 0."""
+import arp_spoof
+
+
+@pytest.mark.parametrize("message", ["send fail", "send error"])
+def test_arp_spoof_scan_handles_send_error(monkeypatch, message):
+    """send() が失敗した場合は score=0 を返し、エラーメッセージに内容を含める。"""
 
     def boom(*args, **kwargs):  # noqa: D401, ARG001
-        raise RuntimeError("send fail")
+        raise RuntimeError(message)
 
-    monkeypatch.setattr(arp_spoof, "send", boom)
+    monkeypatch.setattr(arp_spoof, "send", failing_send)
     result = arp_spoof.scan(wait=0)
     assert result["score"] == 0
     assert result["category"] == "arp_spoof"
     assert result["details"] == {"error": "send fail"}
+
 
 
 # --- SSL certificate -----------------------------------------------------
