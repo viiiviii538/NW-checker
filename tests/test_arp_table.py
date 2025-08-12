@@ -30,3 +30,12 @@ invalid line without expected format
     }
     assert "10.0.0.2" not in table
     assert "10.0.0.3" not in table
+
+
+def test_get_arp_table_handles_subprocess_error(monkeypatch):
+    def boom(*args, **kwargs):
+        raise OSError("arp failed")
+
+    monkeypatch.setattr(subprocess, "check_output", boom)
+
+    assert _get_arp_table() == {}
