@@ -387,6 +387,19 @@ def test_arp_spoof_custom_ip_mac(monkeypatch):
     assert result["details"]["vulnerable"] is True
 
 
+def test_arp_spoof_scan_handles_send_error(monkeypatch):
+    """send() が例外を投げてもエラーとして扱われること。"""
+    monkeypatch.setattr(arp_spoof, "_get_arp_table", lambda: {})
+
+    def fail_send(*_, **__):
+        raise RuntimeError("send fail")
+
+    monkeypatch.setattr(arp_spoof, "send", fail_send)
+    result = arp_spoof.scan(wait=0)
+    assert result["score"] == 0
+    assert "send fail" in result["details"]["error"]
+
+
 # --- SSL certificate -----------------------------------------------------
 
 def test_ssl_cert_scan_flags_expired(monkeypatch):
