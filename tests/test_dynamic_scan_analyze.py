@@ -242,6 +242,18 @@ def test_record_dns_history_no_hostname(monkeypatch):
     assert analyze._dns_history == {}
 
 
+def test_record_dns_history_uses_loaded_blacklist(monkeypatch):
+    analyze._dns_history.clear()
+    analyze.DNS_BLACKLIST = analyze.load_blacklist()
+    monkeypatch.setattr(
+        analyze.socket, "gethostbyaddr", lambda ip: ("malicious.example", [], [])
+    )
+    pkt = type("Pkt", (), {"src_ip": "4.4.4.4"})
+    res = analyze.record_dns_history(pkt)
+    assert res.reverse_dns == "malicious.example"
+    assert res.reverse_dns_blacklisted is True
+
+
 def test_record_dns_history_blacklisted(monkeypatch):
     analyze._dns_history.clear()
     analyze.DNS_BLACKLIST.clear()
