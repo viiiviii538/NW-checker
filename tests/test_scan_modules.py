@@ -385,6 +385,10 @@ def test_arp_spoof_custom_ip_mac(monkeypatch):
     result = arp_spoof.scan(wait=0, fake_ip="5.6.7.8", fake_mac="bb:bb")
     assert result["score"] == 5
     assert result["details"]["vulnerable"] is True
+    assert (
+        result["details"]["explanation"]
+        == "ARP table updated with spoofed entry"
+    )
 
 
 # --- SSL certificate -----------------------------------------------------
