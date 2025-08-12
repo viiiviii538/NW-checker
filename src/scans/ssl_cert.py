@@ -10,6 +10,7 @@ def scan(host: str = "example.com", port: int = 443) -> dict:
 
     expired = False
     cert_data = {}
+    error = ""
     try:
         context = ssl.create_default_context()
         with socket.create_connection((host, port), timeout=2) as sock:
@@ -22,12 +23,15 @@ def scan(host: str = "example.com", port: int = 443) -> dict:
                         tzinfo=timezone.utc
                     )
                     expired = expiry < datetime.now(timezone.utc)
-    except Exception:  # pragma: no cover
-        pass
+    except Exception as exc:  # pragma: no cover
+        error = str(exc)
 
+    details = {"host": host, "expired": expired, "cert": cert_data}
+    if error:
+        details["error"] = error
     return {
         "category": "ssl_cert",
         "score": 1 if expired else 0,
-        "details": {"host": host, "expired": expired, "cert": cert_data},
+        "details": details,
     }
 

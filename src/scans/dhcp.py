@@ -19,6 +19,7 @@ def scan(timeout: int = 2) -> dict:
 
     servers = set()
     warnings = []
+    error = ""
     try:
         discover = (
             Ether(dst="ff:ff:ff:ff:ff:ff")
@@ -32,8 +33,8 @@ def scan(timeout: int = 2) -> dict:
             if DHCP in pkt:
                 # サーバーIPは重複を除外する
                 servers.add(pkt[IP].src)
-    except Exception:  # pragma: no cover - 実行環境による
-        pass
+    except Exception as exc:  # pragma: no cover - 実行環境による
+        error = str(exc)
 
     server_list = sorted(servers)
     if len(server_list) > 1:
@@ -41,9 +42,12 @@ def scan(timeout: int = 2) -> dict:
             "Multiple DHCP servers detected: " + ", ".join(server_list)
         )
 
+    details = {"servers": server_list, "warnings": warnings}
+    if error:
+        details["error"] = error
     return {
         "category": "dhcp",
-        "score": len(server_list),
-        "details": {"servers": server_list, "warnings": warnings},
+        "score": 0 if error else len(server_list),
+        "details": details,
     }
 

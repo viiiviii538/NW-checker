@@ -65,6 +65,18 @@ def test_ports_scan_no_open_ports(monkeypatch):
     assert result["details"]["open_ports"] == []
 
 
+def test_ports_scan_handles_exception(monkeypatch):
+    """Unexpected errors from socket should be reported."""
+
+    def boom(*args, **kwargs):  # noqa: D401, ARG001, ARG002
+        raise RuntimeError("fail")
+
+    monkeypatch.setattr(ports.socket, "create_connection", boom)
+    result = ports.scan("host")
+    assert result["score"] == 0
+    assert "fail" in result["details"].get("error", "")
+
+
 def test_os_banner_scan_collects_os_and_banners(monkeypatch):
     class MockScanner:
         def scan(self, target, arguments=""):
@@ -270,6 +282,7 @@ def test_upnp_scan_handles_errors(monkeypatch):
     assert result["score"] == 0
     assert result["details"]["responders"] == []
     assert result["details"]["warnings"] == []
+    assert "boom" in result["details"].get("error", "")
 
 
 def test_dns_scan_collects_answers(monkeypatch):
@@ -293,6 +306,18 @@ def test_dns_scan_collects_answers(monkeypatch):
     result = dns.scan()
     assert result["score"] == 1
     assert result["details"]["answers"] == ["1.2.3.4"]
+
+
+def test_dns_scan_handles_error(monkeypatch):
+    """Errors from sr1 should be surfaced."""
+
+    def boom(*args, **kwargs):  # noqa: D401, ARG001, ARG002
+        raise RuntimeError("dns fail")
+
+    monkeypatch.setattr(dns, "sr1", boom)
+    result = dns.scan()
+    assert result["score"] == 0
+    assert "dns fail" in result["details"].get("error", "")
 
 
 def test_dhcp_scan_detects_servers(monkeypatch):
@@ -345,6 +370,18 @@ def test_dhcp_scan_deduplicates_servers(monkeypatch):
     result = dhcp.scan()
     assert result["score"] == 1
     assert result["details"]["servers"] == ["10.0.0.1"]
+
+
+def test_dhcp_scan_handles_errors(monkeypatch):
+    """srp raising should surface an error and score 0."""
+
+    def boom(*args, **kwargs):  # noqa: D401, ARG001, ARG002
+        raise RuntimeError("dhcp fail")
+
+    monkeypatch.setattr(dhcp, "srp", boom)
+    result = dhcp.scan()
+    assert result["score"] == 0
+    assert "dhcp fail" in result["details"].get("error", "")
 
 
 def test_arp_spoof_scan_detects_table_change(monkeypatch):
@@ -415,3 +452,15 @@ def test_ssl_cert_scan_flags_expired(monkeypatch):
     result = ssl_cert.scan("example.com")
     assert result["score"] == 1
     assert result["details"]["expired"] is True
+
+
+def test_ssl_cert_scan_handles_error(monkeypatch):
+    """Connection failures should be reported as errors."""
+
+    def boom(*args, **kwargs):  # noqa: D401, ARG001, ARG002
+        raise OSError("connect fail")
+
+    monkeypatch.setattr(ssl_cert.socket, "create_connection", boom)
+    result = ssl_cert.scan("example.com")
+    assert result["score"] == 0
+    assert "connect fail" in result["details"].get("error", "")

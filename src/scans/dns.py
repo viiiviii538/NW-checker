@@ -7,6 +7,7 @@ def scan(domain: str = "example.com", server: str = "8.8.8.8") -> dict:
     """Query *domain* using DNS and return any answers."""
 
     answers = []
+    error = ""
     try:
         pkt = IP(dst=server) / UDP(sport=12345, dport=53) / DNS(rd=1, qd=DNSQR(qname=domain))
         resp = sr1(pkt, timeout=2, verbose=False)
@@ -15,12 +16,15 @@ def scan(domain: str = "example.com", server: str = "8.8.8.8") -> dict:
                 ans = resp[DNS].an[i]
                 if getattr(ans, "rdata", None):
                     answers.append(str(ans.rdata))
-    except Exception:  # pragma: no cover
-        pass
+    except Exception as exc:  # pragma: no cover
+        error = str(exc)
 
+    details = {"domain": domain, "answers": answers}
+    if error:
+        details["error"] = error
     return {
         "category": "dns",
-        "score": len(answers),
-        "details": {"domain": domain, "answers": answers},
+        "score": 0 if error else len(answers),
+        "details": details,
     }
 

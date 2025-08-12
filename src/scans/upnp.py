@@ -20,6 +20,7 @@ def scan(target: str = SSDP_ADDR) -> dict:
 
     responders: list[str] = []
     warnings: list[str] = []
+    error = ""
     try:
         pkt = IP(dst=target) / UDP(sport=SSDP_PORT, dport=SSDP_PORT) / Raw(load=query)
         ans = sr1(pkt, timeout=1, verbose=False)
@@ -31,12 +32,15 @@ def scan(target: str = SSDP_ADDR) -> dict:
                 warnings.append(f"UPnP service responded from {src}")
             else:
                 warnings.append(f"Misconfigured SSDP response from {src}")
-    except Exception:  # pragma: no cover
-        pass
+    except Exception as exc:  # pragma: no cover
+        error = str(exc)
 
+    details = {"responders": responders, "warnings": warnings}
+    if error:
+        details["error"] = error
     return {
         "category": "upnp",
-        "score": len(warnings),
-        "details": {"responders": responders, "warnings": warnings},
+        "score": 0 if error else len(warnings),
+        "details": details,
     }
 
