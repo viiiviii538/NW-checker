@@ -395,12 +395,13 @@ def test_arp_spoof_scan_handles_send_error(monkeypatch):
     """Injection failure should be reported with score 0."""
 
     def boom(*args, **kwargs):  # noqa: D401, ARG001
-        raise RuntimeError("send error")
+        raise RuntimeError("send fail")
 
     monkeypatch.setattr(arp_spoof, "send", boom)
     result = arp_spoof.scan(wait=0)
     assert result["score"] == 0
-    assert "send error" in result["details"].get("error", "")
+    assert result["category"] == "arp_spoof"
+    assert result["details"] == {"error": "send fail"}
 
 
 # --- SSL certificate -----------------------------------------------------
