@@ -31,17 +31,31 @@ def _get_arp_table() -> Dict[str, str]:
     return table
 
 
-def scan(wait: float = 1.0) -> dict:
-    """Inject a spoofed ARP reply and watch for table changes."""
+def scan(
+    wait: float = 1.0,
+    fake_ip: str = FAKE_IP,
+    fake_mac: str = FAKE_MAC,
+) -> dict:
+    """Inject a spoofed ARP reply and watch for table changes.
+
+    Parameters
+    ----------
+    wait:
+        Packet送信後に待機する秒数。
+    fake_ip:
+        ARPテーブルに注入するIPアドレス。
+    fake_mac:
+        ``fake_ip`` に紐付ける偽のMACアドレス。
+    """
 
     before = _get_arp_table()
 
     try:
         pkt = ARP(
             op=2,  # is-at
-            psrc=FAKE_IP,
-            hwsrc=FAKE_MAC,
-            pdst=FAKE_IP,
+            psrc=fake_ip,
+            hwsrc=fake_mac,
+            pdst=fake_ip,
             hwdst="ff:ff:ff:ff:ff:ff",
         )
         send(pkt, verbose=False)
@@ -54,7 +68,7 @@ def scan(wait: float = 1.0) -> dict:
         }
 
     after = _get_arp_table()
-    changed = before.get(FAKE_IP) != FAKE_MAC and after.get(FAKE_IP) == FAKE_MAC
+    changed = before.get(fake_ip) != fake_mac and after.get(fake_ip) == fake_mac
     explanation = (
         "ARP table updated with spoofed entry"
         if changed
