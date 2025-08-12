@@ -74,7 +74,7 @@ def test_ports_scan_handles_exception(monkeypatch):
     monkeypatch.setattr(ports.socket, "create_connection", boom)
     result = ports.scan("host")
     assert result["score"] == 0
-    assert "fail" in result["details"].get("error", "")
+    assert "fail" in result["details"]["error"]
 
 
 def test_os_banner_scan_collects_os_and_banners(monkeypatch):
@@ -282,7 +282,7 @@ def test_upnp_scan_handles_errors(monkeypatch):
     assert result["score"] == 0
     assert result["details"]["responders"] == []
     assert result["details"]["warnings"] == []
-    assert "boom" in result["details"].get("error", "")
+    assert "boom" in result["details"]["error"]
 
 
 def test_dns_scan_collects_answers(monkeypatch):
@@ -317,7 +317,7 @@ def test_dns_scan_handles_error(monkeypatch):
     monkeypatch.setattr(dns, "sr1", boom)
     result = dns.scan()
     assert result["score"] == 0
-    assert "dns fail" in result["details"].get("error", "")
+    assert "dns fail" in result["details"]["error"]
 
 
 def test_dhcp_scan_detects_servers(monkeypatch):
@@ -381,7 +381,7 @@ def test_dhcp_scan_handles_errors(monkeypatch):
     monkeypatch.setattr(dhcp, "srp", boom)
     result = dhcp.scan()
     assert result["score"] == 0
-    assert "dhcp fail" in result["details"].get("error", "")
+    assert "dhcp fail" in result["details"]["error"]
 
 
 def test_arp_spoof_scan_detects_table_change(monkeypatch):
@@ -437,7 +437,7 @@ def test_arp_spoof_scan_handles_send_error(monkeypatch):
     monkeypatch.setattr(arp_spoof, "send", boom)
     result = arp_spoof.scan(wait=0)
     assert result["score"] == 0
-    assert "send error" in result["details"].get("error", "")
+    assert "send error" in result["details"]["error"]
 
 
 # --- SSL certificate -----------------------------------------------------
@@ -463,4 +463,4 @@ def test_ssl_cert_scan_handles_error(monkeypatch):
     monkeypatch.setattr(ssl_cert.socket, "create_connection", boom)
     result = ssl_cert.scan("example.com")
     assert result["score"] == 0
-    assert "connect fail" in result["details"].get("error", "")
+    assert "connect fail" in result["details"]["error"]
