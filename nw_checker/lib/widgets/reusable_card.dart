@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// 再利用可能なカードコンポーネント
+/// 再利用可能なカードコンポーネントの雛形
 class ReusableCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry margin;
