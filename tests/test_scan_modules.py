@@ -372,6 +372,17 @@ def test_dhcp_scan_deduplicates_servers(monkeypatch):
     assert result["details"]["servers"] == ["10.0.0.1"]
 
 
+def test_dhcp_scan_no_servers(monkeypatch):
+    """No responses should yield empty server list and no warnings."""
+
+    monkeypatch.setattr(dhcp, "srp", lambda *_, **__: ([], None))
+    result = dhcp.scan()
+    assert result["score"] == 0
+    assert result["details"]["servers"] == []
+    assert result["details"]["warnings"] == []
+    assert "error" not in result["details"]
+
+
 def test_dhcp_scan_handles_errors(monkeypatch):
     """srp raising should surface an error and score 0."""
 
