@@ -285,27 +285,40 @@ def test_upnp_scan_handles_errors(monkeypatch):
     assert "boom" in result["details"]["error"]
 
 
-def test_dns_scan_collects_answers(monkeypatch):
-    class FakeAnswer:
-        def __init__(self, rdata):
-            self.rdata = rdata
-
-    class FakeDNSLayer:
-        def __init__(self):
-            self.ancount = 1
-            self.an = [FakeAnswer("1.2.3.4")]
-
+def test_dns_scan_flags_external_dns(monkeypatch):
     class FakeResp:
         def haslayer(self, layer):
             return True
 
-        def __getitem__(self, layer):
-            return FakeDNSLayer()
+        def __getitem__(self, layer):  # noqa: D401, ARG002
+            class FakeDNS:
+                ad = 1
 
+            return FakeDNS()
+
+    monkeypatch.setattr(dns, "_get_nameservers", lambda path="/etc/resolv.conf": ["8.8.8.8"])
     monkeypatch.setattr(dns, "sr1", lambda *_, **__: FakeResp())
     result = dns.scan()
-    assert result["score"] == 1
-    assert result["details"]["answers"] == ["1.2.3.4"]
+    warnings = result["details"]["warnings"]
+    assert any("外部DNSが検出されました" in w for w in warnings)
+
+
+def test_dns_scan_flags_dnssec_disabled(monkeypatch):
+    class FakeResp:
+        def haslayer(self, layer):
+            return True
+
+        def __getitem__(self, layer):  # noqa: D401, ARG002
+            class FakeDNS:
+                ad = 0
+
+            return FakeDNS()
+
+    monkeypatch.setattr(dns, "_get_nameservers", lambda path="/etc/resolv.conf": ["1.1.1.1"])
+    monkeypatch.setattr(dns, "sr1", lambda *_, **__: FakeResp())
+    result = dns.scan()
+    warnings = result["details"]["warnings"]
+    assert "DNSSECが無効です" in warnings
 
 
 def test_dns_scan_handles_error(monkeypatch):

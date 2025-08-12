@@ -76,6 +76,14 @@ void main() {
             },
           },
           {
+            'category': 'dns',
+            'details': {
+              'warnings': [],
+              'servers': ['1.1.1.1'],
+              'dnssec_enabled': true,
+            },
+          },
+          {
             'category': 'ssl_cert',
             'details': {'host': 'example.com', 'expired': false},
           },
@@ -91,7 +99,7 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
-    expect(find.text('OK'), findsNWidgets(7));
+    expect(find.text('OK'), findsNWidgets(8));
     expect(find.text('警告'), findsNothing);
   });
 
@@ -131,6 +139,14 @@ void main() {
             },
           },
           {
+            'category': 'dns',
+            'details': {
+              'warnings': [],
+              'servers': ['1.1.1.1'],
+              'dnssec_enabled': true,
+            },
+          },
+          {
             'category': 'ssl_cert',
             'details': {'host': 'example.com', 'expired': false},
           },
@@ -161,7 +177,10 @@ void main() {
       return {
         'summary': [],
         'findings': [
-          {'category': 'ports', 'details': {'open_ports': []}},
+          {
+            'category': 'ports',
+            'details': {'open_ports': []},
+          },
           {
             'category': 'os_banner',
             'details': {
@@ -249,6 +268,14 @@ void main() {
             },
           },
           {
+            'category': 'dns',
+            'details': {
+              'warnings': [],
+              'servers': ['1.1.1.1'],
+              'dnssec_enabled': true,
+            },
+          },
+          {
             'category': 'ssl_cert',
             'details': {'host': 'example.com', 'expired': false},
           },
@@ -305,6 +332,14 @@ void main() {
             'details': {
               'servers': ['1.1.1.1'],
               'warnings': [],
+            },
+          },
+          {
+            'category': 'dns',
+            'details': {
+              'warnings': [],
+              'servers': ['1.1.1.1'],
+              'dnssec_enabled': true,
             },
           },
           {
@@ -369,6 +404,14 @@ void main() {
             'details': {
               'servers': ['1.1.1.1'],
               'warnings': [],
+            },
+          },
+          {
+            'category': 'dns',
+            'details': {
+              'warnings': [],
+              'servers': ['1.1.1.1'],
+              'dnssec_enabled': true,
             },
           },
           {
@@ -440,6 +483,14 @@ void main() {
             },
           },
           {
+            'category': 'dns',
+            'details': {
+              'warnings': [],
+              'servers': ['1.1.1.1'],
+              'dnssec_enabled': true,
+            },
+          },
+          {
             'category': 'ssl_cert',
             'details': {'host': 'example.com', 'expired': false},
           },
@@ -502,6 +553,14 @@ void main() {
             },
           },
           {
+            'category': 'dns',
+            'details': {
+              'warnings': [],
+              'servers': ['1.1.1.1'],
+              'dnssec_enabled': true,
+            },
+          },
+          {
             'category': 'ssl_cert',
             'details': {'host': 'example.com', 'expired': true},
           },
@@ -518,10 +577,77 @@ void main() {
     await tester.pumpAndSettle();
 
     final chips = tester.widgetList<Chip>(find.byType(Chip)).toList();
-    final sslLabel = chips[6].label as Text;
+    final sslLabel = chips[7].label as Text;
     expect(sslLabel.data, '警告');
     await tester.tap(find.text('SSL証明書'));
     await tester.pumpAndSettle();
     expect(find.text('証明書は期限切れ'), findsOneWidget);
+  });
+
+  testWidgets('external DNS shows warning in tile', (tester) async {
+    Future<Map<String, dynamic>> mockScan() async {
+      return {
+        'summary': [],
+        'findings': [
+          {
+            'category': 'ports',
+            'details': {'open_ports': []},
+          },
+          {
+            'category': 'os_banner',
+            'details': {'os': 'Linux', 'banners': {}},
+          },
+          {
+            'category': 'smb_netbios',
+            'details': {'smb1_enabled': false, 'netbios_names': []},
+          },
+          {
+            'category': 'upnp',
+            'details': {'responders': [], 'warnings': []},
+          },
+          {
+            'category': 'arp_spoof',
+            'details': {
+              'vulnerable': false,
+              'explanation': 'No ARP poisoning detected',
+            },
+          },
+          {
+            'category': 'dhcp',
+            'details': {
+              'servers': ['1.1.1.1'],
+              'warnings': [],
+            },
+          },
+          {
+            'category': 'dns',
+            'details': {
+              'warnings': ['外部DNSが検出されました: 8.8.8.8'],
+              'servers': ['8.8.8.8'],
+              'dnssec_enabled': false,
+            },
+          },
+          {
+            'category': 'ssl_cert',
+            'details': {'host': 'example.com', 'expired': false},
+          },
+        ],
+      };
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(home: StaticScanTab(scanner: mockScan)),
+    );
+
+    await tester.tap(find.byKey(const Key('staticButton')));
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    final chips = tester.widgetList<Chip>(find.byType(Chip)).toList();
+    final dnsLabel = chips[6].label as Text;
+    expect(dnsLabel.data, '警告');
+    await tester.tap(find.text('DNS'));
+    await tester.pumpAndSettle();
+    expect(find.text('外部DNSが検出されました: 8.8.8.8'), findsOneWidget);
   });
 }
