@@ -53,8 +53,9 @@ void main() {
     };
   }
 
-  Widget buildWidget() =>
-      MaterialApp(home: Scaffold(body: StaticScanTab(scanner: mockScan)));
+  Widget buildWidget() => MaterialApp(
+    home: Scaffold(body: StaticScanTab(scanner: mockScan)),
+  );
 
   testWidgets('button tap shows progress then results and categories', (
     tester,
@@ -120,12 +121,17 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('ポート 22: open'), findsOneWidget);
     expect(find.text('ポート 80: open'), findsOneWidget);
+    // 折りたたんで他カテゴリを表示可能にする
+    await tester.tap(find.text('Port Scan'));
+    await tester.pumpAndSettle();
 
     await tester.tap(find.text('OS / Services'));
     await tester.pumpAndSettle();
     expect(find.text('OS: Linux'), findsOneWidget);
     expect(find.text('ポート 22: ssh'), findsOneWidget);
     expect(find.text('ポート 80: http'), findsOneWidget);
+    await tester.tap(find.text('OS / Services'));
+    await tester.pumpAndSettle();
 
     await tester.tap(find.text('SMB / NetBIOS'));
     await tester.pumpAndSettle();
@@ -142,9 +148,6 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('ARP Spoof'));
     await tester.pumpAndSettle();
-    expect(
-      find.text('ARP table updated with spoofed entry'),
-      findsOneWidget,
-    );
+    expect(find.text('ARP table updated with spoofed entry'), findsOneWidget);
   });
 }
