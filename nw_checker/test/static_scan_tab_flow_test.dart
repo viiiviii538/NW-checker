@@ -130,12 +130,17 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('ポート 22: open'), findsOneWidget);
     expect(find.text('ポート 80: open'), findsOneWidget);
+    // 折りたたんで他カテゴリを表示可能にする
+    await tester.tap(find.text('Port Scan'));
+    await tester.pumpAndSettle();
 
     await tester.tap(find.text('OS / Services'));
     await tester.pumpAndSettle();
     expect(find.text('OS: Linux'), findsOneWidget);
     expect(find.text('ポート 22: ssh'), findsOneWidget);
     expect(find.text('ポート 80: http'), findsOneWidget);
+    await tester.tap(find.text('OS / Services'));
+    await tester.pumpAndSettle();
 
     await tester.tap(find.text('SMB / NetBIOS'));
     await tester.pumpAndSettle();

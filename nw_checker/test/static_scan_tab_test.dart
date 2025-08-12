@@ -9,6 +9,37 @@ void main() {
     expect(result.containsKey('findings'), isTrue);
   });
 
+  testWidgets('port scan tile shows summary and details', (tester) async {
+    Future<Map<String, dynamic>> mockScan() async {
+      return {
+        'summary': [],
+        'findings': [
+          {
+            'category': 'ports',
+            'details': {
+              'open_ports': [22, 80],
+            },
+          },
+        ],
+      };
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(home: StaticScanTab(scanner: mockScan)),
+    );
+
+    await tester.tap(find.byKey(const Key('staticButton')));
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Port Scan'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Open ports: 22, 80'), findsOneWidget);
+    expect(find.text('ポート 22: open'), findsOneWidget);
+    expect(find.text('ポート 80: open'), findsOneWidget);
+  });
+
   testWidgets('no open ports marks port tile OK', (tester) async {
     Future<Map<String, dynamic>> mockScan() async {
       return {

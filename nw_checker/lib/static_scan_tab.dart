@@ -99,7 +99,13 @@ class _StaticScanTabState extends State<StaticScanTab> {
             (portsFinding['details']?['open_ports'] as List? ?? []).cast<int>();
         _categories[0]
           ..status = openPorts.isEmpty ? ScanStatus.ok : ScanStatus.warning
-          ..details = openPorts.map((p) => 'ポート $p: open').toList();
+          ..details = [
+            if (openPorts.isEmpty)
+              'No open ports detected'
+            else
+              'Open ports: ${openPorts.join(', ')}',
+            ...openPorts.map((p) => 'ポート $p: open'),
+          ];
 
         final osFinding = findings.firstWhere(
           (f) => f['category'] == 'os_banner',
