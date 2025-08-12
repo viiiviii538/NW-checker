@@ -6,29 +6,36 @@ import socket
 from typing import Dict, List, Tuple
 
 # 一般的に危険とされるポート番号のリスト
+# 日本語コメントでポートの用途を説明
 RISKY_PORTS: Tuple[int, ...] = (
-    21,
-    22,
-    23,
-    25,
-    53,
-    80,
-    110,
-    139,
-    143,
-    443,
-    445,
-    3389,
+    21,  # FTP
+    22,  # SSH
+    23,  # Telnet
+    25,  # SMTP
+    53,  # DNS
+    80,  # HTTP
+    110,  # POP3
+    139,  # NetBIOS
+    143,  # IMAP
+    443,  # HTTPS
+    445,  # SMB
+    3389,  # RDP
 )
 
 
 def scan(target_host: str = "127.0.0.1") -> Dict[str, object]:
-    """Check common risky ports on *target_host*.
+    """Check *target_host* for open ports considered risky.
+
+    Parameters
+    ----------
+    target_host: str
+        スキャン対象ホスト名。省略時は ``localhost`` を使用。
 
     Returns
     -------
     dict
-        結果は ``{category, score, details}`` の形式で返す。
+        ``{category, score, details}`` 形式の辞書を返す。
+        ``details`` には ``open_ports`` のリストを格納。
     """
 
     open_ports: List[int] = []
@@ -38,6 +45,7 @@ def scan(target_host: str = "127.0.0.1") -> Dict[str, object]:
             with socket.create_connection((target_host, port), timeout=0.5):
                 open_ports.append(port)
         except OSError:
+            # 接続失敗時はポートが閉じていると判断
             continue
 
     return {

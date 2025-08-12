@@ -7,14 +7,14 @@ import 'package:http/http.dart' as http;
 /// 実際のバックエンドとの通信は今後実装予定。
 class DynamicScanApi {
   static const _baseUrl = 'http://localhost:8000';
-  static const String _token = String.fromEnvironment('API_TOKEN', defaultValue: '');
+  static const String _token = String.fromEnvironment(
+    'API_TOKEN',
+    defaultValue: '',
+  );
 
   static Map<String, String> _headers() => _token.isEmpty
       ? {'Content-Type': 'application/json'}
-      : {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $_token',
-        };
+      : {'Content-Type': 'application/json', 'Authorization': 'Bearer $_token'};
 
   /// スキャンを開始する。
   static Future<void> startScan() async {
@@ -66,7 +66,12 @@ class DynamicScanApi {
           'name': 'protocols',
           'severity': 'high',
           'issues': ['ftp'],
-        }
+        },
+        {
+          'name': 'dhcp',
+          'severity': 'medium',
+          'issues': ['10.0.0.1', 'WARNING: Multiple DHCP servers detected'],
+        },
       ],
     };
     yield await Future.delayed(
@@ -83,7 +88,8 @@ class DynamicScanApi {
     try {
       final resp = await http.get(
         Uri.parse(
-            '$_baseUrl/scan/dynamic/history?start=${from.toIso8601String()}&end=${to.toIso8601String()}'),
+          '$_baseUrl/scan/dynamic/history?start=${from.toIso8601String()}&end=${to.toIso8601String()}',
+        ),
         headers: _headers(),
       );
       if (resp.statusCode == 200) {

@@ -9,6 +9,37 @@ void main() {
     expect(result.containsKey('findings'), isTrue);
   });
 
+  testWidgets('port scan tile shows summary and details', (tester) async {
+    Future<Map<String, dynamic>> mockScan() async {
+      return {
+        'summary': [],
+        'findings': [
+          {
+            'category': 'ports',
+            'details': {
+              'open_ports': [22, 80],
+            },
+          },
+        ],
+      };
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(home: StaticScanTab(scanner: mockScan)),
+    );
+
+    await tester.tap(find.byKey(const Key('staticButton')));
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Port Scan'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Open ports: 22, 80'), findsOneWidget);
+    expect(find.text('ポート 22: open'), findsOneWidget);
+    expect(find.text('ポート 80: open'), findsOneWidget);
+  });
+
   testWidgets('no open ports marks port tile OK', (tester) async {
     Future<Map<String, dynamic>> mockScan() async {
       return {
@@ -123,6 +154,63 @@ void main() {
     await tester.tap(find.text('OS / Services'));
     await tester.pumpAndSettle();
     expect(find.text('情報取得失敗'), findsOneWidget);
+  });
+
+  testWidgets('shows OS and service banners in tile', (tester) async {
+    Future<Map<String, dynamic>> mockScan() async {
+      return {
+        'summary': [],
+        'findings': [
+          {'category': 'ports', 'details': {'open_ports': []}},
+          {
+            'category': 'os_banner',
+            'details': {
+              'os': 'Linux',
+              'banners': {'80': 'http Apache'},
+            },
+          },
+          {
+            'category': 'smb_netbios',
+            'details': {'smb1_enabled': false, 'netbios_names': []},
+          },
+          {
+            'category': 'upnp',
+            'details': {'responders': [], 'warnings': []},
+          },
+          {
+            'category': 'arp_spoof',
+            'details': {
+              'vulnerable': false,
+              'explanation': 'No ARP poisoning detected',
+            },
+          },
+          {
+            'category': 'dhcp',
+            'details': {
+              'servers': ['1.1.1.1'],
+              'warnings': [],
+            },
+          },
+        ],
+      };
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(home: StaticScanTab(scanner: mockScan)),
+    );
+
+    await tester.tap(find.byKey(const Key('staticButton')));
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    final chips = tester.widgetList<Chip>(find.byType(Chip)).toList();
+    final osLabel = chips[1].label as Text;
+    expect(osLabel.data, 'OK');
+
+    await tester.tap(find.text('OS / Services'));
+    await tester.pumpAndSettle();
+    expect(find.text('OS: Linux'), findsOneWidget);
+    expect(find.text('ポート 80: http Apache'), findsOneWidget);
   });
 
   testWidgets('SMBv1 enabled shows warning in tile', (tester) async {

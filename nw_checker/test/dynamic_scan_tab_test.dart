@@ -62,17 +62,38 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     await tester.pump();
 
-    final iconFinder = find.byIcon(Icons.security);
-    expect(iconFinder, findsOneWidget);
-    final icon = tester.widget<Icon>(iconFinder);
-    expect(icon.color, Colors.red);
+    final icons = tester.widgetList<Icon>(find.byIcon(Icons.security)).toList();
+    expect(icons, isNotEmpty);
+    expect(icons.first.color, Colors.red);
 
     await tester.tap(find.text('protocols'));
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('ftp'), findsOneWidget);
   });
 
-  testWidgets('shows snackbar on alert and navigates to detail', (tester) async {
+  testWidgets('shows DHCP server IPs and warnings', (tester) async {
+    await tester.pumpWidget(_buildWidget());
+
+    await tester.tap(find.text('スキャン開始'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
+
+    expect(find.text('dhcp'), findsOneWidget);
+    await tester.tap(find.text('dhcp'));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('10.0.0.1'), findsOneWidget);
+    expect(
+      find.textContaining('Multiple DHCP servers detected'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('shows snackbar on alert and navigates to detail', (
+    tester,
+  ) async {
     await tester.pumpWidget(_buildWidget());
 
     await tester.tap(find.text('スキャン開始'));
