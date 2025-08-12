@@ -58,13 +58,14 @@ class _StaticScanTabState extends State<StaticScanTab> {
   @override
   void initState() {
     super.initState();
-      _categories = [
+    _categories = [
       CategoryTile(title: 'Port Scan', icon: Icons.router),
       CategoryTile(title: 'OS / Services', icon: Icons.computer),
       CategoryTile(title: 'SMB / NetBIOS', icon: Icons.folder),
       CategoryTile(title: 'UPnP', icon: Icons.cast),
       CategoryTile(title: 'ARP Spoof', icon: Icons.security),
       CategoryTile(title: 'DHCP', icon: Icons.dns),
+      CategoryTile(title: 'SSL証明書', icon: Icons.lock),
     ];
   }
 
@@ -98,26 +99,28 @@ class _StaticScanTabState extends State<StaticScanTab> {
             (portsFinding['details']?['open_ports'] as List? ?? []).cast<int>();
         _categories[0]
           ..status = openPorts.isEmpty ? ScanStatus.ok : ScanStatus.warning
-          ..details = openPorts.map((p) => 'ポート $p: open').toList();
+          ..details = [
+            if (openPorts.isEmpty)
+              'No open ports detected'
+            else
+              'Open ports: ${openPorts.join(', ')}',
+            ...openPorts.map((p) => 'ポート $p: open'),
+          ];
 
         final osFinding = findings.firstWhere(
           (f) => f['category'] == 'os_banner',
           orElse: () => <String, dynamic>{},
         );
         final osName = osFinding['details']?['os'] as String? ?? '';
-        final bannerMap =
-            (osFinding['details']?['banners'] as Map? ?? {})
-                .cast<String, dynamic>();
+        final bannerMap = (osFinding['details']?['banners'] as Map? ?? {})
+            .cast<String, dynamic>();
         _categories[1]
-          ..status =
-              (osName.isNotEmpty || bannerMap.isNotEmpty)
-                  ? ScanStatus.ok
-                  : ScanStatus.error
+          ..status = (osName.isNotEmpty || bannerMap.isNotEmpty)
+              ? ScanStatus.ok
+              : ScanStatus.error
           ..details = [
             if (osName.isNotEmpty) 'OS: $osName',
-            ...bannerMap.entries
-                .map((e) => 'ポート ${e.key}: ${e.value}')
-                ,
+            ...bannerMap.entries.map((e) => 'ポート ${e.key}: ${e.value}'),
             if (osName.isEmpty && bannerMap.isEmpty) '情報取得失敗',
           ];
 
@@ -128,14 +131,13 @@ class _StaticScanTabState extends State<StaticScanTab> {
         final smbDetails =
             (smbFinding['details'] as Map?)?.cast<String, dynamic>() ?? {};
         final smb1 = smbDetails['smb1_enabled'] as bool?;
-        final smbNames =
-            (smbDetails['netbios_names'] as List? ?? []).cast<String>();
+        final smbNames = (smbDetails['netbios_names'] as List? ?? [])
+            .cast<String>();
         final smbError = smbDetails['error'] as String?;
         _categories[2]
-          ..status =
-              smbError != null
-                  ? ScanStatus.error
-                  : (smb1 == true ? ScanStatus.warning : ScanStatus.ok)
+          ..status = smbError != null
+              ? ScanStatus.error
+              : (smb1 == true ? ScanStatus.warning : ScanStatus.ok)
           ..details = [
             if (smb1 != null) 'SMBv1: ${smb1 ? '有効' : '無効'}',
             ...smbNames.map((n) => 'NetBIOS: $n'),
@@ -148,13 +150,12 @@ class _StaticScanTabState extends State<StaticScanTab> {
         );
         final upnpDetails =
             (upnpFinding['details'] as Map?)?.cast<String, dynamic>() ?? {};
-        final upnpWarnings =
-            (upnpDetails['warnings'] as List? ?? []).cast<String>();
-        final upnpResponders =
-            (upnpDetails['responders'] as List? ?? []).cast<String>();
+        final upnpWarnings = (upnpDetails['warnings'] as List? ?? [])
+            .cast<String>();
+        final upnpResponders = (upnpDetails['responders'] as List? ?? [])
+            .cast<String>();
         _categories[3]
-          ..status =
-              upnpWarnings.isEmpty ? ScanStatus.ok : ScanStatus.warning
+          ..status = upnpWarnings.isEmpty ? ScanStatus.ok : ScanStatus.warning
           ..details = [
             ...upnpWarnings,
             ...upnpResponders.map((ip) => 'ホスト $ip'),
@@ -173,9 +174,7 @@ class _StaticScanTabState extends State<StaticScanTab> {
           ..status = arpVuln == null
               ? ScanStatus.error
               : (arpVuln ? ScanStatus.warning : ScanStatus.ok)
-          ..details = [
-            if (arpExplain != null) arpExplain else '情報取得失敗',
-          ];
+          ..details = [if (arpExplain != null) arpExplain else '情報取得失敗'];
 
         final dhcpFinding = findings.firstWhere(
           (f) => f['category'] == 'dhcp',
@@ -183,10 +182,10 @@ class _StaticScanTabState extends State<StaticScanTab> {
         );
         final dhcpDetails =
             (dhcpFinding['details'] as Map?)?.cast<String, dynamic>() ?? {};
-        final dhcpServers =
-            (dhcpDetails['servers'] as List? ?? []).cast<String>();
-        final dhcpWarnings =
-            (dhcpDetails['warnings'] as List? ?? []).cast<String>();
+        final dhcpServers = (dhcpDetails['servers'] as List? ?? [])
+            .cast<String>();
+        final dhcpWarnings = (dhcpDetails['warnings'] as List? ?? [])
+            .cast<String>();
         _categories[5]
           ..status = dhcpServers.isEmpty
               ? ScanStatus.error
@@ -195,6 +194,25 @@ class _StaticScanTabState extends State<StaticScanTab> {
             ...dhcpWarnings,
             ...dhcpServers.map((ip) => 'サーバー $ip'),
             if (dhcpServers.isEmpty) '応答なし',
+          ];
+
+        final sslFinding = findings.firstWhere(
+          (f) => f['category'] == 'ssl_cert',
+          orElse: () => <String, dynamic>{},
+        );
+        final sslDetails =
+            (sslFinding['details'] as Map?)?.cast<String, dynamic>() ?? {};
+        final sslExpired = sslDetails['expired'] as bool?;
+        final sslHost = sslDetails['host'] as String? ?? '';
+        _categories[6]
+          ..status = sslExpired == null
+              ? ScanStatus.error
+              : (sslExpired ? ScanStatus.warning : ScanStatus.ok)
+          ..details = [
+            if (sslHost.isNotEmpty) 'ホスト: $sslHost',
+            if (sslExpired == true) '証明書は期限切れ',
+            if (sslExpired == false) '証明書は有効',
+            if (sslExpired == null) '情報取得失敗',
           ];
       });
     });
@@ -273,6 +291,7 @@ class _StaticScanTabState extends State<StaticScanTab> {
         _buildSummaryCard(),
         ElevatedButton(
           key: const Key('staticButton'),
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.blueGrey),
           onPressed: _startScan,
           child: const Text('スキャン開始'),
         ),

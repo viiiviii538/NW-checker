@@ -9,12 +9,46 @@ void main() {
     expect(result.containsKey('findings'), isTrue);
   });
 
+  testWidgets('port scan tile shows summary and details', (tester) async {
+    Future<Map<String, dynamic>> mockScan() async {
+      return {
+        'summary': [],
+        'findings': [
+          {
+            'category': 'ports',
+            'details': {
+              'open_ports': [22, 80],
+            },
+          },
+        ],
+      };
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(home: StaticScanTab(scanner: mockScan)),
+    );
+
+    await tester.tap(find.byKey(const Key('staticButton')));
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Port Scan'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Open ports: 22, 80'), findsOneWidget);
+    expect(find.text('ポート 22: open'), findsOneWidget);
+    expect(find.text('ポート 80: open'), findsOneWidget);
+  });
+
   testWidgets('no open ports marks port tile OK', (tester) async {
     Future<Map<String, dynamic>> mockScan() async {
       return {
         'summary': [],
         'findings': [
-          {'category': 'ports', 'details': {'open_ports': []}},
+          {
+            'category': 'ports',
+            'details': {'open_ports': []},
+          },
           {
             'category': 'os_banner',
             'details': {'os': 'Linux', 'banners': {}},
@@ -41,6 +75,10 @@ void main() {
               'warnings': [],
             },
           },
+          {
+            'category': 'ssl_cert',
+            'details': {'host': 'example.com', 'expired': false},
+          },
         ],
       };
     }
@@ -53,7 +91,7 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
-    expect(find.text('OK'), findsNWidgets(6));
+    expect(find.text('OK'), findsNWidgets(7));
     expect(find.text('警告'), findsNothing);
   });
 
@@ -62,8 +100,14 @@ void main() {
       return {
         'summary': [],
         'findings': [
-          {'category': 'ports', 'details': {'open_ports': []}},
-          {'category': 'os_banner', 'details': {'os': '', 'banners': {}}},
+          {
+            'category': 'ports',
+            'details': {'open_ports': []},
+          },
+          {
+            'category': 'os_banner',
+            'details': {'os': '', 'banners': {}},
+          },
           {
             'category': 'smb_netbios',
             'details': {'smb1_enabled': false, 'netbios_names': []},
@@ -85,6 +129,10 @@ void main() {
               'servers': ['1.1.1.1'],
               'warnings': [],
             },
+          },
+          {
+            'category': 'ssl_cert',
+            'details': {'host': 'example.com', 'expired': false},
           },
         ],
       };
@@ -113,7 +161,10 @@ void main() {
       return {
         'summary': [],
         'findings': [
-          {'category': 'ports', 'details': {'open_ports': []}},
+          {
+            'category': 'ports',
+            'details': {'open_ports': []},
+          },
           {
             'category': 'os_banner',
             'details': {'os': 'Linux', 'banners': {}},
@@ -140,6 +191,10 @@ void main() {
               'warnings': [],
             },
           },
+          {
+            'category': 'ssl_cert',
+            'details': {'host': 'example.com', 'expired': false},
+          },
         ],
       };
     }
@@ -162,7 +217,10 @@ void main() {
       return {
         'summary': [],
         'findings': [
-          {'category': 'ports', 'details': {'open_ports': []}},
+          {
+            'category': 'ports',
+            'details': {'open_ports': []},
+          },
           {
             'category': 'os_banner',
             'details': {'os': 'Linux', 'banners': {}},
@@ -192,6 +250,10 @@ void main() {
               'warnings': [],
             },
           },
+          {
+            'category': 'ssl_cert',
+            'details': {'host': 'example.com', 'expired': false},
+          },
         ],
       };
     }
@@ -212,12 +274,17 @@ void main() {
     expect(find.text('UPnP service responded from 1.1.1.1'), findsOneWidget);
   });
 
-  testWidgets('misconfigured UPnP response shows warning in tile', (tester) async {
+  testWidgets('misconfigured UPnP response shows warning in tile', (
+    tester,
+  ) async {
     Future<Map<String, dynamic>> mockScan() async {
       return {
         'summary': [],
         'findings': [
-          {'category': 'ports', 'details': {'open_ports': []}},
+          {
+            'category': 'ports',
+            'details': {'open_ports': []},
+          },
           {
             'category': 'os_banner',
             'details': {'os': 'Linux', 'banners': {}},
@@ -247,6 +314,10 @@ void main() {
               'warnings': [],
             },
           },
+          {
+            'category': 'ssl_cert',
+            'details': {'host': 'example.com', 'expired': false},
+          },
         ],
       };
     }
@@ -273,10 +344,7 @@ void main() {
     expect(arpLabel.data, '警告');
     await tester.tap(find.text('ARP Spoof'));
     await tester.pumpAndSettle();
-    expect(
-      find.text('ARP table updated with spoofed entry'),
-      findsOneWidget,
-    );
+    expect(find.text('ARP table updated with spoofed entry'), findsOneWidget);
   });
 
   testWidgets('multiple DHCP servers show warning in tile', (tester) async {
@@ -284,7 +352,10 @@ void main() {
       return {
         'summary': [],
         'findings': [
-          {'category': 'ports', 'details': {'open_ports': []}},
+          {
+            'category': 'ports',
+            'details': {'open_ports': []},
+          },
           {
             'category': 'os_banner',
             'details': {'os': 'Linux', 'banners': {}},
@@ -308,10 +379,12 @@ void main() {
             'category': 'dhcp',
             'details': {
               'servers': ['1.1.1.1', '2.2.2.2'],
-              'warnings': [
-                'Multiple DHCP servers detected: 1.1.1.1, 2.2.2.2'
-              ],
+              'warnings': ['Multiple DHCP servers detected: 1.1.1.1, 2.2.2.2'],
             },
+          },
+          {
+            'category': 'ssl_cert',
+            'details': {'host': 'example.com', 'expired': false},
           },
         ],
       };
@@ -335,5 +408,63 @@ void main() {
       findsOneWidget,
     );
   });
-}
 
+  testWidgets('expired SSL certificate shows warning in tile', (tester) async {
+    Future<Map<String, dynamic>> mockScan() async {
+      return {
+        'summary': [],
+        'findings': [
+          {
+            'category': 'ports',
+            'details': {'open_ports': []},
+          },
+          {
+            'category': 'os_banner',
+            'details': {'os': 'Linux', 'banners': {}},
+          },
+          {
+            'category': 'smb_netbios',
+            'details': {'smb1_enabled': false, 'netbios_names': []},
+          },
+          {
+            'category': 'upnp',
+            'details': {'responders': [], 'warnings': []},
+          },
+          {
+            'category': 'arp_spoof',
+            'details': {
+              'vulnerable': false,
+              'explanation': 'No ARP poisoning detected',
+            },
+          },
+          {
+            'category': 'dhcp',
+            'details': {
+              'servers': ['1.1.1.1'],
+              'warnings': [],
+            },
+          },
+          {
+            'category': 'ssl_cert',
+            'details': {'host': 'example.com', 'expired': true},
+          },
+        ],
+      };
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(home: StaticScanTab(scanner: mockScan)),
+    );
+
+    await tester.tap(find.byKey(const Key('staticButton')));
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    final chips = tester.widgetList<Chip>(find.byType(Chip)).toList();
+    final sslLabel = chips[6].label as Text;
+    expect(sslLabel.data, '警告');
+    await tester.tap(find.text('SSL証明書'));
+    await tester.pumpAndSettle();
+    expect(find.text('証明書は期限切れ'), findsOneWidget);
+  });
+}

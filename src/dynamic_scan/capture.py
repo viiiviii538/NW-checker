@@ -2,8 +2,12 @@ import asyncio
 from scapy.all import AsyncSniffer
 
 
-async def capture_packets(queue: asyncio.Queue, interface: str | None = None, duration: int | None = None) -> None:
-    """Capture packets using Scapy and put them onto the provided queue.
+async def capture_packets(
+    queue: asyncio.Queue,
+    interface: str | None = None,
+    duration: int | None = None,
+) -> None:
+    """Capture packets and enqueue them for analysis.
 
     Parameters
     ----------
@@ -16,14 +20,18 @@ async def capture_packets(queue: asyncio.Queue, interface: str | None = None, du
         indefinitely until cancelled.
     """
 
-    def _enqueue(packet):
+    # Callback invoked for each captured packet; place packet on queue so
+    # analysis tasks can consume it immediately.
+    def _enqueue(packet) -> None:
         queue.put_nowait(packet)
 
     sniffer = AsyncSniffer(iface=interface, prn=_enqueue)
     sniffer.start()
     try:
         if duration is None:
-            await asyncio.Event().wait()  # Run until cancelled
+            # Sleep until cancelled; ``Event`` is never set so this awaits
+            # forever until the task is cancelled by the caller.
+            await asyncio.Event().wait()
         else:
             await asyncio.sleep(duration)
     finally:

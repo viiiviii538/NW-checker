@@ -34,9 +34,11 @@ def run_all(timeout: float = 5.0) -> Dict[str, List[Dict]]:
 
     findings: List[Dict] = []
     scanners = _load_scanners()
-    # スキャン実行順序: ポートスキャン→OS/サービス→その他
-    order = {"ports": 0, "os_banner": 1, "dhcp": 2, "dns": 3, "arp_spoof": 4}
-    scanners.sort(key=lambda x: order.get(x[0], 2))
+    # ポートスキャンを最優先し、OS/サービス情報を2番目に実行
+    priority = ["ports", "os_banner"]
+    scanners.sort(
+        key=lambda x: priority.index(x[0]) if x[0] in priority else len(priority)
+    )
 
     with ThreadPoolExecutor() as executor:
         future_map = {executor.submit(scan): name for name, scan in scanners}
@@ -63,4 +65,3 @@ def run_all(timeout: float = 5.0) -> Dict[str, List[Dict]]:
 
     total = sum(item.get("score", 0) for item in findings)
     return {"findings": findings, "risk_score": total}
-
