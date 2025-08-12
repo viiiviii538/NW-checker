@@ -343,6 +343,27 @@ def test_arp_spoof_scan_no_change(monkeypatch):
     )
 
 
+def test_arp_spoof_custom_ip_mac(monkeypatch):
+    """カスタムIP/MACのARPスプーフを検証する"""
+
+    tables = [
+        {"5.6.7.8": "aa:aa"},
+        {"5.6.7.8": "de:ad:be:ef:00:02"},
+    ]
+    monkeypatch.setattr(arp_spoof, "FAKE_IP", "5.6.7.8")
+    monkeypatch.setattr(arp_spoof, "FAKE_MAC", "de:ad:be:ef:00:02")
+    monkeypatch.setattr(arp_spoof, "_get_arp_table", lambda: tables.pop(0))
+    monkeypatch.setattr(arp_spoof, "send", lambda *_, **__: None)
+
+    result = arp_spoof.scan(wait=0)
+    assert result["score"] == 5
+    assert result["details"]["vulnerable"] is True
+    assert (
+        result["details"]["explanation"]
+        == "ARP table updated with spoofed entry"
+    )
+
+
 # --- SSL certificate -----------------------------------------------------
 
 def test_ssl_cert_scan_flags_expired(monkeypatch):
