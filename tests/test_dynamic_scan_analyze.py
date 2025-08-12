@@ -109,6 +109,22 @@ def test_load_threshold_default_when_missing(tmp_path, monkeypatch):
     assert analyze.load_threshold(default=654_321) == 654_321
 
 
+def test_load_blacklist(tmp_path):
+    blk = tmp_path / "dns_blacklist.txt"
+    blk.write_text("# comment\nfoo.example\n\nbar.example\n")
+    result = analyze.load_blacklist(blk)
+    assert result == {"foo.example", "bar.example"}
+
+
+def test_load_blacklist_missing_file(tmp_path):
+    missing = tmp_path / "no_such_file.txt"
+    assert analyze.load_blacklist(missing) == set()
+
+
+def test_load_blacklist_default_file():
+    assert "malicious.example" in analyze.load_blacklist()
+
+
 def test_is_night_traffic():
     night_ts = datetime(2024, 1, 1, 3, 0).timestamp()
     day_ts = datetime(2024, 1, 1, 7, 0).timestamp()

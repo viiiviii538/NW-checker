@@ -11,8 +11,22 @@ import requests
 
 # 危険とされるプロトコルの名称
 DANGEROUS_PROTOCOLS = {"telnet", "ftp", "rdp"}
+
+
+def load_blacklist(path: str = "data/dns_blacklist.txt") -> set[str]:
+    try:
+        with open(path) as f:
+            return {
+                line.strip()
+                for line in f
+                if line.strip() and not line.startswith("#")
+            }
+    except FileNotFoundError:
+        return set()
+
+
 # DNS 逆引きのブラックリスト
-DNS_BLACKLIST = {"malicious.example"}
+DNS_BLACKLIST = load_blacklist()
 
 CONFIG_PATH = Path(__file__).with_name("config.json")
 
