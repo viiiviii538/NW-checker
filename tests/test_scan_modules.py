@@ -321,6 +321,35 @@ def test_arp_spoof_scan_no_change(monkeypatch):
     )
 
 
+def test_arp_spoof_custom_ip_mac(monkeypatch):
+    """Custom IP/MACを指定しても検出できること。"""
+    tables = [
+        {"5.6.7.8": "aa:aa"},
+        {"5.6.7.8": "bb:bb"},
+    ]
+    monkeypatch.setattr(arp_spoof, "_get_arp_table", lambda: tables.pop(0))
+    monkeypatch.setattr(arp_spoof, "send", lambda *_, **__: None)
+    result = arp_spoof.scan(wait=0, fake_ip="5.6.7.8", fake_mac="bb:bb")
+    assert result["score"] == 5
+    assert result["details"]["vulnerable"] is True
+    assert (
+        result["details"]["explanation"]
+        == "ARP table updated with spoofed entry"
+    )
+
+
+def test_arp_spoof_scan_handles_send_error(monkeypatch):
+    """Injection failure should be reported with score 0."""
+
+    def boom(*args, **kwargs):  # noqa: D401, ARG001
+        raise RuntimeError("send error")
+
+    monkeypatch.setattr(arp_spoof, "send", boom)
+    result = arp_spoof.scan(wait=0)
+    assert result["score"] == 0
+    assert "send error" in result["details"].get("error", "")
+
+
 # --- SSL certificate -----------------------------------------------------
 
 def test_ssl_cert_scan_flags_expired(monkeypatch):
