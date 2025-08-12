@@ -80,6 +80,32 @@ def test_run_all_populates_missing_fields(monkeypatch):
     assert entry["details"] == {}
 
 
+def test_run_all_includes_dhcp_details(monkeypatch):
+    """DHCPスキャンの結果が集約に含まれることを確認"""
+
+    def fake_dhcp():
+        return {
+            "category": "dhcp",
+            "score": 2,
+            "details": {
+                "servers": ["1.1.1.1", "2.2.2.2"],
+                "warnings": [
+                    "Multiple DHCP servers detected: 1.1.1.1, 2.2.2.2"
+                ],
+            },
+        }
+
+    monkeypatch.setattr(dhcp, "scan", fake_dhcp)
+
+    results = static_scan.run_all()
+    by_cat = _findings_by_category(results)
+    entry = by_cat["dhcp"]
+
+    assert entry["score"] == 2
+    assert entry["details"]["servers"] == ["1.1.1.1", "2.2.2.2"]
+    assert "Multiple DHCP servers detected" in entry["details"]["warnings"][0]
+
+
 def test_run_all_is_json_serializable():
     """run_all の返り値が JSON シリアル化可能であることを確認"""
 
