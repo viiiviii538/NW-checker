@@ -96,6 +96,19 @@ def test_os_banner_scan_handles_no_results(monkeypatch):
     assert result["details"]["os"] == ""
 
 
+def test_os_banner_scan_handles_exception(monkeypatch):
+    class MockScanner:
+        def scan(self, target, arguments=""):
+            raise os_banner.nmap.PortScannerError("nmap error")
+
+    monkeypatch.setattr(os_banner.nmap, "PortScanner", lambda: MockScanner())
+    result = os_banner.scan("host")
+    assert result["score"] == 0
+    assert result["details"]["banners"] == {}
+    assert result["details"]["os"] == ""
+    assert "nmap error" in result["details"]["error"]
+
+
 def test_smb_netbios_scan_detects_smb1(monkeypatch):
     class DummyNB:
         def queryIPForName(self, target, timeout=2):  # noqa: D401, ARG002
