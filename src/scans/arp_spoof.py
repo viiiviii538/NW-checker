@@ -48,7 +48,15 @@ def scan(
         ``fake_ip`` に紐付ける偽のMACアドレス。
     """
 
-    before = _get_arp_table()
+    try:
+        before = _get_arp_table()
+    except Exception as exc:
+        # ARPテーブル取得失敗時はエラー内容を返す
+        return {
+            "category": "arp_spoof",
+            "score": 0,
+            "details": {"error": str(exc)},
+        }
 
     try:
         pkt = ARP(
@@ -67,7 +75,15 @@ def scan(
             "details": {"error": str(exc)},
         }
 
-    after = _get_arp_table()
+    try:
+        after = _get_arp_table()
+    except Exception as exc:
+        return {
+            "category": "arp_spoof",
+            "score": 0,
+            "details": {"error": str(exc)},
+        }
+
     changed = before.get(fake_ip) != fake_mac and after.get(fake_ip) == fake_mac
     explanation = (
         "ARP table updated with spoofed entry"

@@ -403,6 +403,23 @@ def test_arp_spoof_scan_handles_send_error(monkeypatch):
     assert "send error" in result["details"].get("error", "")
 
 
+def test_arp_spoof_scan_handles_table_error(monkeypatch):
+    """ARPテーブル取得エラー時の挙動を確認。"""
+
+    def boom():  # noqa: D401
+        raise RuntimeError("table fail")
+
+    monkeypatch.setattr(arp_spoof, "_get_arp_table", boom)
+    result = arp_spoof.scan(wait=0)
+    assert result == {
+        "category": "arp_spoof",
+        "score": 0,
+        "details": {"error": "table fail"},
+    }
+    assert "vulnerable" not in result["details"]
+    assert "explanation" not in result["details"]
+
+
 # --- SSL certificate -----------------------------------------------------
 
 def test_ssl_cert_scan_flags_expired(monkeypatch):
