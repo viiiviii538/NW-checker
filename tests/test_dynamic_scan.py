@@ -119,3 +119,39 @@ def test_analyse_packets_pipeline(tmp_path, monkeypatch):
         assert data[0]["reverse_dns"] == "example.com"
 
     asyncio.run(runner())
+
+
+def test_analyse_packets_pipeline_in_hours(tmp_path, monkeypatch):
+    async def runner():
+        analyze._known_devices.clear()
+        store = storage.Storage(tmp_path / "results.json")
+        monkeypatch.setattr(
+            analyze, "geoip_lookup", lambda ip: {"country": "Testland", "ip": ip}
+        )
+        monkeypatch.setattr(analyze, "reverse_dns_lookup", lambda ip: "example.com")
+        queue: asyncio.Queue = asyncio.Queue()
+        task = asyncio.create_task(
+            analyze.analyse_packets(
+                queue,
+                store,
+                approved_macs={"00:11:22:33:44:55"},
+                schedule=(9, 17),
+            )
+        )
+        pkt = SimpleNamespace(
+            src_ip="8.8.8.8",
+            dst_ip="1.1.1.1",
+            src_mac="00:11:22:33:44:77",
+            protocol="TELNET",
+            size=2_000_000,
+            timestamp=datetime(2024, 1, 1, 10, 0, 0).timestamp(),
+        )
+        await queue.put(pkt)
+        await queue.join()
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+        data = store.get_all()
+        assert data[0]["out_of_hours"] is False
+
+    asyncio.run(runner())
