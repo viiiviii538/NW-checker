@@ -1,2 +1,4 @@
 # Default DNS blacklist
 malicious.example
+phishing.test
+botnet.example.org

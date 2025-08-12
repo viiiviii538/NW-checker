@@ -146,7 +146,8 @@ def test_load_blacklist(tmp_path):
 
 def test_load_blacklist_missing_file(tmp_path):
     missing = tmp_path / "no_such_file.txt"
-    assert analyze.load_blacklist(missing) == set()
+    with pytest.raises(FileNotFoundError):
+        analyze.load_blacklist(missing)
 
 
 def test_load_blacklist_default_file():
