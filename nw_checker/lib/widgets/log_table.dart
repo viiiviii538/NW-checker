@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// ログ表示用テーブルコンポーネント
+/// ログ表示用テーブルコンポーネントの雛形
 class LogTable extends StatelessWidget {
   final List<DataRow> rows;
   final List<DataColumn> columns;

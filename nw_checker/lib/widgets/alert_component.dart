@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// アラート表示コンポーネント
+/// アラート表示コンポーネントの雛形
 class AlertComponent extends StatelessWidget {
   final String message;
   final IconData icon;
