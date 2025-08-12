@@ -237,6 +237,19 @@ def test_upnp_scan_handles_no_response(monkeypatch):
     assert result["details"]["warnings"] == []
 
 
+def test_upnp_scan_handles_errors(monkeypatch):
+    """Exceptions from scapy should not crash the scan."""
+
+    def boom(*_, **__):  # noqa: D401, ARG002
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(upnp, "sr1", boom)
+    result = upnp.scan()
+    assert result["score"] == 0
+    assert result["details"]["responders"] == []
+    assert result["details"]["warnings"] == []
+
+
 def test_dns_scan_collects_answers(monkeypatch):
     class FakeAnswer:
         def __init__(self, rdata):
