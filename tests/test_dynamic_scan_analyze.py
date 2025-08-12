@@ -273,6 +273,22 @@ def test_detect_out_of_hours_within_schedule():
     assert res.out_of_hours is False
 
 
+def test_detect_out_of_hours_at_start_hour():
+    pkt = type(
+        "Pkt", (), {"timestamp": datetime(2024, 1, 1, 9, 0).timestamp()}
+    )
+    res = analyze.detect_out_of_hours(pkt, 9, 17)
+    assert res.out_of_hours is False
+
+
+def test_detect_out_of_hours_at_end_hour():
+    pkt = type(
+        "Pkt", (), {"timestamp": datetime(2024, 1, 1, 17, 0).timestamp()}
+    )
+    res = analyze.detect_out_of_hours(pkt, 9, 17)
+    assert res.out_of_hours is True
+
+
 def test_analysis_result_merge_and_to_dict():
     a = analyze.AnalysisResult(src_ip="1.1.1.1", dangerous_protocol=True)
     b = analyze.AnalysisResult(dst_ip="2.2.2.2", new_device=False)
