@@ -205,6 +205,28 @@ Looking up status of 1.2.3.4
     assert result["details"]["netbios_names"] == ["HOSTNAME"]
 
 
+# Additional tests for NetBIOS helper
+
+def test_nmblookup_names_parses_output(monkeypatch):
+    sample = """\
+Looking up status of 1.2.3.4
+    HOST1          <00> -         B
+    WORKGROUP      <00> - <GROUP>
+    MAC Address = 00-00-00-00-00-00
+"""
+    monkeypatch.setattr(
+        smb_netbios.subprocess, "check_output", lambda *_, **__: sample
+    )
+    assert smb_netbios._nmblookup_names("1.2.3.4") == ["HOST1", "WORKGROUP"]
+
+
+def test_nmblookup_names_handles_failure(monkeypatch):
+    def boom(*args, **kwargs):  # noqa: D401, ARG001, ARG002
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(smb_netbios.subprocess, "check_output", boom)
+    assert smb_netbios._nmblookup_names("1.2.3.4") == []
+
 # --- scapy based scans ---------------------------------------------------
 
 
