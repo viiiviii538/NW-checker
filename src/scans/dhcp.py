@@ -17,7 +17,7 @@ def scan(timeout: int = 2) -> dict:
     if multiple servers answer which can indicate configuration conflicts.
     """
 
-    servers = []
+    servers = set()
     warnings = []
     try:
         discover = (
@@ -30,18 +30,20 @@ def scan(timeout: int = 2) -> dict:
         ans, _ = srp(discover, timeout=timeout, verbose=False)
         for _, pkt in ans:
             if DHCP in pkt:
-                servers.append(pkt[IP].src)
+                # サーバーIPは重複を除外する
+                servers.add(pkt[IP].src)
     except Exception:  # pragma: no cover - 実行環境による
         pass
 
-    if len(servers) > 1:
+    server_list = sorted(servers)
+    if len(server_list) > 1:
         warnings.append(
-            "Multiple DHCP servers detected: " + ", ".join(sorted(servers))
+            "Multiple DHCP servers detected: " + ", ".join(server_list)
         )
 
     return {
         "category": "dhcp",
-        "score": len(servers),
-        "details": {"servers": servers, "warnings": warnings},
+        "score": len(server_list),
+        "details": {"servers": server_list, "warnings": warnings},
     }
 

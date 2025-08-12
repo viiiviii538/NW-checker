@@ -294,6 +294,24 @@ def test_dhcp_scan_warns_on_conflict(monkeypatch):
     assert "Multiple DHCP servers detected" in result["details"]["warnings"][0]
 
 
+def test_dhcp_scan_deduplicates_servers(monkeypatch):
+    class FakePkt:
+        def __init__(self, src):
+            self.src = src
+
+        def __contains__(self, item):
+            return True
+
+        def __getitem__(self, layer):
+            return SimpleNamespace(src=self.src)
+
+    pkts = [(None, FakePkt("10.0.0.1")), (None, FakePkt("10.0.0.1"))]
+    monkeypatch.setattr(dhcp, "srp", lambda *_, **__: (pkts, None))
+    result = dhcp.scan()
+    assert result["score"] == 1
+    assert result["details"]["servers"] == ["10.0.0.1"]
+
+
 def test_arp_spoof_scan_detects_table_change(monkeypatch):
     tables = [
         {"1.2.3.4": "aa:aa"},
