@@ -717,4 +717,74 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Invalid DNS server IP: bad_ip'), findsOneWidget);
   });
+
+  testWidgets('shows SSL issuer and expiry in tile', (tester) async {
+    Future<Map<String, dynamic>> mockScan() async {
+      return {
+        'summary': [],
+        'findings': [
+          {
+            'category': 'ports',
+            'details': {'open_ports': []},
+          },
+          {
+            'category': 'os_banner',
+            'details': {'os': 'Linux', 'banners': {}},
+          },
+          {
+            'category': 'smb_netbios',
+            'details': {'smb1_enabled': false, 'netbios_names': []},
+          },
+          {
+            'category': 'upnp',
+            'details': {'responders': [], 'warnings': []},
+          },
+          {
+            'category': 'arp_spoof',
+            'details': {
+              'vulnerable': false,
+              'explanation': 'No ARP poisoning detected',
+            },
+          },
+          {
+            'category': 'dhcp',
+            'details': {
+              'servers': ['1.1.1.1'],
+              'warnings': [],
+            },
+          },
+          {
+            'category': 'dns',
+            'details': {
+              'warnings': [],
+              'servers': ['1.1.1.1'],
+              'dnssec_enabled': true,
+            },
+          },
+          {
+            'category': 'ssl_cert',
+            'details': {
+              'host': 'example.com',
+              'issuer': 'TrustedCA',
+              'days_remaining': 90,
+              'expired': false,
+            },
+          },
+        ],
+      };
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(home: StaticScanTab(scanner: mockScan)),
+    );
+
+    await tester.tap(find.byKey(const Key('staticButton')));
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('SSL証明書'));
+    await tester.pumpAndSettle();
+    expect(find.text('発行者: TrustedCA'), findsOneWidget);
+    expect(find.text('有効期限まで 90 日'), findsOneWidget);
+  });
 }

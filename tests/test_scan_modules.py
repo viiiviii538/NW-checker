@@ -1,5 +1,6 @@
 import types
 from types import SimpleNamespace
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -542,13 +543,40 @@ def test_arp_spoof_scan_handles_send_error(monkeypatch):
 def test_ssl_cert_scan_flags_expired(monkeypatch):
     class DummyContext:
         def wrap_socket(self, sock, server_hostname=None):
-            return DummySock()
+            return DummySock(
+                {
+                    "notAfter": "Jan  1 00:00:00 2000 GMT",
+                    "issuer": ((("commonName", "FakeCA"),),),
+                }
+            )
 
     monkeypatch.setattr(ssl_cert.ssl, "create_default_context", lambda: DummyContext())
     monkeypatch.setattr(ssl_cert.socket, "create_connection", lambda *_, **__: DummySock())
     result = ssl_cert.scan("example.com")
-    assert result["score"] == 1
+    assert result["score"] == 5
     assert result["details"]["expired"] is True
+    assert result["details"]["issuer"] == "FakeCA"
+
+
+def test_ssl_cert_scan_scores_untrusted_and_expiring(monkeypatch):
+    future = datetime.now(timezone.utc) + timedelta(days=10)
+    not_after = future.strftime("%b %d %H:%M:%S %Y GMT")
+
+    class DummyContext:
+        def wrap_socket(self, sock, server_hostname=None):
+            return DummySock(
+                {
+                    "notAfter": not_after,
+                    "issuer": ((("commonName", "Untrusted"),),),
+                }
+            )
+
+    monkeypatch.setattr(ssl_cert.ssl, "create_default_context", lambda: DummyContext())
+    monkeypatch.setattr(ssl_cert.socket, "create_connection", lambda *_, **__: DummySock())
+    result = ssl_cert.scan("example.com")
+    assert result["score"] == 3
+    assert result["details"]["issuer"] == "Untrusted"
+    assert 9 <= result["details"]["days_remaining"] <= 10
 
 
 def test_ssl_cert_scan_handles_error(monkeypatch):
