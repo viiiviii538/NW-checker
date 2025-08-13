@@ -48,3 +48,23 @@ def test_storage_fetch_out_of_range(tmp_path):
     end = (now + timedelta(days=2)).isoformat()
     history = store.fetch_history({"start": start, "end": end})
     assert history == []
+
+
+def test_fetch_results_range(tmp_path):
+    store = Storage(tmp_path / "res.db")
+    asyncio.run(store.save_result({"id": 1}))
+    asyncio.run(store.save_result({"id": 2}))
+
+    today = datetime.now().date().isoformat()
+    results = store.fetch_results(today, today)
+    ids = [r["id"] for r in results]
+    assert ids == [1, 2]
+
+
+def test_recent_limit(tmp_path):
+    store = Storage(tmp_path / "res.db", max_recent=2)
+    asyncio.run(store.save_result({"id": 1}))
+    asyncio.run(store.save_result({"id": 2}))
+    asyncio.run(store.save_result({"id": 3}))
+    ids = [r["id"] for r in store.get_all()]
+    assert ids == [2, 3]
