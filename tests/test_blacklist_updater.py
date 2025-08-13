@@ -1,4 +1,5 @@
-import requests
+import asyncio
+import httpx
 from src.dynamic_scan import analyze, blacklist_updater
 
 
@@ -11,8 +12,18 @@ def test_fetch_feed_json(monkeypatch):
         def raise_for_status(self):
             pass
 
-    monkeypatch.setattr(requests, "get", lambda url, timeout: Resp())
-    assert blacklist_updater.fetch_feed("http://example.com/feed.json") == {"a.com", "b.org"}
+    class FakeClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            pass
+
+        async def get(self, url):
+            return Resp()
+
+    monkeypatch.setattr(blacklist_updater.httpx, "AsyncClient", lambda *a, **k: FakeClient())
+    assert asyncio.run(blacklist_updater.fetch_feed("http://example.com/feed.json")) == {"a.com", "b.org"}
 
 
 def test_write_blacklist(tmp_path):
@@ -32,8 +43,18 @@ def test_fetch_feed_csv(monkeypatch):
         def raise_for_status(self):
             pass
 
-    monkeypatch.setattr(requests, "get", lambda url, timeout: Resp())
-    assert blacklist_updater.fetch_feed("http://example.com/feed.csv") == {"c.com", "d.org"}
+    class FakeClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            pass
+
+        async def get(self, url):
+            return Resp()
+
+    monkeypatch.setattr(blacklist_updater.httpx, "AsyncClient", lambda *a, **k: FakeClient())
+    assert asyncio.run(blacklist_updater.fetch_feed("http://example.com/feed.csv")) == {"c.com", "d.org"}
 
 
 def test_load_blacklist(tmp_path):
@@ -51,7 +72,17 @@ def test_update_integration(monkeypatch, tmp_path):
         def raise_for_status(self):
             pass
 
-    monkeypatch.setattr(requests, "get", lambda url, timeout: Resp())
+    class FakeClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            pass
+
+        async def get(self, url):
+            return Resp()
+
+    monkeypatch.setattr(blacklist_updater.httpx, "AsyncClient", lambda *a, **k: FakeClient())
     out = tmp_path / "out.txt"
     blacklist_updater.update("http://feed", output_path=str(out))
     lines = out.read_text().splitlines()
@@ -60,11 +91,18 @@ def test_update_integration(monkeypatch, tmp_path):
 
 
 def test_fetch_feed_error(monkeypatch):
-    def fake_get(url, timeout):  # pragma: no cover - 例外発生の確認用
-        raise requests.RequestException("boom")
+    class FailClient:
+        async def __aenter__(self):
+            return self
 
-    monkeypatch.setattr(requests, "get", fake_get)
-    assert blacklist_updater.fetch_feed("http://example.com/feed") == set()
+        async def __aexit__(self, exc_type, exc, tb):
+            pass
+
+        async def get(self, url):  # pragma: no cover - 例外発生の確認用
+            raise httpx.RequestError("boom")
+
+    monkeypatch.setattr(blacklist_updater.httpx, "AsyncClient", lambda *a, **k: FailClient())
+    assert asyncio.run(blacklist_updater.fetch_feed("http://example.com/feed")) == set()
 
 
 def test_write_blacklist_no_domains(tmp_path):

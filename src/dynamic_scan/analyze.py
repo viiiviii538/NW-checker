@@ -7,7 +7,7 @@ from typing import Any, Dict, Iterable
 import json
 from pathlib import Path
 
-import requests
+import httpx
 
 # 危険とされるプロトコルの名称
 DANGEROUS_PROTOCOLS = {"telnet", "ftp", "rdp"}
@@ -74,7 +74,7 @@ _dns_history: Dict[str, str] = {}
 _known_devices: set[str] = set()
 
 
-def geoip_lookup(ip: str, db_path: str | None = None) -> Dict[str, Any]:
+async def geoip_lookup(ip: str, db_path: str | None = None) -> Dict[str, Any]:
     """指定 IP の GeoIP 情報を取得する。
 
     1. ローカルの GeoIP2 データベース (デフォルトは
@@ -83,26 +83,31 @@ def geoip_lookup(ip: str, db_path: str | None = None) -> Dict[str, Any]:
 
     いずれも失敗した場合は空 dict を返す。
     """
-    # GeoIP2 データベースの利用を試みる
     db_path = db_path or "/usr/share/GeoIP/GeoLite2-Country.mmdb"
+
+    # GeoIP2 データベースの利用を試みる
     try:  # pragma: no cover - 環境により存在しない可能性が高いため
         import geoip2.database
 
-        reader = geoip2.database.Reader(db_path)
-        try:
-            resp = reader.country(ip)
-            return {"country": resp.country.name, "ip": ip}
-        finally:
-            reader.close()
+        def _lookup() -> Dict[str, Any]:
+            reader = geoip2.database.Reader(db_path)
+            try:
+                resp = reader.country(ip)
+                return {"country": resp.country.name, "ip": ip}
+            finally:
+                reader.close()
+
+        return await asyncio.to_thread(_lookup)
     except Exception:
         pass
 
     # 外部 API へのフォールバック
     try:
-        response = requests.get(f"https://ipapi.co/{ip}/json/", timeout=5)
-        if response.ok:
-            data = response.json()
-            return {"country": data.get("country_name"), "ip": ip}
+        async with httpx.AsyncClient(timeout=5) as client:
+            response = await client.get(f"https://ipapi.co/{ip}/json/")
+            if response.status_code == 200:
+                data = response.json()
+                return {"country": data.get("country_name"), "ip": ip}
     except Exception:
         pass
     return {}
@@ -164,21 +169,21 @@ def is_night_traffic(timestamp: float, start_hour: int = 0, end_hour: int = 6) -
     return start_hour <= hour < end_hour
 
 
-def attach_geoip(result: AnalysisResult, ip: str | None) -> AnalysisResult:
+async def attach_geoip(result: AnalysisResult, ip: str | None) -> AnalysisResult:
     """指定 IP の GeoIP 情報を解析結果に保存する"""
     if ip:
-        result.geoip = geoip_lookup(ip)
+        result.geoip = await geoip_lookup(ip)
         if result.src_ip is None:
             result.src_ip = ip
     return result
 
 
-def assign_geoip_info(packet) -> AnalysisResult:
+async def assign_geoip_info(packet) -> AnalysisResult:
     """GeoIP 情報をパケットに付与する"""
     src_ip = getattr(packet, "src_ip", getattr(packet, "ip_src", None))
     dst_ip = getattr(packet, "dst_ip", getattr(packet, "ip_dst", None))
     result = AnalysisResult(src_ip=src_ip, dst_ip=dst_ip)
-    return attach_geoip(result, src_ip)
+    return await attach_geoip(result, src_ip)
 
 
 def record_dns_history(packet) -> AnalysisResult:
@@ -245,7 +250,7 @@ async def analyse_packets(
     while True:
         packet = await queue.get()
 
-        geoip_res = await asyncio.to_thread(assign_geoip_info, packet)
+        geoip_res = await assign_geoip_info(packet)
         dns_res = await asyncio.to_thread(record_dns_history, packet)
         dangerous_res = detect_dangerous_protocols(packet)
         new_dev_res = track_new_devices(packet)

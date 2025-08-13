@@ -1,5 +1,4 @@
 python-nmap==0.7.1
-requests==2.32.4
 scapy==2.6.1
 geoip2==5.1.0
 pytest==8.4.1
