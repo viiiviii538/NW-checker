@@ -1,6 +1,7 @@
 from collections import defaultdict
 from datetime import datetime
 import json
+import sys
 import types
 
 import pytest
@@ -14,6 +15,16 @@ def test_geoip_lookup(monkeypatch):
 
         def json(self):  # pragma: no cover - 単純な dict 返却
             return {"country_name": "Wonderland"}
+
+    class DummyReader:
+        def __init__(self, path):
+            raise OSError("db missing")
+
+    fake_geoip2 = types.SimpleNamespace(
+        database=types.SimpleNamespace(Reader=DummyReader)
+    )
+    monkeypatch.setitem(sys.modules, "geoip2", fake_geoip2)
+    monkeypatch.setitem(sys.modules, "geoip2.database", fake_geoip2.database)
 
     monkeypatch.setattr(analyze.requests, "get", lambda url, timeout=5: FakeResp())
     assert analyze.geoip_lookup("203.0.113.1") == {
@@ -38,9 +49,11 @@ def test_geoip_lookup_local_db(monkeypatch):
     monkeypatch.setattr(
         analyze.requests, "get", lambda *a, **k: pytest.fail("API called")
     )
-    import geoip2.database
-
-    monkeypatch.setattr(geoip2.database, "Reader", FakeReader)
+    fake_geoip2 = types.SimpleNamespace(
+        database=types.SimpleNamespace(Reader=FakeReader)
+    )
+    monkeypatch.setitem(sys.modules, "geoip2", fake_geoip2)
+    monkeypatch.setitem(sys.modules, "geoip2.database", fake_geoip2.database)
     assert analyze.geoip_lookup("203.0.113.1") == {
         "country": "Wonderland",
         "ip": "203.0.113.1",
@@ -67,9 +80,11 @@ def test_geoip_lookup_custom_db_path(monkeypatch):
     monkeypatch.setattr(
         analyze.requests, "get", lambda *a, **k: pytest.fail("API called")
     )
-    import geoip2.database
-
-    monkeypatch.setattr(geoip2.database, "Reader", FakeReader)
+    fake_geoip2 = types.SimpleNamespace(
+        database=types.SimpleNamespace(Reader=FakeReader)
+    )
+    monkeypatch.setitem(sys.modules, "geoip2", fake_geoip2)
+    monkeypatch.setitem(sys.modules, "geoip2.database", fake_geoip2.database)
     res = analyze.geoip_lookup("203.0.113.1", db_path="/custom/path.mmdb")
     assert used_paths == ["/custom/path.mmdb"]
     assert res == {"country": "Wonderland", "ip": "203.0.113.1"}
@@ -193,6 +208,21 @@ def test_attach_geoip_no_ip():
     updated = analyze.attach_geoip(res, None)
     assert updated.geoip is None
     assert updated.src_ip is None
+
+
+def test_assign_geoip_info_ip_src(monkeypatch):
+    class FakeResp:
+        ok = True
+
+        def json(self):  # pragma: no cover - 単純な dict 返却
+            return {"country_name": "Wonderland"}
+
+    monkeypatch.setattr(analyze.requests, "get", lambda url, timeout=5: FakeResp())
+    pkt = type("Pkt", (), {"ip_src": "203.0.113.1", "ip_dst": "1.1.1.1"})
+    res = analyze.assign_geoip_info(pkt)
+    assert res.src_ip == "203.0.113.1"
+    assert res.dst_ip == "1.1.1.1"
+    assert res.geoip == {"country": "Wonderland", "ip": "203.0.113.1"}
 
 
 def test_record_dns_history(monkeypatch):
