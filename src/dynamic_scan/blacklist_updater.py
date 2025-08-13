@@ -1,4 +1,5 @@
 import argparse
+import asyncio
 import csv
 import json
 import logging
@@ -6,16 +7,17 @@ import os
 from io import StringIO
 from typing import Iterable, Set
 
-import requests
+import httpx
 
 logger = logging.getLogger(__name__)
 
 
-def fetch_feed(url: str) -> Set[str]:
+async def fetch_feed(url: str) -> Set[str]:
     """Fetch a blacklist feed and return set of domains."""
     try:
-        resp = requests.get(url, timeout=10)
-        resp.raise_for_status()
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(url)
+            resp.raise_for_status()
     except Exception as exc:
         logger.error("failed to fetch %s: %s", url, exc)
         return set()
@@ -76,7 +78,7 @@ def write_blacklist(domains: Set[str], path: str = "data/dns_blacklist.txt") -> 
 
 def update(feed_url: str, output_path: str = "data/dns_blacklist.txt") -> None:
     """Fetch a feed and update blacklist file."""
-    domains = fetch_feed(feed_url)
+    domains = asyncio.run(fetch_feed(feed_url))
     write_blacklist(domains, output_path)
 
 
@@ -88,7 +90,7 @@ def main(argv: Iterable[str] | None = None) -> None:
 
     all_domains: Set[str] = set()
     for url in args.feeds:
-        all_domains |= fetch_feed(url)
+        all_domains |= asyncio.run(fetch_feed(url))
 
     write_blacklist(all_domains, args.output)
 
