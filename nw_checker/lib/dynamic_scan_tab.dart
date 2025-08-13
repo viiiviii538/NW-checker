@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'history_page.dart';
-import 'models/scan_category.dart';
 import 'models/scan_report.dart';
 import 'services/dynamic_scan_api.dart';
-import 'scan_result_detail_page.dart';
+import 'widgets/alert_component.dart';
+import 'widgets/dynamic_scan_results.dart';
 
 /// 動的スキャンタブのウィジェット。
 class DynamicScanTab extends StatefulWidget {
@@ -48,10 +48,11 @@ class _DynamicScanTabState extends State<DynamicScanTab> {
     return StreamBuilder<String>(
       stream: _alertStream,
       builder: (context, alertSnapshot) {
+        Widget? alertWidget;
         if (alertSnapshot.hasData) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            final msg = alertSnapshot.data!;
-            if (msg.startsWith('CRITICAL')) {
+          final msg = alertSnapshot.data!;
+          if (msg.startsWith('CRITICAL')) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
               showDialog(
                 context: context,
                 builder: (_) => AlertDialog(
@@ -65,14 +66,14 @@ class _DynamicScanTabState extends State<DynamicScanTab> {
                   ],
                 ),
               );
-            } else {
-              ScaffoldMessenger.of(context)
-                  .showSnackBar(SnackBar(content: Text(msg)));
-            }
-          });
+            });
+          } else {
+            alertWidget = AlertComponent(message: msg);
+          }
         }
         return Column(
           children: [
+            if (alertWidget != null) alertWidget!,
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -116,7 +117,11 @@ class _DynamicScanTabState extends State<DynamicScanTab> {
                   return Column(
                     children: [
                       _buildSummary(report),
-                      Expanded(child: _buildCategoryList(report.categories)),
+                      Expanded(
+                        child: DynamicScanResults(
+                          categories: report.categories,
+                        ),
+                      ),
                     ],
                   );
                 },
@@ -139,38 +144,6 @@ class _DynamicScanTabState extends State<DynamicScanTab> {
           label: const Text('Export PDF'),
         ),
       ),
-    );
-  }
-
-  Widget _buildCategoryList(List<ScanCategory> categories) {
-    return ListView(
-      children:
-          categories.map((cat) {
-            return ExpansionTile(
-              leading: Icon(
-                categoryIcon(cat.name),
-                color: severityColor(cat.severity),
-              ),
-              title: Text(cat.name),
-              children: cat.issues
-                  .map(
-                    (e) => ListTile(
-                      title: Text(e),
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => ScanResultDetailPage(
-                              title: cat.name,
-                              detail: e,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  )
-                  .toList(),
-            );
-          }).toList(),
     );
   }
 }

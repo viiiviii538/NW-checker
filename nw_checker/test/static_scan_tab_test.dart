@@ -622,7 +622,7 @@ void main() {
           {
             'category': 'dns',
             'details': {
-              'warnings': ['外部DNSが検出されました: 8.8.8.8'],
+              'warnings': ['External DNS detected: 8.8.8.8'],
               'servers': ['8.8.8.8'],
               'dnssec_enabled': false,
             },
@@ -648,6 +648,216 @@ void main() {
     expect(dnsLabel.data, '警告');
     await tester.tap(find.text('DNS'));
     await tester.pumpAndSettle();
-    expect(find.text('外部DNSが検出されました: 8.8.8.8'), findsOneWidget);
+    expect(find.text('External DNS detected: 8.8.8.8'), findsOneWidget);
+  });
+
+  testWidgets('invalid DNS server shows warning in tile', (tester) async {
+    Future<Map<String, dynamic>> mockScan() async {
+      return {
+        'summary': [],
+        'findings': [
+          {
+            'category': 'ports',
+            'details': {'open_ports': []},
+          },
+          {
+            'category': 'os_banner',
+            'details': {'os': 'Linux', 'banners': {}},
+          },
+          {
+            'category': 'smb_netbios',
+            'details': {'smb1_enabled': false, 'netbios_names': []},
+          },
+          {
+            'category': 'upnp',
+            'details': {'responders': [], 'warnings': []},
+          },
+          {
+            'category': 'arp_spoof',
+            'details': {
+              'vulnerable': false,
+              'explanation': 'No ARP poisoning detected',
+            },
+          },
+          {
+            'category': 'dhcp',
+            'details': {
+              'servers': ['1.1.1.1'],
+              'warnings': [],
+            },
+          },
+          {
+            'category': 'dns',
+            'details': {
+              'warnings': ['Invalid DNS server IP: bad_ip'],
+              'servers': ['bad_ip'],
+              'dnssec_enabled': false,
+            },
+          },
+          {
+            'category': 'ssl_cert',
+            'details': {'host': 'example.com', 'expired': false},
+          },
+        ],
+      };
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(home: StaticScanTab(scanner: mockScan)),
+    );
+
+    await tester.tap(find.byKey(const Key('staticButton')));
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    final chips = tester.widgetList<Chip>(find.byType(Chip)).toList();
+    final dnsLabel = chips[6].label as Text;
+    expect(dnsLabel.data, '警告');
+    await tester.tap(find.text('DNS'));
+    await tester.pumpAndSettle();
+    expect(find.text('Invalid DNS server IP: bad_ip'), findsOneWidget);
+  });
+
+  testWidgets('shows SSL issuer and expiry in tile', (tester) async {
+    Future<Map<String, dynamic>> mockScan() async {
+      return {
+        'summary': [],
+        'findings': [
+          {
+            'category': 'ports',
+            'details': {'open_ports': []},
+          },
+          {
+            'category': 'os_banner',
+            'details': {'os': 'Linux', 'banners': {}},
+          },
+          {
+            'category': 'smb_netbios',
+            'details': {'smb1_enabled': false, 'netbios_names': []},
+          },
+          {
+            'category': 'upnp',
+            'details': {'responders': [], 'warnings': []},
+          },
+          {
+            'category': 'arp_spoof',
+            'details': {
+              'vulnerable': false,
+              'explanation': 'No ARP poisoning detected',
+            },
+          },
+          {
+            'category': 'dhcp',
+            'details': {
+              'servers': ['1.1.1.1'],
+              'warnings': [],
+            },
+          },
+          {
+            'category': 'dns',
+            'details': {
+              'warnings': [],
+              'servers': ['1.1.1.1'],
+              'dnssec_enabled': true,
+            },
+          },
+          {
+            'category': 'ssl_cert',
+            'details': {
+              'host': 'example.com',
+              'issuer': 'TrustedCA',
+              'days_remaining': 90,
+              'expired': false,
+            },
+          },
+        ],
+      };
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(home: StaticScanTab(scanner: mockScan)),
+    );
+
+    await tester.tap(find.byKey(const Key('staticButton')));
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('SSL証明書'));
+    await tester.pumpAndSettle();
+    expect(find.text('発行者: TrustedCA'), findsOneWidget);
+    expect(find.text('有効期限まで 90 日'), findsOneWidget);
+  });
+
+  testWidgets('expired SSL certificate shows warning', (tester) async {
+    Future<Map<String, dynamic>> mockScan() async {
+      return {
+        'summary': [],
+        'findings': [
+          {
+            'category': 'ports',
+            'details': {'open_ports': []},
+          },
+          {
+            'category': 'os_banner',
+            'details': {'os': 'Linux', 'banners': {}},
+          },
+          {
+            'category': 'smb_netbios',
+            'details': {'smb1_enabled': false, 'netbios_names': []},
+          },
+          {
+            'category': 'upnp',
+            'details': {'responders': [], 'warnings': []},
+          },
+          {
+            'category': 'arp_spoof',
+            'details': {
+              'vulnerable': false,
+              'explanation': 'No ARP poisoning detected',
+            },
+          },
+          {
+            'category': 'dhcp',
+            'details': {
+              'servers': ['1.1.1.1'],
+              'warnings': [],
+            },
+          },
+          {
+            'category': 'dns',
+            'details': {
+              'warnings': [],
+              'servers': ['1.1.1.1'],
+              'dnssec_enabled': true,
+            },
+          },
+          {
+            'category': 'ssl_cert',
+            'details': {
+              'host': 'example.com',
+              'issuer': 'ExpiredCA',
+              'days_remaining': -5,
+              'expired': true,
+            },
+          },
+        ],
+      };
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(home: StaticScanTab(scanner: mockScan)),
+    );
+
+    await tester.tap(find.byKey(const Key('staticButton')));
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    final chips = tester.widgetList<Chip>(find.byType(Chip)).toList();
+    final sslLabel = chips[7].label as Text;
+    expect(sslLabel.data, '警告');
+
+    await tester.tap(find.text('SSL証明書'));
+    await tester.pumpAndSettle();
+    expect(find.text('証明書は期限切れ'), findsOneWidget);
   });
 }

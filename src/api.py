@@ -66,6 +66,19 @@ async def stop_scan():
     return {"status": "stopped"}
 
 
+# 新形式のエンドポイントへのエイリアス
+@app.post("/dynamic-scan/start")
+async def start_scan_v2(params: StartParams):
+    """動的スキャン開始エイリアス"""
+    return await start_scan(params)
+
+
+@app.post("/dynamic-scan/stop")
+async def stop_scan_v2():
+    """動的スキャン停止エイリアス"""
+    return await stop_scan()
+
+
 def _aggregate_results(records: list[dict]) -> dict:
     """Aggregate scan records into a unified report.
 
@@ -96,6 +109,12 @@ async def get_results():
     return _aggregate_results(records)
 
 
+@app.get("/dynamic-scan/results")
+async def get_results_v2():
+    """動的スキャン結果取得エイリアス"""
+    return await get_results()
+
+
 @app.get("/scan/dynamic/history")
 async def get_history(
     start: Optional[str] = Query(None),
@@ -106,6 +125,17 @@ async def get_history(
     filters = {"start": start, "end": end, "device": device, "protocol": protocol}
     filters = {k: v for k, v in filters.items() if v is not None}
     return {"results": scan_scheduler.storage.fetch_history(filters)}
+
+
+@app.get("/dynamic-scan/history")
+async def get_history_v2(
+    start: Optional[str] = Query(None),
+    end: Optional[str] = Query(None),
+    device: Optional[str] = None,
+    protocol: Optional[str] = None,
+):
+    """動的スキャン履歴取得エイリアス"""
+    return await get_history(start, end, device, protocol)
 
 
 @app.websocket("/ws/scan/dynamic")

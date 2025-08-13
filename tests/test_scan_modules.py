@@ -1,5 +1,6 @@
 import types
 from types import SimpleNamespace
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -38,6 +39,7 @@ class DummySock:
 def test_ports_scan_counts_open_ports(monkeypatch):
     def fake_create_connection(addr, timeout=0.5):  # noqa: ARG001
         if addr[1] == 22:
+
             class Dummy:
                 def __enter__(self):
                     return self
@@ -219,6 +221,7 @@ Looking up status of 1.2.3.4
 
 # Additional tests for NetBIOS helper
 
+
 def test_nmblookup_names_parses_output(monkeypatch):
     sample = """\
 Looking up status of 1.2.3.4
@@ -226,9 +229,7 @@ Looking up status of 1.2.3.4
     WORKGROUP      <00> - <GROUP>
     MAC Address = 00-00-00-00-00-00
 """
-    monkeypatch.setattr(
-        smb_netbios.subprocess, "check_output", lambda *_, **__: sample
-    )
+    monkeypatch.setattr(smb_netbios.subprocess, "check_output", lambda *_, **__: sample)
     assert smb_netbios._nmblookup_names("1.2.3.4") == ["HOST1", "WORKGROUP"]
 
 
@@ -238,6 +239,7 @@ def test_nmblookup_names_handles_failure(monkeypatch):
 
     monkeypatch.setattr(smb_netbios.subprocess, "check_output", boom)
     assert smb_netbios._nmblookup_names("1.2.3.4") == []
+
 
 # --- scapy based scans ---------------------------------------------------
 
@@ -296,11 +298,13 @@ def test_dns_scan_flags_external_dns(monkeypatch):
 
             return FakeDNS()
 
-    monkeypatch.setattr(dns, "_get_nameservers", lambda path="/etc/resolv.conf": ["8.8.8.8"])
+    monkeypatch.setattr(
+        dns, "_get_nameservers", lambda path="/etc/resolv.conf": ["8.8.8.8"]
+    )
     monkeypatch.setattr(dns, "sr1", lambda *_, **__: FakeResp())
     result = dns.scan()
     warnings = result["details"]["warnings"]
-    assert any("外部DNSが検出されました" in w for w in warnings)
+    assert any("External DNS detected" in w for w in warnings)
 
 
 def test_dns_scan_flags_dnssec_disabled(monkeypatch):
@@ -314,11 +318,13 @@ def test_dns_scan_flags_dnssec_disabled(monkeypatch):
 
             return FakeDNS()
 
-    monkeypatch.setattr(dns, "_get_nameservers", lambda path="/etc/resolv.conf": ["1.1.1.1"])
+    monkeypatch.setattr(
+        dns, "_get_nameservers", lambda path="/etc/resolv.conf": ["1.1.1.1"]
+    )
     monkeypatch.setattr(dns, "sr1", lambda *_, **__: FakeResp())
     result = dns.scan()
     warnings = result["details"]["warnings"]
-    assert "DNSSECが無効です" in warnings
+    assert "DNSSEC is disabled" in warnings
 
 
 def test_dns_scan_handles_error(monkeypatch):
@@ -331,6 +337,17 @@ def test_dns_scan_handles_error(monkeypatch):
     result = dns.scan()
     assert result["score"] == 0
     assert "dns fail" in result["details"]["error"]
+
+
+def test_dns_scan_flags_invalid_server(monkeypatch):
+    """Invalid nameserver entries should trigger a warning."""
+
+    monkeypatch.setattr(
+        dns, "_get_nameservers", lambda path="/etc/resolv.conf": ["bad_ip"]
+    )
+    result = dns.scan()
+    warnings = result["details"]["warnings"]
+    assert any("Invalid DNS server IP" in w for w in warnings)
 
 
 def test_dhcp_scan_detects_servers(monkeypatch):
@@ -528,16 +545,71 @@ def test_arp_spoof_scan_handles_send_error(monkeypatch):
 
 # --- SSL certificate -----------------------------------------------------
 
+
 def test_ssl_cert_scan_flags_expired(monkeypatch):
     class DummyContext:
         def wrap_socket(self, sock, server_hostname=None):
-            return DummySock()
+            return DummySock(
+                {
+                    "notAfter": "Jan  1 00:00:00 2000 GMT",
+                    "issuer": ((("commonName", "FakeCA"),),),
+                }
+            )
 
     monkeypatch.setattr(ssl_cert.ssl, "create_default_context", lambda: DummyContext())
-    monkeypatch.setattr(ssl_cert.socket, "create_connection", lambda *_, **__: DummySock())
+    monkeypatch.setattr(
+        ssl_cert.socket, "create_connection", lambda *_, **__: DummySock()
+    )
     result = ssl_cert.scan("example.com")
-    assert result["score"] == 1
+    assert result["score"] == 5
     assert result["details"]["expired"] is True
+    assert result["details"]["issuer"] == "FakeCA"
+
+
+def test_ssl_cert_scan_scores_untrusted_and_expiring(monkeypatch):
+    future = datetime.now(timezone.utc) + timedelta(days=10)
+    not_after = future.strftime("%b %d %H:%M:%S %Y GMT")
+
+    class DummyContext:
+        def wrap_socket(self, sock, server_hostname=None):
+            return DummySock(
+                {
+                    "notAfter": not_after,
+                    "issuer": ((("commonName", "Untrusted"),),),
+                }
+            )
+
+    monkeypatch.setattr(ssl_cert.ssl, "create_default_context", lambda: DummyContext())
+    monkeypatch.setattr(
+        ssl_cert.socket, "create_connection", lambda *_, **__: DummySock()
+    )
+    result = ssl_cert.scan("example.com")
+    assert result["score"] == 3
+    assert result["details"]["issuer"] == "Untrusted"
+    assert 9 <= result["details"]["days_remaining"] <= 10
+
+
+def test_ssl_cert_scan_scores_trusted_and_valid(monkeypatch):
+    future = datetime.now(timezone.utc) + timedelta(days=60)
+    not_after = future.strftime("%b %d %H:%M:%S %Y GMT")
+
+    class DummyContext:
+        def wrap_socket(self, sock, server_hostname=None):
+            return DummySock(
+                {
+                    "notAfter": not_after,
+                    "issuer": ((("commonName", "Let's Encrypt"),),),
+                }
+            )
+
+    monkeypatch.setattr(ssl_cert.ssl, "create_default_context", lambda: DummyContext())
+    monkeypatch.setattr(
+        ssl_cert.socket, "create_connection", lambda *_, **__: DummySock()
+    )
+    result = ssl_cert.scan("example.com")
+    assert result["score"] == 0
+    assert result["details"]["issuer"] == "Let's Encrypt"
+    assert 59 <= result["details"]["days_remaining"] <= 60
 
 
 def test_ssl_cert_scan_handles_error(monkeypatch):

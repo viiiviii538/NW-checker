@@ -217,14 +217,19 @@ class _StaticScanTabState extends State<StaticScanTab> {
             (sslFinding['details'] as Map?)?.cast<String, dynamic>() ?? {};
         final sslExpired = sslDetails['expired'] as bool?;
         final sslHost = sslDetails['host'] as String? ?? '';
+        final sslIssuer = sslDetails['issuer'] as String? ?? '';
+        final sslDays = sslDetails['days_remaining'] as int?;
         _categories[7]
           ..status = sslExpired == null
               ? ScanStatus.error
               : (sslExpired ? ScanStatus.warning : ScanStatus.ok)
           ..details = [
             if (sslHost.isNotEmpty) 'ホスト: $sslHost',
+            if (sslIssuer.isNotEmpty) '発行者: $sslIssuer',
+            if (sslDays != null && sslDays >= 0) '有効期限まで $sslDays 日',
             if (sslExpired == true) '証明書は期限切れ',
-            if (sslExpired == false) '証明書は有効',
+            if (sslExpired == false && (sslDays == null || sslDays >= 0))
+              '証明書は有効',
             if (sslExpired == null) '情報取得失敗',
           ];
       });

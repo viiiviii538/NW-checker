@@ -1,12 +1,43 @@
 from __future__ import annotations
 
 import asyncio
+import json
+import os
 from contextlib import suppress
-from typing import Iterable, Optional
+from pathlib import Path
+from typing import Iterable
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-from . import capture, analyze, storage
+from . import blacklist_updater, capture, analyze, storage
+
+
+CONFIG_PATH = Path(__file__).with_name("config.json")
+
+
+def load_blacklist_config(path: Path | None = None) -> tuple[str | None, int]:
+    """環境変数または設定ファイルからブラックリスト更新設定を読み込む"""
+    path = path or CONFIG_PATH
+    feed_url = os.getenv("BLACKLIST_FEED_URL")
+    interval_env = os.getenv("BLACKLIST_UPDATE_INTERVAL_HOURS")
+    try:
+        interval_hours = int(interval_env) if interval_env is not None else None
+    except ValueError:
+        interval_hours = None
+    if not feed_url or interval_hours is None:
+        try:
+            with path.open("r", encoding="utf-8") as f:
+                data = json.load(f)
+            if not feed_url:
+                feed_url = data.get("blacklist_feed_url")
+            if interval_hours is None:
+                interval_hours = int(data.get("blacklist_update_interval_hours", 12))
+        except Exception:
+            if interval_hours is None:
+                interval_hours = 12
+    if interval_hours is None:
+        interval_hours = 12
+    return feed_url, interval_hours
 
 
 class DynamicScanScheduler:
@@ -15,6 +46,7 @@ class DynamicScanScheduler:
     def __init__(self) -> None:
         self.scheduler: AsyncIOScheduler | None = None
         self.job = None
+        self.blacklist_job = None
         self.capture_task: asyncio.Task | None = None
         self.analyse_task: asyncio.Task | None = None
         self.storage: storage.Storage = storage.Storage()
@@ -50,19 +82,33 @@ class DynamicScanScheduler:
             self.scheduler.start()
         if self.job:
             self.job.remove()
+        if self.blacklist_job:
+            self.blacklist_job.remove()
         # APScheduler でコルーチンを定期実行
         self.job = self.scheduler.add_job(
             self._run_scan,
             "interval",
             seconds=interval,
             args=[interface, duration, approved_macs],
+            max_instances=1,
         )
+        feed_url, interval_hours = load_blacklist_config()
+        if feed_url:
+            self.blacklist_job = self.scheduler.add_job(
+                blacklist_updater.update,
+                "interval",
+                hours=interval_hours,
+                args=[feed_url],
+            )
 
     async def stop(self) -> None:
         """スケジュールされたジョブと進行中のタスクを停止"""
         if self.job:
             self.job.remove()
             self.job = None
+        if self.blacklist_job:
+            self.blacklist_job.remove()
+            self.blacklist_job = None
         for task in (self.capture_task, self.analyse_task):
             if task:
                 task.cancel()

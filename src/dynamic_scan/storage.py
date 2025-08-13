@@ -1,7 +1,7 @@
 import json
 import asyncio
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -9,10 +9,17 @@ from typing import Any, Dict, List
 class Storage:
     """解析結果を SQLite で保持するストレージ層"""
 
-    def __init__(self, db_path: str = "dynamic_scan_results.db") -> None:
+    def __init__(self, db_path: str = "dynamic_scan_results.db", *, max_recent: int = 100) -> None:
+        """ストレージを初期化
+
+        Args:
+            db_path: SQLite のファイルパス
+            max_recent: メモリ上に保持する最新結果の上限件数
+        """
         self.db_path = Path(db_path)
         self._lock = asyncio.Lock()
         self._listeners: List[asyncio.Queue] = []
+        self._recent_limit = max_recent
         self._recent: List[Dict[str, Any]] = []
         self._init_db()
 
@@ -41,16 +48,20 @@ class Storage:
 
     async def save_result(self, data: Dict[str, Any]) -> None:
         """結果を保存し、リスナーへ通知"""
-        from datetime import datetime, timezone
+        # タイムゾーン付きISO形式でタイムスタンプを付与
         record = {"timestamp": datetime.now(timezone.utc).isoformat(), **data}
 
         async with self._lock:
             await asyncio.to_thread(self._insert_record, record)
             self._recent.append(record)
+            # メモリ上の履歴件数を制限
+            if len(self._recent) > self._recent_limit:
+                self._recent.pop(0)
         for q in list(self._listeners):
             q.put_nowait(record)
 
     def _insert_record(self, record: Dict[str, Any]) -> None:
+        """SQLite に 1 件のレコードを書き込む"""
         with sqlite3.connect(self.db_path) as conn:
             conn.execute(
                 "INSERT INTO results (timestamp, data) VALUES (?, ?)",
