@@ -11,13 +11,24 @@ from src.dynamic_scan import analyze, capture, storage
 
 def test_geoip_lookup(monkeypatch):
     class FakeResp:
-        ok = True
+        status_code = 200
 
         def json(self):
             return {"country_name": "Wonderland"}
 
-    monkeypatch.setattr(analyze.requests, "get", lambda url, timeout=5: FakeResp())
-    assert analyze.geoip_lookup("203.0.113.1") == {"country": "Wonderland", "ip": "203.0.113.1"}
+    class FakeClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            pass
+
+        async def get(self, url):
+            return FakeResp()
+
+    monkeypatch.setattr(analyze.httpx, "AsyncClient", lambda *a, **k: FakeClient())
+    res = asyncio.run(analyze.geoip_lookup("203.0.113.1"))
+    assert res == {"country": "Wonderland", "ip": "203.0.113.1"}
 
 
 def test_reverse_dns_lookup(monkeypatch):
@@ -85,7 +96,10 @@ def test_storage_save_and_get(tmp_path):
 def test_analyse_packets_pipeline(tmp_path, monkeypatch):
     async def runner():
         store = storage.Storage(tmp_path / "results.json")
-        monkeypatch.setattr(analyze, "geoip_lookup", lambda ip: {"country": "Testland", "ip": ip})
+        async def fake_geoip(ip):
+            return {"country": "Testland", "ip": ip}
+
+        monkeypatch.setattr(analyze, "geoip_lookup", fake_geoip)
         monkeypatch.setattr(analyze, "reverse_dns_lookup", lambda ip: "example.com")
         queue: asyncio.Queue = asyncio.Queue()
         task = asyncio.create_task(
@@ -125,9 +139,10 @@ def test_analyse_packets_pipeline_in_hours(tmp_path, monkeypatch):
     async def runner():
         analyze._known_devices.clear()
         store = storage.Storage(tmp_path / "results.json")
-        monkeypatch.setattr(
-            analyze, "geoip_lookup", lambda ip: {"country": "Testland", "ip": ip}
-        )
+        async def fake_geoip(ip):
+            return {"country": "Testland", "ip": ip}
+
+        monkeypatch.setattr(analyze, "geoip_lookup", fake_geoip)
         monkeypatch.setattr(analyze, "reverse_dns_lookup", lambda ip: "example.com")
         queue: asyncio.Queue = asyncio.Queue()
         task = asyncio.create_task(

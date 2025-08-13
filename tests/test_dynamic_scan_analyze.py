@@ -3,6 +3,8 @@ from datetime import datetime
 import json
 import sys
 import types
+import asyncio
+import httpx
 
 import pytest
 
@@ -11,7 +13,7 @@ from src.dynamic_scan import analyze
 
 def test_geoip_lookup(monkeypatch):
     class FakeResp:
-        ok = True
+        status_code = 200
 
         def json(self):  # pragma: no cover - 単純な dict 返却
             return {"country_name": "Wonderland"}
@@ -26,8 +28,19 @@ def test_geoip_lookup(monkeypatch):
     monkeypatch.setitem(sys.modules, "geoip2", fake_geoip2)
     monkeypatch.setitem(sys.modules, "geoip2.database", fake_geoip2.database)
 
-    monkeypatch.setattr(analyze.requests, "get", lambda url, timeout=5: FakeResp())
-    assert analyze.geoip_lookup("203.0.113.1") == {
+    class FakeClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            pass
+
+        async def get(self, url):
+            return FakeResp()
+
+    monkeypatch.setattr(analyze.httpx, "AsyncClient", lambda *a, **k: FakeClient())
+    res = asyncio.run(analyze.geoip_lookup("203.0.113.1"))
+    assert res == {
         "country": "Wonderland",
         "ip": "203.0.113.1",
     }
@@ -46,15 +59,24 @@ def test_geoip_lookup_local_db(monkeypatch):
         def close(self):
             pass
 
-    monkeypatch.setattr(
-        analyze.requests, "get", lambda *a, **k: pytest.fail("API called")
-    )
+    class FailClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            pass
+
+        async def get(self, url):
+            pytest.fail("API called")
+
+    monkeypatch.setattr(analyze.httpx, "AsyncClient", lambda *a, **k: FailClient())
     fake_geoip2 = types.SimpleNamespace(
         database=types.SimpleNamespace(Reader=FakeReader)
     )
     monkeypatch.setitem(sys.modules, "geoip2", fake_geoip2)
     monkeypatch.setitem(sys.modules, "geoip2.database", fake_geoip2.database)
-    assert analyze.geoip_lookup("203.0.113.1") == {
+    res = asyncio.run(analyze.geoip_lookup("203.0.113.1"))
+    assert res == {
         "country": "Wonderland",
         "ip": "203.0.113.1",
     }
@@ -77,25 +99,58 @@ def test_geoip_lookup_custom_db_path(monkeypatch):
         def close(self):
             pass
 
-    monkeypatch.setattr(
-        analyze.requests, "get", lambda *a, **k: pytest.fail("API called")
-    )
+    class FailClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            pass
+
+        async def get(self, url):
+            pytest.fail("API called")
+
+    monkeypatch.setattr(analyze.httpx, "AsyncClient", lambda *a, **k: FailClient())
     fake_geoip2 = types.SimpleNamespace(
         database=types.SimpleNamespace(Reader=FakeReader)
     )
     monkeypatch.setitem(sys.modules, "geoip2", fake_geoip2)
     monkeypatch.setitem(sys.modules, "geoip2.database", fake_geoip2.database)
-    res = analyze.geoip_lookup("203.0.113.1", db_path="/custom/path.mmdb")
+    res = asyncio.run(analyze.geoip_lookup("203.0.113.1", db_path="/custom/path.mmdb"))
     assert used_paths == ["/custom/path.mmdb"]
     assert res == {"country": "Wonderland", "ip": "203.0.113.1"}
 
 
 def test_geoip_lookup_failure(monkeypatch):
     class FailResp:
-        ok = False
+        status_code = 500
 
-    monkeypatch.setattr(analyze.requests, "get", lambda url, timeout=5: FailResp())
-    assert analyze.geoip_lookup("203.0.113.1") == {}
+    class FakeClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            pass
+
+        async def get(self, url):
+            return FailResp()
+
+    monkeypatch.setattr(analyze.httpx, "AsyncClient", lambda *a, **k: FakeClient())
+    assert asyncio.run(analyze.geoip_lookup("203.0.113.1")) == {}
+
+
+def test_geoip_lookup_request_error(monkeypatch):
+    class FakeClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            pass
+
+        async def get(self, url):  # pragma: no cover - network error path
+            raise httpx.RequestError("boom")
+
+    monkeypatch.setattr(analyze.httpx, "AsyncClient", lambda *a, **k: FakeClient())
+    assert asyncio.run(analyze.geoip_lookup("203.0.113.1")) == {}
 
 
 def test_reverse_dns_lookup(monkeypatch):
@@ -177,49 +232,40 @@ def test_is_night_traffic():
 
 
 def test_assign_geoip_info(monkeypatch):
-    class FakeResp:
-        ok = True
+    async def fake_geoip(ip):
+        return {"country": "Wonderland", "ip": ip}
 
-        def json(self):  # pragma: no cover - 単純な dict 返却
-            return {"country_name": "Wonderland"}
-
-    monkeypatch.setattr(analyze.requests, "get", lambda url, timeout=5: FakeResp())
+    monkeypatch.setattr(analyze, "geoip_lookup", fake_geoip)
     pkt = type("Pkt", (), {"src_ip": "203.0.113.1", "dst_ip": "1.1.1.1"})
-    res = analyze.assign_geoip_info(pkt)
+    res = asyncio.run(analyze.assign_geoip_info(pkt))
     assert res.geoip == {"country": "Wonderland", "ip": "203.0.113.1"}
 
 
 def test_attach_geoip(monkeypatch):
-    class FakeResp:
-        ok = True
+    async def fake_geoip(ip):
+        return {"country": "Wonderland", "ip": ip}
 
-        def json(self):  # pragma: no cover - 単純な dict 返却
-            return {"country_name": "Wonderland"}
-
-    monkeypatch.setattr(analyze.requests, "get", lambda url, timeout=5: FakeResp())
+    monkeypatch.setattr(analyze, "geoip_lookup", fake_geoip)
     res = analyze.AnalysisResult()
-    updated = analyze.attach_geoip(res, "203.0.113.1")
+    updated = asyncio.run(analyze.attach_geoip(res, "203.0.113.1"))
     assert updated.geoip == {"country": "Wonderland", "ip": "203.0.113.1"}
     assert updated.src_ip == "203.0.113.1"
 
 
 def test_attach_geoip_no_ip():
     res = analyze.AnalysisResult()
-    updated = analyze.attach_geoip(res, None)
+    updated = asyncio.run(analyze.attach_geoip(res, None))
     assert updated.geoip is None
     assert updated.src_ip is None
 
 
 def test_assign_geoip_info_ip_src(monkeypatch):
-    class FakeResp:
-        ok = True
+    async def fake_geoip(ip):
+        return {"country": "Wonderland", "ip": ip}
 
-        def json(self):  # pragma: no cover - 単純な dict 返却
-            return {"country_name": "Wonderland"}
-
-    monkeypatch.setattr(analyze.requests, "get", lambda url, timeout=5: FakeResp())
+    monkeypatch.setattr(analyze, "geoip_lookup", fake_geoip)
     pkt = type("Pkt", (), {"ip_src": "203.0.113.1", "ip_dst": "1.1.1.1"})
-    res = analyze.assign_geoip_info(pkt)
+    res = asyncio.run(analyze.assign_geoip_info(pkt))
     assert res.src_ip == "203.0.113.1"
     assert res.dst_ip == "1.1.1.1"
     assert res.geoip == {"country": "Wonderland", "ip": "203.0.113.1"}
