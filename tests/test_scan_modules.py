@@ -303,6 +303,25 @@ def test_dns_scan_flags_external_dns(monkeypatch):
     assert any("外部DNSが検出されました" in w for w in warnings)
 
 
+def test_dns_scan_ignores_loopback_nameserver(monkeypatch):
+    class FakeResp:
+        def haslayer(self, layer):
+            return True
+
+        def __getitem__(self, layer):  # noqa: D401, ARG002
+            return SimpleNamespace(ad=1)
+
+    monkeypatch.setattr(
+        dns,
+        "_get_nameservers",
+        lambda path="/etc/resolv.conf": ["127.0.0.1"],
+    )
+    monkeypatch.setattr(dns, "sr1", lambda *_, **__: FakeResp())
+    result = dns.scan()
+    warnings = result["details"]["warnings"]
+    assert all("外部DNSが検出されました" not in w for w in warnings)
+
+
 def test_dns_scan_flags_dnssec_disabled(monkeypatch):
     class FakeResp:
         def haslayer(self, layer):
@@ -331,6 +350,7 @@ def test_dns_scan_handles_error(monkeypatch):
     result = dns.scan()
     assert result["score"] == 0
     assert "dns fail" in result["details"]["error"]
+    assert result["details"]["warnings"] == []
 
 
 def test_dhcp_scan_detects_servers(monkeypatch):

@@ -35,7 +35,7 @@ def _get_nameservers(path: str = "/etc/resolv.conf") -> List[str]:
 def _is_private(ip: str) -> bool:
     try:
         addr = ip_address(ip)
-        return any(addr in net for net in _PRIVATE_NETS)
+        return addr.is_private or addr.is_loopback
     except ValueError:
         return False
 
@@ -53,7 +53,7 @@ def scan() -> dict:
         warnings.append("外部DNSが検出されました: " + ", ".join(external))
         details["external_servers"] = external
 
-    dnssec_enabled = False
+    dnssec_enabled: bool | None = None
     try:
         pkt = (
             IP(dst=servers[0])
@@ -67,7 +67,7 @@ def scan() -> dict:
         details["error"] = str(exc)
 
     details["dnssec_enabled"] = dnssec_enabled
-    if not dnssec_enabled:
+    if dnssec_enabled is False:
         warnings.append("DNSSECが無効です")
 
     details["warnings"] = warnings
