@@ -9,10 +9,17 @@ from typing import Any, Dict, List
 class Storage:
     """解析結果を SQLite で保持するストレージ層"""
 
-    def __init__(self, db_path: str = "dynamic_scan_results.db") -> None:
+    def __init__(self, db_path: str = "dynamic_scan_results.db", *, max_recent: int = 100) -> None:
+        """ストレージを初期化
+
+        Args:
+            db_path: SQLite のファイルパス
+            max_recent: メモリ上に保持する最新結果の上限件数
+        """
         self.db_path = Path(db_path)
         self._lock = asyncio.Lock()
         self._listeners: List[asyncio.Queue] = []
+        self._recent_limit = max_recent
         self._recent: List[Dict[str, Any]] = []
         self._init_db()
 
@@ -47,6 +54,9 @@ class Storage:
         async with self._lock:
             await asyncio.to_thread(self._insert_record, record)
             self._recent.append(record)
+            # メモリ上の履歴件数を制限
+            if len(self._recent) > self._recent_limit:
+                self._recent.pop(0)
         for q in list(self._listeners):
             q.put_nowait(record)
 
