@@ -1,7 +1,7 @@
 import json
 import asyncio
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -41,7 +41,7 @@ class Storage:
 
     async def save_result(self, data: Dict[str, Any]) -> None:
         """結果を保存し、リスナーへ通知"""
-        from datetime import datetime, timezone
+        # タイムゾーン付きISO形式でタイムスタンプを付与
         record = {"timestamp": datetime.now(timezone.utc).isoformat(), **data}
 
         async with self._lock:
@@ -51,6 +51,7 @@ class Storage:
             q.put_nowait(record)
 
     def _insert_record(self, record: Dict[str, Any]) -> None:
+        """SQLite に 1 件のレコードを書き込む"""
         with sqlite3.connect(self.db_path) as conn:
             conn.execute(
                 "INSERT INTO results (timestamp, data) VALUES (?, ?)",

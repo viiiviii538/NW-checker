@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import suppress
-from typing import Iterable, Optional
+from typing import Iterable
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
@@ -56,6 +56,7 @@ class DynamicScanScheduler:
             "interval",
             seconds=interval,
             args=[interface, duration, approved_macs],
+            max_instances=1,
         )
 
     async def stop(self) -> None:
