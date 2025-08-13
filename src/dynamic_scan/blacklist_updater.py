@@ -74,6 +74,12 @@ def write_blacklist(domains: Set[str], path: str = "data/dns_blacklist.txt") -> 
         raise
 
 
+def update(feed_url: str, output_path: str = "data/dns_blacklist.txt") -> None:
+    """Fetch a feed and update blacklist file."""
+    domains = fetch_feed(feed_url)
+    write_blacklist(domains, output_path)
+
+
 def main(argv: Iterable[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Update DNS blacklist from feeds")
     parser.add_argument("feeds", nargs="+", help="Feed URLs (CSV or JSON)")
