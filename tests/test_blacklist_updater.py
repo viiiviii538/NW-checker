@@ -57,3 +57,17 @@ def test_update_integration(monkeypatch, tmp_path):
     lines = out.read_text().splitlines()
     assert "x.com" in lines and "y.org" in lines
     assert lines[0].startswith("#")
+
+
+def test_fetch_feed_error(monkeypatch):
+    def fake_get(url, timeout):  # pragma: no cover - 例外発生の確認用
+        raise requests.RequestException("boom")
+
+    monkeypatch.setattr(requests, "get", fake_get)
+    assert blacklist_updater.fetch_feed("http://example.com/feed") == set()
+
+
+def test_write_blacklist_no_domains(tmp_path):
+    path = tmp_path / "dns_blacklist.txt"
+    blacklist_updater.write_blacklist(set(), path=str(path))
+    assert not path.exists()
