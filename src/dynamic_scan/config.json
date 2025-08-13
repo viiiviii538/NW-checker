@@ -1,3 +1,5 @@
 {
-  "traffic_threshold": 1000000
+  "traffic_threshold": 1000000,
+  "blacklist_feed_url": "https://example.com/feed.json",
+  "blacklist_update_interval_hours": 12
 }
