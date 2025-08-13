@@ -274,6 +274,9 @@ def test_record_dns_history_no_hostname(monkeypatch):
 
 def test_record_dns_history_uses_loaded_blacklist(monkeypatch):
     analyze._dns_history.clear()
+    monkeypatch.setattr(
+        analyze, "load_blacklist", lambda path="data/dns_blacklist.txt": {"malicious.example"}
+    )
     analyze.DNS_BLACKLIST = analyze.load_blacklist()
     monkeypatch.setattr(
         analyze.socket, "gethostbyaddr", lambda ip: ("malicious.example", [], [])

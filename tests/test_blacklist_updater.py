@@ -1,5 +1,5 @@
 import requests
-from src.dynamic_scan import blacklist_updater
+from src.dynamic_scan import analyze, blacklist_updater
 
 
 def test_fetch_feed_json(monkeypatch):
@@ -36,19 +36,24 @@ def test_fetch_feed_csv(monkeypatch):
     assert blacklist_updater.fetch_feed("http://example.com/feed.csv") == {"c.com", "d.org"}
 
 
-def test_update(monkeypatch, tmp_path):
-    called = {"fetch": False, "write": False}
+def test_load_blacklist(tmp_path):
+    blk = tmp_path / "dns_blacklist.txt"
+    blk.write_text("# comment\nfoo.example\nbar.example\n")
+    assert analyze.load_blacklist(str(blk)) == {"foo.example", "bar.example"}
 
-    def fake_fetch(url):
-        called["fetch"] = True
-        return {"x.com"}
 
-    def fake_write(domains, path="data/dns_blacklist.txt"):
-        called["write"] = True
-        assert domains == {"x.com"}
-        assert path == str(tmp_path / "out.txt")
+def test_update_integration(monkeypatch, tmp_path):
+    class Resp:
+        def __init__(self):
+            self.text = "x.com\n#c\ny.org"
+            self.headers = {"Content-Type": "text/plain"}
 
-    monkeypatch.setattr(blacklist_updater, "fetch_feed", fake_fetch)
-    monkeypatch.setattr(blacklist_updater, "write_blacklist", fake_write)
-    blacklist_updater.update("http://feed", output_path=str(tmp_path / "out.txt"))
-    assert called["fetch"] and called["write"]
+        def raise_for_status(self):
+            pass
+
+    monkeypatch.setattr(requests, "get", lambda url, timeout: Resp())
+    out = tmp_path / "out.txt"
+    blacklist_updater.update("http://feed", output_path=str(out))
+    lines = out.read_text().splitlines()
+    assert "x.com" in lines and "y.org" in lines
+    assert lines[0].startswith("#")
