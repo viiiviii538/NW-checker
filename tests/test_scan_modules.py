@@ -300,7 +300,7 @@ def test_dns_scan_flags_external_dns(monkeypatch):
     monkeypatch.setattr(dns, "sr1", lambda *_, **__: FakeResp())
     result = dns.scan()
     warnings = result["details"]["warnings"]
-    assert any("外部DNSが検出されました" in w for w in warnings)
+    assert any("External DNS detected" in w for w in warnings)
 
 
 def test_dns_scan_flags_dnssec_disabled(monkeypatch):
@@ -318,7 +318,7 @@ def test_dns_scan_flags_dnssec_disabled(monkeypatch):
     monkeypatch.setattr(dns, "sr1", lambda *_, **__: FakeResp())
     result = dns.scan()
     warnings = result["details"]["warnings"]
-    assert "DNSSECが無効です" in warnings
+    assert "DNSSEC is disabled" in warnings
 
 
 def test_dns_scan_handles_error(monkeypatch):
@@ -331,6 +331,17 @@ def test_dns_scan_handles_error(monkeypatch):
     result = dns.scan()
     assert result["score"] == 0
     assert "dns fail" in result["details"]["error"]
+
+
+def test_dns_scan_flags_invalid_server(monkeypatch):
+    """Invalid nameserver entries should trigger a warning."""
+
+    monkeypatch.setattr(
+        dns, "_get_nameservers", lambda path="/etc/resolv.conf": ["bad_ip"]
+    )
+    result = dns.scan()
+    warnings = result["details"]["warnings"]
+    assert any("Invalid DNS server IP" in w for w in warnings)
 
 
 def test_dhcp_scan_detects_servers(monkeypatch):

@@ -44,31 +44,47 @@ def scan() -> dict:
     """DNS設定を検査し、問題があれば警告を返す。"""
 
     servers = _get_nameservers()
-    external = [ip for ip in servers if not _is_private(ip)]
+
+    external: List[str] = []
+    invalid: List[str] = []
+    for ip in servers:
+        try:
+            addr = ip_address(ip)
+            if not any(addr in net for net in _PRIVATE_NETS):
+                external.append(ip)
+        except ValueError:
+            invalid.append(ip)
 
     warnings: List[str] = []
     details = {"servers": servers}
 
     if external:
-        warnings.append("外部DNSが検出されました: " + ", ".join(external))
+        # 外部DNSサーバーを使用している場合は警告
+        warnings.append("External DNS detected: " + ", ".join(external))
         details["external_servers"] = external
 
-    dnssec_enabled = False
+    if invalid:
+        warnings.append("Invalid DNS server IP: " + ", ".join(invalid))
+        details["invalid_servers"] = invalid
+
+    dnssec_enabled = None
     try:
-        pkt = (
-            IP(dst=servers[0])
-            / UDP(dport=53)
-            / DNS(rd=1, qd=DNSQR(qname="example.com"), ad=1)
-        )
-        resp = sr1(pkt, timeout=2, verbose=False)
-        if resp and resp.haslayer(DNS):
-            dnssec_enabled = bool(getattr(resp[DNS], "ad", 0))
+        valid = [ip for ip in servers if ip not in invalid]
+        if valid:
+            pkt = (
+                IP(dst=valid[0])
+                / UDP(dport=53)
+                / DNS(rd=1, qd=DNSQR(qname="example.com"), ad=1)
+            )
+            resp = sr1(pkt, timeout=2, verbose=False)
+            if resp and resp.haslayer(DNS):
+                dnssec_enabled = bool(getattr(resp[DNS], "ad", 0))
     except Exception as exc:  # pragma: no cover
         details["error"] = str(exc)
 
-    details["dnssec_enabled"] = dnssec_enabled
-    if not dnssec_enabled:
-        warnings.append("DNSSECが無効です")
+    details["dnssec_enabled"] = bool(dnssec_enabled)
+    if dnssec_enabled is False:
+        warnings.append("DNSSEC is disabled")
 
     details["warnings"] = warnings
     score = len(warnings)
