@@ -1,11 +1,12 @@
 import asyncio
+import pytest
 from fastapi.testclient import TestClient
 
 from src import api
 from src.dynamic_scan import capture, analyze, storage, scheduler
 
-
-def test_dynamic_scan_endpoints(monkeypatch, tmp_path):
+@pytest.mark.parametrize("base", ["/scan/dynamic", "/dynamic-scan"])
+def test_dynamic_scan_endpoints(monkeypatch, tmp_path, base):
     client = TestClient(api.app)
     store = storage.Storage(tmp_path / "res.db")
     api.scan_scheduler = scheduler.DynamicScanScheduler()
@@ -21,11 +22,11 @@ def test_dynamic_scan_endpoints(monkeypatch, tmp_path):
     monkeypatch.setattr(capture, "capture_packets", dummy_capture)
     monkeypatch.setattr(analyze, "analyse_packets", dummy_analyse)
 
-    resp = client.post("/scan/dynamic/start", json={"duration": 0})
+    resp = client.post(f"{base}/start", json={"duration": 0})
     assert resp.status_code == 200
     assert resp.json() == {"status": "scheduled"}
 
-    resp2 = client.post("/scan/dynamic/stop")
+    resp2 = client.post(f"{base}/stop")
     assert resp2.status_code == 200
     assert resp2.json() == {"status": "stopped"}
 
@@ -41,14 +42,14 @@ def test_dynamic_scan_endpoints(monkeypatch, tmp_path):
         )
     )
 
-    resp3 = client.get("/scan/dynamic/results")
+    resp3 = client.get(f"{base}/results")
     assert resp3.status_code == 200
     body = resp3.json()
     assert body["risk_score"] == 1
     assert body["categories"][0]["issues"] == ["ftp"]
 
     resp4 = client.get(
-        "/scan/dynamic/history",
+        f"{base}/history",
         params={"start": "1970-01-01", "end": "2100-01-01", "device": "2.2.2.2"},
     )
     assert resp4.status_code == 200
@@ -57,7 +58,7 @@ def test_dynamic_scan_endpoints(monkeypatch, tmp_path):
     assert hist[0]["src_ip"] == "2.2.2.2"
 
     resp5 = client.get(
-        "/scan/dynamic/history",
+        f"{base}/history",
         params={"start": "1970-01-01", "end": "2100-01-01", "protocol": "ftp"},
     )
     assert resp5.status_code == 200
