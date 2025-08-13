@@ -333,6 +333,17 @@ def test_dns_scan_handles_error(monkeypatch):
     assert "dns fail" in result["details"]["error"]
 
 
+def test_dns_scan_flags_invalid_server(monkeypatch):
+    """Invalid nameserver entries should trigger a warning."""
+
+    monkeypatch.setattr(
+        dns, "_get_nameservers", lambda path="/etc/resolv.conf": ["bad_ip"]
+    )
+    result = dns.scan()
+    warnings = result["details"]["warnings"]
+    assert any("Invalid DNS server IP" in w for w in warnings)
+
+
 def test_dhcp_scan_detects_servers(monkeypatch):
     class FakePkt:
         def __contains__(self, item):
