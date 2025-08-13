@@ -14,15 +14,12 @@ DANGEROUS_PROTOCOLS = {"telnet", "ftp", "rdp"}
 
 
 def load_blacklist(path: str = "data/dns_blacklist.txt") -> set[str]:
-    try:
-        with open(path) as f:
-            return {
-                line.strip()
-                for line in f
-                if line.strip() and not line.startswith("#")
-            }
-    except FileNotFoundError:
-        return set()
+    with open(path) as f:
+        return {
+            line.strip()
+            for line in f
+            if line.strip() and not line.startswith("#")
+        }
 
 
 # DNS 逆引きのブラックリスト

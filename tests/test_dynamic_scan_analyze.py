@@ -161,7 +161,8 @@ def test_load_blacklist(tmp_path):
 
 def test_load_blacklist_missing_file(tmp_path):
     missing = tmp_path / "no_such_file.txt"
-    assert analyze.load_blacklist(missing) == set()
+    with pytest.raises(FileNotFoundError):
+        analyze.load_blacklist(missing)
 
 
 def test_load_blacklist_default_file():
@@ -269,6 +270,18 @@ def test_record_dns_history_no_hostname(monkeypatch):
     assert res.reverse_dns is None
     assert res.reverse_dns_blacklisted is None
     assert analyze._dns_history == {}
+
+
+def test_record_dns_history_uses_loaded_blacklist(monkeypatch):
+    analyze._dns_history.clear()
+    analyze.DNS_BLACKLIST = analyze.load_blacklist()
+    monkeypatch.setattr(
+        analyze.socket, "gethostbyaddr", lambda ip: ("malicious.example", [], [])
+    )
+    pkt = type("Pkt", (), {"src_ip": "4.4.4.4"})
+    res = analyze.record_dns_history(pkt)
+    assert res.reverse_dns == "malicious.example"
+    assert res.reverse_dns_blacklisted is True
 
 
 def test_record_dns_history_blacklisted(monkeypatch):

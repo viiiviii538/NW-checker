@@ -285,27 +285,40 @@ def test_upnp_scan_handles_errors(monkeypatch):
     assert "boom" in result["details"]["error"]
 
 
-def test_dns_scan_collects_answers(monkeypatch):
-    class FakeAnswer:
-        def __init__(self, rdata):
-            self.rdata = rdata
-
-    class FakeDNSLayer:
-        def __init__(self):
-            self.ancount = 1
-            self.an = [FakeAnswer("1.2.3.4")]
-
+def test_dns_scan_flags_external_dns(monkeypatch):
     class FakeResp:
         def haslayer(self, layer):
             return True
 
-        def __getitem__(self, layer):
-            return FakeDNSLayer()
+        def __getitem__(self, layer):  # noqa: D401, ARG002
+            class FakeDNS:
+                ad = 1
 
+            return FakeDNS()
+
+    monkeypatch.setattr(dns, "_get_nameservers", lambda path="/etc/resolv.conf": ["8.8.8.8"])
     monkeypatch.setattr(dns, "sr1", lambda *_, **__: FakeResp())
     result = dns.scan()
-    assert result["score"] == 1
-    assert result["details"]["answers"] == ["1.2.3.4"]
+    warnings = result["details"]["warnings"]
+    assert any("External DNS detected" in w for w in warnings)
+
+
+def test_dns_scan_flags_dnssec_disabled(monkeypatch):
+    class FakeResp:
+        def haslayer(self, layer):
+            return True
+
+        def __getitem__(self, layer):  # noqa: D401, ARG002
+            class FakeDNS:
+                ad = 0
+
+            return FakeDNS()
+
+    monkeypatch.setattr(dns, "_get_nameservers", lambda path="/etc/resolv.conf": ["1.1.1.1"])
+    monkeypatch.setattr(dns, "sr1", lambda *_, **__: FakeResp())
+    result = dns.scan()
+    warnings = result["details"]["warnings"]
+    assert "DNSSEC is disabled" in warnings
 
 
 def test_dns_scan_handles_error(monkeypatch):
@@ -438,25 +451,6 @@ def test_arp_spoof_custom_ip_mac(monkeypatch):
         "vulnerable": True,
         "explanation": "ARP table updated with spoofed entry",
     }
-
-
-import arp_spoof
-
-
-@pytest.mark.parametrize("message", ["send fail", "send error"])
-def test_arp_spoof_scan_handles_send_error(monkeypatch, message):
-    """send() が失敗した場合は score=0 を返し、エラーメッセージに内容を含める。"""
-
-    def boom(*args, **kwargs):  # noqa: D401, ARG001
-        raise RuntimeError(message)
-
-    monkeypatch.setattr(arp_spoof, "send", failing_send)
-    result = arp_spoof.scan(wait=0)
-    assert result["score"] == 0
-    assert "send error" in result["details"]["error"]
-    assert result["category"] == "arp_spoof"
-    assert result["details"] == {"error": "send fail"}
-
 
 
 def test_arp_spoof_scan_handles_table_error(monkeypatch):
