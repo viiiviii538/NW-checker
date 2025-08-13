@@ -24,7 +24,7 @@ def test_scheduler_start_and_stop(monkeypatch):
         assert sched.scheduler is not None
         assert sched.job is not None
         assert sched.blacklist_job is not None
-        assert sched.blacklist_job.args == ["http://example.com/feed.json"]
+        assert sched.blacklist_job.args == ("http://example.com/feed.json",)
 
         # ダミータスクを設定し stop でキャンセルされるか確認
         t1 = asyncio.create_task(asyncio.sleep(1))
@@ -84,7 +84,23 @@ def test_scheduler_loads_config(monkeypatch, tmp_path):
         sched = scheduler.DynamicScanScheduler()
         sched.start(duration=0, interval=1)
         assert sched.blacklist_job is not None
-        assert sched.blacklist_job.args == ["http://conf.example.com/feed.csv"]
+        assert sched.blacklist_job.args == ("http://conf.example.com/feed.csv",)
+        await sched.stop()
+
+    asyncio.run(inner())
+
+
+def test_no_blacklist_job_without_feed_url(monkeypatch, tmp_path):
+    async def inner():
+        config_path = tmp_path / "config.json"
+        config_path.write_text(json.dumps({}))
+        monkeypatch.delenv("BLACKLIST_FEED_URL", raising=False)
+        monkeypatch.delenv("BLACKLIST_UPDATE_INTERVAL_HOURS", raising=False)
+        monkeypatch.setattr(scheduler, "CONFIG_PATH", config_path)
+
+        sched = scheduler.DynamicScanScheduler()
+        sched.start(duration=0, interval=1)
+        assert sched.blacklist_job is None
         await sched.stop()
 
     asyncio.run(inner())
