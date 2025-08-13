@@ -20,7 +20,7 @@ class DynamicScanApi {
   static Future<void> startScan() async {
     try {
       await http.post(
-        Uri.parse('$_baseUrl/scan/dynamic/start'),
+        Uri.parse('$_baseUrl/dynamic-scan/start'),
         headers: _headers(),
         body: jsonEncode({}),
       );
@@ -34,7 +34,7 @@ class DynamicScanApi {
   static Future<void> stopScan() async {
     try {
       await http.post(
-        Uri.parse('$_baseUrl/scan/dynamic/stop'),
+        Uri.parse('$_baseUrl/dynamic-scan/stop'),
         headers: _headers(),
       );
     } catch (_) {}
@@ -46,7 +46,7 @@ class DynamicScanApi {
   static Stream<ScanReport> fetchResults() async* {
     try {
       final resp = await http.get(
-        Uri.parse('$_baseUrl/scan/dynamic/results'),
+        Uri.parse('$_baseUrl/dynamic-scan/results'),
         headers: _headers(),
       );
       if (resp.statusCode == 200) {
@@ -88,7 +88,7 @@ class DynamicScanApi {
     try {
       final resp = await http.get(
         Uri.parse(
-          '$_baseUrl/scan/dynamic/history?start=${from.toIso8601String()}&end=${to.toIso8601String()}',
+          '$_baseUrl/dynamic-scan/history?start=${from.toIso8601String()}&end=${to.toIso8601String()}',
         ),
         headers: _headers(),
       );
