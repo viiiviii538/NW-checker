@@ -622,7 +622,7 @@ void main() {
           {
             'category': 'dns',
             'details': {
-              'warnings': ['外部DNSが検出されました: 8.8.8.8'],
+              'warnings': ['External DNS detected: 8.8.8.8'],
               'servers': ['8.8.8.8'],
               'dnssec_enabled': false,
             },
@@ -648,6 +648,73 @@ void main() {
     expect(dnsLabel.data, '警告');
     await tester.tap(find.text('DNS'));
     await tester.pumpAndSettle();
-    expect(find.text('外部DNSが検出されました: 8.8.8.8'), findsOneWidget);
+    expect(find.text('External DNS detected: 8.8.8.8'), findsOneWidget);
+  });
+
+  testWidgets('invalid DNS server shows warning in tile', (tester) async {
+    Future<Map<String, dynamic>> mockScan() async {
+      return {
+        'summary': [],
+        'findings': [
+          {
+            'category': 'ports',
+            'details': {'open_ports': []},
+          },
+          {
+            'category': 'os_banner',
+            'details': {'os': 'Linux', 'banners': {}},
+          },
+          {
+            'category': 'smb_netbios',
+            'details': {'smb1_enabled': false, 'netbios_names': []},
+          },
+          {
+            'category': 'upnp',
+            'details': {'responders': [], 'warnings': []},
+          },
+          {
+            'category': 'arp_spoof',
+            'details': {
+              'vulnerable': false,
+              'explanation': 'No ARP poisoning detected',
+            },
+          },
+          {
+            'category': 'dhcp',
+            'details': {
+              'servers': ['1.1.1.1'],
+              'warnings': [],
+            },
+          },
+          {
+            'category': 'dns',
+            'details': {
+              'warnings': ['Invalid DNS server IP: bad_ip'],
+              'servers': ['bad_ip'],
+              'dnssec_enabled': false,
+            },
+          },
+          {
+            'category': 'ssl_cert',
+            'details': {'host': 'example.com', 'expired': false},
+          },
+        ],
+      };
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(home: StaticScanTab(scanner: mockScan)),
+    );
+
+    await tester.tap(find.byKey(const Key('staticButton')));
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    final chips = tester.widgetList<Chip>(find.byType(Chip)).toList();
+    final dnsLabel = chips[6].label as Text;
+    expect(dnsLabel.data, '警告');
+    await tester.tap(find.text('DNS'));
+    await tester.pumpAndSettle();
+    expect(find.text('Invalid DNS server IP: bad_ip'), findsOneWidget);
   });
 }
