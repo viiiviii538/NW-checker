@@ -66,16 +66,22 @@ async def stop_scan():
     return {"status": "stopped"}
 
 
-# 新形式のエンドポイントへのエイリアス
+# 新形式のエンドポイント (/dynamic-scan/*) へのエイリアス
 @app.post("/dynamic-scan/start")
 async def start_scan_v2(params: StartParams):
-    """動的スキャン開始エイリアス"""
+    """動的スキャン開始エイリアス
+
+    旧エンドポイント `/scan/dynamic/start` と同様にスケジュール登録を行う。
+    """
     return await start_scan(params)
 
 
 @app.post("/dynamic-scan/stop")
 async def stop_scan_v2():
-    """動的スキャン停止エイリアス"""
+    """動的スキャン停止エイリアス
+
+    旧エンドポイント `/scan/dynamic/stop` と同じ処理を実行する。
+    """
     return await stop_scan()
 
 
@@ -111,7 +117,10 @@ async def get_results():
 
 @app.get("/dynamic-scan/results")
 async def get_results_v2():
-    """動的スキャン結果取得エイリアス"""
+    """動的スキャン結果取得エイリアス
+
+    `/scan/dynamic/results` と同じ集計結果を返す。
+    """
     return await get_results()
 
 

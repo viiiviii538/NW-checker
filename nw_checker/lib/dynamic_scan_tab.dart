@@ -56,6 +56,7 @@ class _DynamicScanTabState extends State<DynamicScanTab> {
               showDialog(
                 context: context,
                 builder: (_) => AlertDialog(
+                  key: const Key('criticalAlertDialog'),
                   title: const Text('Critical Alert'),
                   content: Text(msg),
                   actions: [

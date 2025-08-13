@@ -106,4 +106,18 @@ void main() {
 
     // navigation to detail page is handled elsewhere
   });
+
+  testWidgets('shows dialog on critical alert', (tester) async {
+    await tester.pumpWidget(_buildWidget());
+
+    await tester.tap(find.text('スキャン開始'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    // wait for second alert which is critical
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pump();
+
+    expect(find.text('Critical Alert'), findsOneWidget);
+    expect(find.text('CRITICAL: Malware detected'), findsOneWidget);
+  });
 }
