@@ -4,6 +4,7 @@ import json
 import sys
 import types
 import asyncio
+import httpx
 
 import pytest
 
@@ -132,6 +133,21 @@ def test_geoip_lookup_failure(monkeypatch):
 
         async def get(self, url):
             return FailResp()
+
+    monkeypatch.setattr(analyze.httpx, "AsyncClient", lambda *a, **k: FakeClient())
+    assert asyncio.run(analyze.geoip_lookup("203.0.113.1")) == {}
+
+
+def test_geoip_lookup_request_error(monkeypatch):
+    class FakeClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            pass
+
+        async def get(self, url):  # pragma: no cover - network error path
+            raise httpx.RequestError("boom")
 
     monkeypatch.setattr(analyze.httpx, "AsyncClient", lambda *a, **k: FakeClient())
     assert asyncio.run(analyze.geoip_lookup("203.0.113.1")) == {}
