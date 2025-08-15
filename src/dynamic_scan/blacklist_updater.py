@@ -47,6 +47,24 @@ async def fetch_feed(url: str) -> Set[str]:
     return {d for d in (dom.strip() for dom in domains) if d and not d.startswith("#")}
 
 
+def load_blacklist(path: str = "data/dns_blacklist.txt") -> Set[str]:
+    """Load existing blacklist file and return set of domains."""
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return {
+                line.strip()
+                for line in f
+                if line.strip() and not line.startswith("#")
+            }
+    except FileNotFoundError:
+        return set()
+
+
+def merge_blacklist(existing: Iterable[str], new: Iterable[str]) -> Set[str]:
+    """Merge existing and new domains without duplicates."""
+    return set(existing) | {d for d in new}
+
+
 def write_blacklist(domains: Set[str], path: str = "data/dns_blacklist.txt") -> None:
     """Write domains to blacklist file, keeping existing entries."""
     if not domains:
@@ -56,12 +74,8 @@ def write_blacklist(domains: Set[str], path: str = "data/dns_blacklist.txt") -> 
     tmp_path = f"{path}.tmp"
 
     try:
-        existing: Set[str] = set()
-        if os.path.exists(path):
-            with open(path, "r", encoding="utf-8") as f:
-                existing = {line.strip() for line in f if line.strip() and not line.startswith("#")}
-
-        combined = existing | domains
+        existing = load_blacklist(path)
+        combined = merge_blacklist(existing, domains)
 
         with open(tmp_path, "w", encoding="utf-8") as f:
             f.write("# DNS blacklist\n")

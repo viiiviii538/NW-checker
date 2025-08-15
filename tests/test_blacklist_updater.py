@@ -1,6 +1,6 @@
 import asyncio
 import httpx
-from src.dynamic_scan import analyze, blacklist_updater
+from src.dynamic_scan import blacklist_updater
 
 
 def test_fetch_feed_json(monkeypatch):
@@ -83,7 +83,14 @@ def test_fetch_feed_csv(monkeypatch):
 def test_load_blacklist(tmp_path):
     blk = tmp_path / "dns_blacklist.txt"
     blk.write_text("# comment\nfoo.example\nbar.example\n")
-    assert analyze.load_blacklist(str(blk)) == {"foo.example", "bar.example"}
+    assert blacklist_updater.load_blacklist(str(blk)) == {"foo.example", "bar.example"}
+
+
+def test_merge_blacklist():
+    existing = {"a.com", "b.org"}
+    new = {"b.org", "c.net"}
+    merged = blacklist_updater.merge_blacklist(existing, new)
+    assert merged == {"a.com", "b.org", "c.net"}
 
 
 def test_update_integration(monkeypatch, tmp_path):
