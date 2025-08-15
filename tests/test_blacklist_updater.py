@@ -26,6 +26,29 @@ def test_fetch_feed_json(monkeypatch):
     assert asyncio.run(blacklist_updater.fetch_feed("http://example.com/feed.json")) == {"a.com", "b.org"}
 
 
+def test_fetch_feed_json_list(monkeypatch):
+    class Resp:
+        def __init__(self):
+            self.text = '["c.com", "d.org"]'
+            self.headers = {"Content-Type": "application/json"}
+
+        def raise_for_status(self):
+            pass
+
+    class FakeClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            pass
+
+        async def get(self, url):
+            return Resp()
+
+    monkeypatch.setattr(blacklist_updater.httpx, "AsyncClient", lambda *a, **k: FakeClient())
+    assert asyncio.run(blacklist_updater.fetch_feed("http://example.com/list.json")) == {"c.com", "d.org"}
+
+
 def test_write_blacklist(tmp_path):
     path = tmp_path / "dns_blacklist.txt"
     path.write_text("# header\nold.com\n")
