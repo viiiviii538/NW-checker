@@ -13,13 +13,23 @@ import httpx
 DANGEROUS_PROTOCOLS = {"telnet", "ftp", "rdp"}
 
 
-def load_blacklist(path: str = "data/dns_blacklist.txt") -> set[str]:
-    with open(path) as f:
-        return {
-            line.strip()
-            for line in f
-            if line.strip() and not line.startswith("#")
-        }
+def load_blacklist(path: Path | str | None = None) -> set[str]:
+    """ブラックリストファイルを読み込む"""
+
+    path = (
+        Path(path)
+        if path is not None
+        else Path(__file__).resolve().parents[2] / "data" / "dns_blacklist.txt"
+    )
+    try:
+        with path.open() as f:
+            return {
+                line.strip()
+                for line in f
+                if line.strip() and not line.startswith("#")
+            }
+    except FileNotFoundError:
+        return set()
 
 
 # DNS 逆引きのブラックリスト

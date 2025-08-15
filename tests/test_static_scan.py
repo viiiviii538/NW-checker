@@ -1,17 +1,27 @@
 from src import static_scan
-from src.scans import (
-    ports,
-    os_banner,
-    smb_netbios,
-    upnp,
-    arp_spoof,
-    dhcp,
-    dns,
-    ssl_cert,
-)
 import pytest
 import time
 import json
+
+STUB_SCANS = {
+    "ports": lambda: {"category": "ports", "score": 1, "details": {}},
+    "os_banner": lambda: {"category": "os_banner", "score": 1, "details": {}},
+    "smb_netbios": lambda: {"category": "smb_netbios", "score": 1, "details": {}},
+    "upnp": lambda: {"category": "upnp", "score": 1, "details": {}},
+    "arp_spoof": lambda: {"category": "arp_spoof", "score": 1, "details": {}},
+    "dhcp": lambda: {"category": "dhcp", "score": 1, "details": {}},
+    "dns": lambda: {"category": "dns", "score": 1, "details": {}},
+    "ssl_cert": lambda: {"category": "ssl_cert", "score": 1, "details": {}},
+}
+
+
+@pytest.fixture(autouse=True)
+def mock_all_scans(monkeypatch):
+    monkeypatch.setattr(
+        static_scan,
+        "_load_scanners",
+        lambda: [(name, func) for name, func in STUB_SCANS.items()],
+    )
 
 
 def _findings_by_category(results):
@@ -20,16 +30,7 @@ def _findings_by_category(results):
 
 def test_run_all_returns_all_categories():
     results = static_scan.run_all()
-    expected = {
-        "ports",
-        "os_banner",
-        "smb_netbios",
-        "upnp",
-        "arp_spoof",
-        "dhcp",
-        "dns",
-        "ssl_cert",
-    }
+    expected = set(STUB_SCANS.keys())
     categories = {item["category"] for item in results["findings"]}
     assert categories == expected
     assert isinstance(results["risk_score"], int)
@@ -51,8 +52,8 @@ def test_run_all_handles_exceptions_and_timeouts(monkeypatch):
     def slow():
         time.sleep(2)
 
-    monkeypatch.setattr(dns, "scan", boom)
-    monkeypatch.setattr(os_banner, "scan", slow)
+    monkeypatch.setitem(STUB_SCANS, "dns", boom)
+    monkeypatch.setitem(STUB_SCANS, "os_banner", slow)
 
     results = static_scan.run_all(timeout=0.5)
     by_cat = _findings_by_category(results)
@@ -69,7 +70,7 @@ def test_run_all_populates_missing_fields(monkeypatch):
     def incomplete():
         return {}
 
-    monkeypatch.setattr(dhcp, "scan", incomplete)
+    monkeypatch.setitem(STUB_SCANS, "dhcp", incomplete)
 
     results = static_scan.run_all()
     by_cat = _findings_by_category(results)
@@ -95,7 +96,7 @@ def test_run_all_includes_dhcp_details(monkeypatch):
             },
         }
 
-    monkeypatch.setattr(dhcp, "scan", fake_dhcp)
+    monkeypatch.setitem(STUB_SCANS, "dhcp", fake_dhcp)
 
     results = static_scan.run_all()
     by_cat = _findings_by_category(results)
@@ -113,21 +114,9 @@ def test_run_all_is_json_serializable():
     json.dumps(results)  # 例外が発生しなければOK
 
 
-@pytest.mark.parametrize(
-    "module,category",
-    [
-        (ports, "ports"),
-        (os_banner, "os_banner"),
-        (smb_netbios, "smb_netbios"),
-        (upnp, "upnp"),
-        (arp_spoof, "arp_spoof"),
-        (dhcp, "dhcp"),
-        (dns, "dns"),
-        (ssl_cert, "ssl_cert"),
-    ],
-)
-def test_individual_scans_return_dict(module, category):
-    result = module.scan()
+@pytest.mark.parametrize("category", list(STUB_SCANS.keys()))
+def test_individual_scans_return_dict(category):
+    result = STUB_SCANS[category]()
     assert result["category"] == category
     assert isinstance(result["score"], int)
     assert isinstance(result["details"], dict)

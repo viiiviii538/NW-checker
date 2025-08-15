@@ -1,13 +1,8 @@
 import asyncio
 import tracemalloc
 from contextlib import suppress
-import pathlib
-import sys
-
 import pytest
 from fastapi.testclient import TestClient
-
-sys.path.append(str(pathlib.Path(__file__).resolve().parents[2]))
 
 from src import api
 from src.dynamic_scan import analyze, capture, storage

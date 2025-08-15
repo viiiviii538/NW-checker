@@ -18,6 +18,10 @@ void main() {
       final card = tester.widget<Card>(find.byType(Card));
       expect(card.elevation, 2);
       expect(card.margin, const EdgeInsets.all(8));
+      final padding = tester.widget<Padding>(
+        find.ancestor(of: find.text('x'), matching: find.byType(Padding)).first,
+      );
+      expect(padding.padding, const EdgeInsets.all(16));
     });
 
     testWidgets('accepts custom style', (tester) async {
@@ -94,6 +98,14 @@ void main() {
       );
       expect(find.byIcon(Icons.warning), findsOneWidget);
       expect(find.text('warning'), findsOneWidget);
+    });
+
+    testWidgets('uses default background color', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(home: AlertComponent(message: 'warn')),
+      );
+      final container = tester.widget<Container>(find.byType(Container));
+      expect(container.color, Colors.red[100]);
     });
 
     testWidgets('supports custom icon and color', (tester) async {
