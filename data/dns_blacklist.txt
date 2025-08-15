@@ -2,3 +2,4 @@
 malicious.example
 phishing.test
 botnet.example.org
+spyware.example.net
