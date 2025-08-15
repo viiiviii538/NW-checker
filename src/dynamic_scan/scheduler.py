@@ -87,7 +87,7 @@ class DynamicScanScheduler:
         # APScheduler でコルーチンを定期実行
         self.job = self.scheduler.add_job(
             self._run_scan,
-            "interval",
+            trigger="interval",
             seconds=interval,
             args=[interface, duration, approved_macs],
             max_instances=1,
@@ -96,7 +96,7 @@ class DynamicScanScheduler:
         if feed_url:
             self.blacklist_job = self.scheduler.add_job(
                 blacklist_updater.update,
-                "interval",
+                trigger="interval",
                 hours=interval_hours,
                 args=[feed_url],
             )
