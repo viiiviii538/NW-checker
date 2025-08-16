@@ -72,7 +72,8 @@ void main() {
 
     await tester.pump(const Duration(seconds: 1));
     await tester.pumpAndSettle();
-    expect(find.text('スキャン失敗'), findsOneWidget);
+    // エラー詳細を含む場合があるため部分一致で検証
+    expect(find.textContaining('スキャン失敗'), findsOneWidget);
   });
 
   testWidgets('Dynamic scan tab runs and displays JSON', (

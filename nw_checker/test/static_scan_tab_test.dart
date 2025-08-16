@@ -1,12 +1,64 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nw_checker/static_scan_tab.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 
 void main() {
   test('performStaticScan returns summary and findings', () async {
     final result = await performStaticScan();
     expect(result.containsKey('summary'), isTrue);
     expect(result.containsKey('findings'), isTrue);
+  });
+
+  test('performStaticScan returns error message on non-200', () async {
+    final client = MockClient((_) async => http.Response('error', 500));
+    final result = await performStaticScan(client: client);
+    final summary = result['summary'] as List<dynamic>;
+    expect(summary.first.toString(), startsWith('スキャン失敗'));
+  });
+
+  test('performStaticScan returns error message on exception', () async {
+    final client = MockClient((_) async => throw Exception('boom'));
+    final result = await performStaticScan(client: client);
+    final summary = result['summary'] as List<dynamic>;
+    expect(summary.first.toString(), 'スキャン失敗: Exception: boom');
+  });
+
+  testWidgets('error summary is shown to user', (tester) async {
+    Future<Map<String, dynamic>> mockScan() async {
+      return {
+        'summary': ['スキャン失敗: ネットワークエラー'],
+        'findings': [],
+      };
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(home: StaticScanTab(scanner: mockScan)),
+    );
+
+    await tester.tap(find.byKey(const Key('staticButton')));
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(find.text('スキャン失敗: ネットワークエラー'), findsOneWidget);
+  });
+
+  testWidgets('performStaticScan exception is surfaced in UI', (tester) async {
+    final client = MockClient((_) async => throw Exception('boom'));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: StaticScanTab(
+          scanner: () => performStaticScan(client: client),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('staticButton')));
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(find.text('スキャン失敗: Exception: boom'), findsOneWidget);
   });
 
   testWidgets('port scan tile shows summary and details', (tester) async {
