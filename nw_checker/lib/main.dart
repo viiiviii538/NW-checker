@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'static_scan_tab.dart';
 import 'json_fetch_tab.dart';
+import 'network_diagram_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -14,7 +15,11 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Network Checker',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        brightness: Brightness.dark,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.teal,
+          brightness: Brightness.dark,
+        ),
       ),
       home: HomePage(),
     );
@@ -254,11 +259,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             fetcher: runDynamicCli,
             buttonKey: const Key('dynamicButton'),
           ),
-          JsonFetchTab(
-            buttonText: 'ネットワーク図を表示',
-            fetcher: runNetworkCli,
-            buttonKey: const Key('networkButton'),
-          ),
+          const NetworkDiagramPage(),
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Column(
@@ -282,50 +283,49 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 Expanded(
                   child: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 500),
-                    child:
-                        _isLoading
-                            ? const Center(
-                              key: ValueKey('loading'),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  CircularProgressIndicator(),
-                                  SizedBox(height: 16),
-                                  Text('Running security scan...'),
-                                ],
-                              ),
-                            )
-                            : _showTestOutput
-                            ? Container(
-                              key: const ValueKey('report'),
-                              color: const Color(0xFFF4F4F4),
-                              alignment: Alignment.topCenter,
-                              child: Scrollbar(
-                                thumbVisibility: true,
-                                child: SingleChildScrollView(
-                                  child: Container(
-                                    width: 700,
-                                    margin: const EdgeInsets.symmetric(
-                                      vertical: 16,
-                                    ),
-                                    padding: const EdgeInsets.all(16),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withValues(
-                                            alpha: 0.15,
-                                          ),
-                                          blurRadius: 8,
-                                        ),
-                                      ],
-                                    ),
-                                    child: _buildReportContent(),
+                    child: _isLoading
+                        ? const Center(
+                            key: ValueKey('loading'),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                CircularProgressIndicator(),
+                                SizedBox(height: 16),
+                                Text('Running security scan...'),
+                              ],
+                            ),
+                          )
+                        : _showTestOutput
+                        ? Container(
+                            key: const ValueKey('report'),
+                            color: const Color(0xFFF4F4F4),
+                            alignment: Alignment.topCenter,
+                            child: Scrollbar(
+                              thumbVisibility: true,
+                              child: SingleChildScrollView(
+                                child: Container(
+                                  width: 700,
+                                  margin: const EdgeInsets.symmetric(
+                                    vertical: 16,
                                   ),
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(
+                                          alpha: 0.15,
+                                        ),
+                                        blurRadius: 8,
+                                      ),
+                                    ],
+                                  ),
+                                  child: _buildReportContent(),
                                 ),
                               ),
-                            )
-                            : const SizedBox.shrink(),
+                            ),
+                          )
+                        : const SizedBox.shrink(),
                   ),
                 ),
               ],

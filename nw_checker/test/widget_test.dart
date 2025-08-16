@@ -41,7 +41,7 @@ void main() {
 
     await tester.tap(find.byKey(const Key('networkTab')));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('networkButton')), findsOneWidget);
+    expect(find.byKey(const Key('searchField')), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('testTab')));
     await tester.pumpAndSettle();
@@ -72,7 +72,7 @@ void main() {
 
     await tester.pump(const Duration(seconds: 1));
     await tester.pumpAndSettle();
-    expect(find.text('スキャン失敗'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
   });
 
   testWidgets('Dynamic scan tab runs and displays JSON', (

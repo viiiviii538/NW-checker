@@ -74,8 +74,7 @@ void main() {
   ) async {
     await tester.pumpWidget(buildWidget());
 
-    // Initial summary and status badges
-    expect(find.text('スキャン未実施'), findsOneWidget);
+    // Initial status badges
     expect(find.byType(ListView), findsOneWidget);
     final initialChips = tester.widgetList<Chip>(find.byType(Chip)).toList();
     expect(initialChips, hasLength(8));
@@ -88,8 +87,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(CircularProgressIndicator), findsNothing);
-    expect(find.text('=== STATIC SCAN REPORT ==='), findsOneWidget);
-    expect(find.text('No issues detected.'), findsOneWidget);
 
     // Category order
     final portDy = tester.getTopLeft(find.text('Port Scan')).dy;

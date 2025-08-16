@@ -52,7 +52,6 @@ class StaticScanTab extends StatefulWidget {
 
 class _StaticScanTabState extends State<StaticScanTab> {
   bool _isLoading = false;
-  List<String> _summaryLines = [];
   late List<CategoryTile> _categories;
 
   @override
@@ -73,7 +72,6 @@ class _StaticScanTabState extends State<StaticScanTab> {
   void _startScan() {
     setState(() {
       _isLoading = true;
-      _summaryLines = [];
       for (final c in _categories) {
         c.status = ScanStatus.pending;
         c.details = [];
@@ -86,10 +84,6 @@ class _StaticScanTabState extends State<StaticScanTab> {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _summaryLines = List<String>.from(
-          result['summary'] as List? ?? const [],
-        );
-
         final findings =
             (result['findings'] as List?)?.cast<Map<String, dynamic>>() ?? [];
         final portsFinding = findings.firstWhere(
@@ -245,7 +239,6 @@ class _StaticScanTabState extends State<StaticScanTab> {
       case ScanStatus.ok:
         return Colors.blueGrey;
       case ScanStatus.pending:
-      default:
         return Colors.grey;
     }
   }
@@ -259,24 +252,8 @@ class _StaticScanTabState extends State<StaticScanTab> {
       case ScanStatus.ok:
         return 'OK';
       case ScanStatus.pending:
-      default:
         return '未実行';
     }
-  }
-
-  Widget _buildSummaryCard() {
-    final lines = _summaryLines.isEmpty ? ['スキャン未実施'] : _summaryLines;
-    return Card(
-      color: Colors.blueGrey[50],
-      margin: const EdgeInsets.all(8),
-      child: Padding(
-        padding: const EdgeInsets.all(8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: lines.map((e) => Text(e)).toList(),
-        ),
-      ),
-    );
   }
 
   Widget _buildCategoryList() {
@@ -306,7 +283,6 @@ class _StaticScanTabState extends State<StaticScanTab> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _buildSummaryCard(),
         ElevatedButton(
           key: const Key('staticButton'),
           style: ElevatedButton.styleFrom(backgroundColor: Colors.blueGrey),
