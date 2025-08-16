@@ -83,7 +83,19 @@ class _NetworkDiagramPageState extends State<NetworkDiagramPage> {
                           height: 40,
                           child: GestureDetector(
                             onTap: () => setState(() => _selected = node),
-                            child: Container(color: Colors.transparent),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.transparent,
+                                border: _selected?['id'] == node['id']
+                                    ? Border.all(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.secondary,
+                                        width: 2,
+                                      )
+                                    : null,
+                              ),
+                            ),
                           ),
                         ),
                     ],
