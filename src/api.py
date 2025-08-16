@@ -148,6 +148,7 @@ async def get_history_v2(
 
 
 @app.websocket("/ws/scan/dynamic")
+@app.websocket("/ws/dynamic-scan")
 async def ws_dynamic_scan(websocket: WebSocket):
     await websocket.accept()
     queue: asyncio.Queue = asyncio.Queue()
