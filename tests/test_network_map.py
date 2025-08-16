@@ -47,3 +47,14 @@ def test_network_map_failure(monkeypatch, capsys):
     assert exit_code == 1
     assert captured.out == ""
     assert "boom" in captured.err
+
+
+def test_main_requires_subnet_arg(capsys):
+    """Missing subnet argument triggers usage message and exit code 2."""
+
+    with pytest.raises(SystemExit) as exc:
+        network_map.main([])
+    captured = capsys.readouterr()
+    assert exc.value.code == 2
+    assert captured.out == ""
+    assert "usage" in captured.err.lower()
