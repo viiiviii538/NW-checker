@@ -92,18 +92,39 @@ else
   echo "⚠️ pubspec.yaml が無いので Flutter セットアップはスキップ"
 fi
 
-# ===== 改行統一 & Git設定（既存ロジック維持）=====
-echo "=== 改行統一設定(.gitattributes) ==="
-if [ ! -f ".gitattributes" ]; then
-  cat > .gitattributes <<'EOF'
+# ===== 改行統一 & Git設定 =====
+# デフォルトはリポジトリを触らない（Codex対策）
+if [ "${ALLOW_GIT_WRITE:-0}" = "1" ]; then
+  echo "=== 改行統一設定(.gitattributes) ==="
+  if [ ! -f ".gitattributes" ]; then
+    cat > .gitattributes <<'EOF'
 * text=auto eol=lf
 *.dart text eol=lf
 *.py   text eol=lf
 *.sh   text eol=lf
 EOF
-  git add .gitattributes || true
+    git add .gitattributes || true
+  fi
+  git config core.autocrlf false || true
+
+  echo "=== Git pre-commit フック設定 ==="
+  HOOK=".git/hooks/pre-commit"
+  if [ -d ".git/hooks" ] && [ ! -f "$HOOK" ]; then
+    cat > "$HOOK" <<'EOF'
+#!/usr/bin/env bash
+set -e
+if git grep -n '<<<<<<< \|=======\|>>>>>>>' -- . >/dev/null 2>&1; then
+  echo "[pre-commit] Merge conflict markers detected."; exit 1
 fi
-git config core.autocrlf false || true
+command -v dart >/dev/null 2>&1 && dart format .
+command -v black >/dev/null 2>&1 && black .
+exit 0
+EOF
+    chmod +x "$HOOK"
+  fi
+else
+  echo "Git write is disabled (set ALLOW_GIT_WRITE=1 to enable)."
+fi
 
 # ===== フォーマッタ（任意・既存維持）=====
 echo "=== コード整形 (Dart / Python) ==="
