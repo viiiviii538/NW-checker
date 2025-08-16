@@ -1,33 +1,27 @@
 import argparse
-import asyncio
-import csv
 import json
 import logging
 import os
-from io import StringIO
-from typing import Iterable, Set
+from typing import Iterable
 
-import httpx
+import requests
 
 logger = logging.getLogger(__name__)
 
 
-async def fetch_feed(url: str) -> Set[str]:
-    """Fetch a blacklist feed and return set of domains."""
+def fetch_feed(url: str) -> set[str]:
+    """Fetch a blacklist feed and return a set of domains."""
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.get(url)
-            resp.raise_for_status()
-    except Exception as exc:
+        resp = requests.get(url, timeout=10)
+        resp.raise_for_status()
+    except Exception as exc:  # pragma: no cover - ログ確認用
         logger.error("failed to fetch %s: %s", url, exc)
         return set()
 
     content_type = resp.headers.get("Content-Type", "")
-    text = resp.text
-
     try:
         if "json" in content_type or url.endswith(".json"):
-            data = json.loads(text)
+            data = resp.json()
             if isinstance(data, dict):
                 domains = data.get("domains") or data.get("blacklist") or []
             elif isinstance(data, list):
@@ -35,33 +29,28 @@ async def fetch_feed(url: str) -> Set[str]:
             else:
                 domains = []
         else:
-            domains = []
-            reader = csv.reader(StringIO(text))
-            for row in reader:
-                if row:
-                    domains.append(row[0].strip())
-    except Exception as exc:
+            domains = resp.text.splitlines()
+    except Exception as exc:  # pragma: no cover - ログ確認用
         logger.error("failed to parse feed %s: %s", url, exc)
         return set()
 
-    return {d for d in (dom.strip() for dom in domains) if d and not d.startswith("#")}
+    return {d.strip() for d in domains if d and not d.strip().startswith("#")}
 
 
-def write_blacklist(domains: Set[str], path: str = "data/dns_blacklist.txt") -> None:
-    """Write domains to blacklist file, keeping existing entries."""
-    if not domains:
-        logger.info("no domains fetched; skipping update")
+def merge_blacklist(feed_domains: set[str], path: str = "data/dns_blacklist.txt") -> None:
+    """Merge feed domains into blacklist file atomically."""
+    if not feed_domains:
+        logger.info("no domains to merge")
         return
 
     tmp_path = f"{path}.tmp"
-
     try:
-        existing: Set[str] = set()
+        existing: set[str] = set()
         if os.path.exists(path):
             with open(path, "r", encoding="utf-8") as f:
                 existing = {line.strip() for line in f if line.strip() and not line.startswith("#")}
 
-        combined = existing | domains
+        combined = existing | {d for d in feed_domains if d}
 
         with open(tmp_path, "w", encoding="utf-8") as f:
             f.write("# DNS blacklist\n")
@@ -69,30 +58,26 @@ def write_blacklist(domains: Set[str], path: str = "data/dns_blacklist.txt") -> 
                 f.write(domain + "\n")
 
         os.replace(tmp_path, path)
-    except Exception as exc:
-        logger.error("failed to write blacklist: %s", exc)
+    except Exception as exc:  # pragma: no cover - エラー時は既存ファイル保持
+        logger.error("failed to update blacklist: %s", exc)
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
         raise
 
 
-def update(feed_url: str, output_path: str = "data/dns_blacklist.txt") -> None:
-    """Fetch a feed and update blacklist file."""
-    domains = asyncio.run(fetch_feed(feed_url))
-    write_blacklist(domains, output_path)
+def update(feed_url: str, path: str = "data/dns_blacklist.txt") -> None:
+    """Fetch feed and merge into blacklist file."""
+    domains = fetch_feed(feed_url)
+    merge_blacklist(domains, path)
 
 
 def main(argv: Iterable[str] | None = None) -> None:
-    parser = argparse.ArgumentParser(description="Update DNS blacklist from feeds")
-    parser.add_argument("feeds", nargs="+", help="Feed URLs (CSV or JSON)")
+    parser = argparse.ArgumentParser(description="Update DNS blacklist from feed")
+    parser.add_argument("feed_url", help="Blacklist feed URL")
     parser.add_argument("--output", default="data/dns_blacklist.txt", help="Blacklist file path")
     args = parser.parse_args(argv)
 
-    all_domains: Set[str] = set()
-    for url in args.feeds:
-        all_domains |= asyncio.run(fetch_feed(url))
-
-    write_blacklist(all_domains, args.output)
+    update(args.feed_url, args.output)
 
 
 if __name__ == "__main__":  # pragma: no cover - CLI entry
