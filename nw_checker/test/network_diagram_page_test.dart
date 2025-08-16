@@ -20,6 +20,14 @@ void main() {
     await tester.tap(find.byKey(const Key('node-router')));
     await tester.pumpAndSettle();
     expect(find.text('Router'), findsOneWidget);
+    final container = tester.widget<Container>(
+      find.descendant(
+        of: find.byKey(const Key('node-router')),
+        matching: find.byType(Container),
+      ),
+    );
+    final BoxDecoration? deco = container.decoration as BoxDecoration?;
+    expect(deco?.border, isNotNull);
 
     final viewerFinder = find.byKey(const Key('diagramViewer'));
     final controller = tester
