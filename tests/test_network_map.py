@@ -7,6 +7,21 @@ import pytest
 from src import network_map
 
 
+def test_network_map_delegates(monkeypatch):
+    """network_map() delegates to discover_hosts."""
+
+    calls = {}
+
+    def fake_discover(subnet):
+        calls["subnet"] = subnet
+        return ["10.0.0.1"]
+
+    monkeypatch.setattr(network_map, "discover_hosts", fake_discover)
+    result = network_map.network_map("10.0.0.0/24")
+    assert result == ["10.0.0.1"]
+    assert calls["subnet"] == "10.0.0.0/24"
+
+
 def test_network_map_success(monkeypatch, capsys):
     """JSON output and success log are emitted on success."""
 
