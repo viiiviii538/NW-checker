@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'static_scan_tab.dart';
 import 'json_fetch_tab.dart';
@@ -101,6 +102,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   bool _showTestOutput = false;
   bool _isLoading = false;
   late TabController _tabController;
+  static const int _testDuration = 30; // ダミーテストの実行秒数
+  Timer? _timer;
+  int _remainingSeconds = 0;
+  double _progress = 0;
 
   @override
   void initState() {
@@ -232,6 +237,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   @override
   void dispose() {
     _tabController.dispose();
+    _timer?.cancel();
     super.dispose();
   }
 
@@ -269,9 +275,25 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     setState(() {
                       _isLoading = true;
                       _showTestOutput = false;
+                      _remainingSeconds = _testDuration;
+                      _progress = 0;
                     });
-                    Future.delayed(const Duration(seconds: 30), () {
+                    _timer?.cancel();
+                    _timer = Timer.periodic(const Duration(seconds: 1), (
+                      timer,
+                    ) {
                       if (!mounted) return;
+                      setState(() {
+                        _remainingSeconds--;
+                        _progress = 1 - _remainingSeconds / _testDuration;
+                      });
+                      if (_remainingSeconds <= 0) {
+                        timer.cancel();
+                      }
+                    });
+                    Future.delayed(Duration(seconds: _testDuration), () {
+                      if (!mounted) return;
+                      _timer?.cancel();
                       setState(() {
                         _isLoading = false;
                         _showTestOutput = true;
@@ -284,14 +306,24 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   child: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 500),
                     child: _isLoading
-                        ? const Center(
-                            key: ValueKey('loading'),
+                        ? Center(
+                            key: const ValueKey('loading'),
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                CircularProgressIndicator(),
-                                SizedBox(height: 16),
-                                Text('Running security scan...'),
+                                SizedBox(
+                                  width: 200,
+                                  child: LinearProgressIndicator(
+                                    value: _progress,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                const Text('Running security scan...'),
+                                const SizedBox(height: 8),
+                                Text(
+                                  '残り時間: $_remainingSeconds 秒',
+                                  key: const Key('remainingText'),
+                                ),
                               ],
                             ),
                           )
