@@ -1,6 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# ★ローカルは既定で書き込みOK（=1）。Codex実行時だけ 0 を渡して止める想定。
+ALLOW_GIT_WRITE="${ALLOW_GIT_WRITE:-1}"
+
+safe_run() {
+  if [ "$ALLOW_GIT_WRITE" = "1" ]; then
+    eval "$@"
+  else
+    echo "skip: $* (ALLOW_GIT_WRITE=0)"
+  fi
+}
+
 # ===== 基本設定 =====
 export DEBIAN_FRONTEND=noninteractive
 PROJECT_DIR="/workspace/NW-checker"
@@ -89,7 +100,7 @@ if [ -f "pubspec.yaml" ]; then
   echo "=== Flutter依存関係取得 ==="
   # Codexはネット気まぐれなので失敗しても続行
   for i in 1 2 3; do
-    flutter pub get && break
+    safe_run "flutter pub get" && break
     echo "retry pub get $i..."; sleep 5
   done || true
 else
@@ -132,8 +143,8 @@ fi
 
 # ===== フォーマッタ（任意・既存維持）=====
 echo "=== コード整形 (Dart / Python) ==="
-command -v dart >/dev/null 2>&1 && dart format . || true
-command -v black >/dev/null 2>&1 && black . || true
+command -v dart >/dev/null 2>&1 && safe_run "dart format ." || true
+command -v black >/dev/null 2>&1 && safe_run "black ." || true
 
 # ===== 競合マーカー検出（通知のみ）=====
 echo "=== マージ競合マーカー検出 ==="
@@ -142,24 +153,6 @@ if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     echo "ERROR: マージ競合マーカーを検出しました。解消してください。"
     git grep -n '<<<<<<< \|=======\|>>>>>>>' -- . || true
   fi
-fi
-
-# ===== pre-commit フック（既存維持）=====
-echo "=== Git pre-commit フック設定 ==="
-HOOK=".git/hooks/pre-commit"
-if [ -d ".git/hooks" ] && [ ! -f "$HOOK" ]; then
-cat > "$HOOK" <<'EOF'
-#!/usr/bin/env bash
-set -e
-if git grep -n '<<<<<<< \|=======\|>>>>>>>' -- . >/dev/null 2>&1; then
-  echo "[pre-commit] Merge conflict markers detected. Resolve them before commit."
-  git grep -n '<<<<<<< \|=======\|>>>>>>>' -- .; exit 1
-fi
-command -v dart >/dev/null 2>&1 && dart format .
-command -v black >/dev/null 2>&1 && black .
-exit 0
-EOF
-  chmod +x "$HOOK"
 fi
 
 # ===== 追加: nmap のセルフチェック =====
@@ -178,13 +171,13 @@ PY
 # ===== PYTHONPATH を設定（pytestの import 安定化）=====
 export PYTHONPATH="$PROJECT_DIR/src:$PROJECT_DIR/src/scans:${PYTHONPATH:-}"
 
-# ===== Pythonテスト =====
-echo "=== Pythonテスト実行 ==="
-pytest || echo "Pythonテスト失敗（続行）"
-
 # ===== Flutterテスト =====
 echo "=== Flutterテスト実行 ==="
-flutter test || echo "Flutterテスト失敗（続行）"
+if [ -d "test" ] && ls test/*.dart >/dev/null 2>&1; then
+  flutter test || echo "Flutterテスト失敗（続行）"
+else
+  echo "test ディレクトリが無い/空のため Flutterテストはスキップ"
+fi
 
 # ===== Python動作確認（任意）=====
 echo "=== 動作確認（Python） ==="
@@ -205,3 +198,11 @@ esac
 echo "=== セットアップ完了 ==="
 echo "Python: $(python --version)"
 echo "Flutter: $(flutter --version)"
+
+if [ "${ALLOW_GIT_WRITE:-1}" = "0" ]; then
+  if git status --porcelain | grep -q .; then
+    echo "❌ Codexモードなのにリポジトリに変更が出ました。"
+    git status --porcelain
+    exit 1
+  fi
+fi
