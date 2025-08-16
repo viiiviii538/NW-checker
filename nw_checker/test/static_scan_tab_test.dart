@@ -1,12 +1,32 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:nw_checker/static_scan_tab.dart';
 
 void main() {
-  test('performStaticScan returns summary and findings', () async {
-    final result = await performStaticScan();
-    expect(result.containsKey('summary'), isTrue);
-    expect(result.containsKey('findings'), isTrue);
+  test('performStaticScan returns summary and findings on success', () async {
+    final client = MockClient((_) async =>
+        http.Response(jsonEncode({'risk_score': 5, 'findings': []}), 200));
+    final result = await performStaticScan(client);
+    expect(result['summary'], contains('リスクスコア: 5'));
+    expect(result['findings'], isEmpty);
+  });
+
+  test('performStaticScan returns HTTP error summary', () async {
+    final client = MockClient((_) async => http.Response('error', 500));
+    final result = await performStaticScan(client);
+    expect(result['summary'].first, 'スキャン失敗: HTTP 500');
+    expect(result['findings'], isEmpty);
+  });
+
+  test('performStaticScan returns exception summary', () async {
+    final client = MockClient((_) async => throw Exception('timeout'));
+    final result = await performStaticScan(client);
+    expect(result['summary'].first, 'スキャン失敗: Exception: timeout');
+    expect(result['findings'], isEmpty);
   });
 
   testWidgets('port scan tile shows summary and details', (tester) async {
@@ -859,5 +879,24 @@ void main() {
     await tester.tap(find.text('SSL証明書'));
     await tester.pumpAndSettle();
     expect(find.text('証明書は期限切れ'), findsOneWidget);
+  });
+
+  testWidgets('shows error summary when scan fails', (tester) async {
+    Future<Map<String, dynamic>> mockScan() async {
+      return {
+        'summary': ['スキャン失敗: timeout'],
+        'findings': [],
+      };
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(home: StaticScanTab(scanner: mockScan)),
+    );
+
+    await tester.tap(find.byKey(const Key('staticButton')));
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(find.text('スキャン失敗: timeout'), findsOneWidget);
   });
 }

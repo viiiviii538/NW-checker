@@ -4,9 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 /// 静的スキャンAPIを呼び出し結果を返す
-Future<Map<String, dynamic>> performStaticScan() async {
+Future<Map<String, dynamic>> performStaticScan([http.Client? client]) async {
+  final httpClient = client ?? http.Client();
   try {
-    final resp = await http
+    final resp = await httpClient
         .get(Uri.parse('http://localhost:8000/static_scan'))
         .timeout(const Duration(seconds: 5));
     if (resp.statusCode == 200) {
@@ -16,11 +17,22 @@ Future<Map<String, dynamic>> performStaticScan() async {
         'findings': decoded['findings'] ?? [],
       };
     }
-  } catch (_) {}
-  return {
-    'summary': ['スキャン失敗'],
-    'findings': [],
-  };
+    // HTTPエラーコードを返却
+    return {
+      'summary': ['スキャン失敗: HTTP ${resp.statusCode}'],
+      'findings': [],
+    };
+  } catch (e) {
+    // 例外内容をそのまま返却
+    return {
+      'summary': ['スキャン失敗: $e'],
+      'findings': [],
+    };
+  } finally {
+    if (client == null) {
+      httpClient.close();
+    }
+  }
 }
 
 /// カテゴリごとのスキャン状態。
@@ -53,6 +65,7 @@ class StaticScanTab extends StatefulWidget {
 class _StaticScanTabState extends State<StaticScanTab> {
   bool _isLoading = false;
   late List<CategoryTile> _categories;
+  List<String> _summary = [];
 
   @override
   void initState() {
@@ -72,6 +85,7 @@ class _StaticScanTabState extends State<StaticScanTab> {
   void _startScan() {
     setState(() {
       _isLoading = true;
+      _summary = [];
       for (final c in _categories) {
         c.status = ScanStatus.pending;
         c.details = [];
@@ -84,6 +98,7 @@ class _StaticScanTabState extends State<StaticScanTab> {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
+        _summary = (result['summary'] as List? ?? []).cast<String>();
         final findings =
             (result['findings'] as List?)?.cast<Map<String, dynamic>>() ?? [];
         final portsFinding = findings.firstWhere(
@@ -289,6 +304,14 @@ class _StaticScanTabState extends State<StaticScanTab> {
           onPressed: _startScan,
           child: const Text('スキャン開始'),
         ),
+        if (_summary.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: _summary.map((s) => Text(s)).toList(),
+            ),
+          ),
         if (_isLoading)
           const Expanded(child: Center(child: CircularProgressIndicator()))
         else
