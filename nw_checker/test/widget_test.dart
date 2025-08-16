@@ -41,7 +41,7 @@ void main() {
 
     await tester.tap(find.byKey(const Key('networkTab')));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('networkButton')), findsOneWidget);
+    expect(find.byKey(const Key('searchField')), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('testTab')));
     await tester.pumpAndSettle();
@@ -88,21 +88,6 @@ void main() {
     await tester.pump(const Duration(seconds: 2));
     await tester.pump();
     expect(find.textContaining('dynamic'), findsOneWidget);
-  });
-
-  testWidgets('Network tab runs and displays JSON', (
-    WidgetTester tester,
-  ) async {
-    await tester.pumpWidget(const MyApp());
-
-    await tester.tap(find.byKey(const Key('networkTab')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('networkButton')));
-    await tester.pump();
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
-    await tester.pump(const Duration(seconds: 2));
-    await tester.pump();
-    expect(find.textContaining('network'), findsOneWidget);
   });
 
   testWidgets('Test tab shows monospaced diagnostic text', (
