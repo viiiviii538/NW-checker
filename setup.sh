@@ -87,7 +87,11 @@ flutter doctor || echo "Flutter Doctor 警告あり（続行）"
 
 if [ -f "pubspec.yaml" ]; then
   echo "=== Flutter依存関係取得 ==="
-  flutter pub get || { echo "flutter pub get 失敗"; exit 1; }
+  # Codexはネット気まぐれなので失敗しても続行
+  for i in 1 2 3; do
+    flutter pub get && break
+    echo "retry pub get $i..."; sleep 5
+  done || true
 else
   echo "⚠️ pubspec.yaml が無いので Flutter セットアップはスキップ"
 fi
