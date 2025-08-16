@@ -26,3 +26,17 @@ def test_build_graph_hierarchy():
 
     assert '1 [label="root\nCisco"]' in src
     assert '3 [label="hostA\nDell"]' in src
+
+
+def test_build_graph_label_fallback():
+    paths = [["A", "B"]]
+    nodes = {
+        "A": {"hostname": "alpha"},
+        "B": {},
+    }
+
+    graph = build_graph(paths, nodes)
+    src = graph.source
+
+    assert 'A [label=alpha]' in src
+    assert 'B [label=B]' in src
