@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 /// Reusable tab widget that executes an async callback and displays JSON.
 class JsonFetchTab extends StatefulWidget {
@@ -30,12 +32,20 @@ class _JsonFetchTabState extends State<JsonFetchTab> {
     });
 
     await Future<void>.delayed(Duration.zero);
-    final result = await widget.fetcher();
-    if (!mounted) return;
-    setState(() {
-      _isLoading = false;
-      _data = result;
-    });
+    try {
+      final result = await widget.fetcher();
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _data = result;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _data = {'message': 'No results'};
+      });
+    }
   }
 
   @override
@@ -58,14 +68,39 @@ class _JsonFetchTabState extends State<JsonFetchTab> {
 }
 
 /// Default CLI-backed implementations for dynamic scan and network map.
-Future<Map<String, dynamic>> runDynamicCli() async {
-  // In production this would call a real CLI or backend service.
-  await Future.delayed(const Duration(seconds: 1));
-  return {'status': 'dynamic'};
+Future<Map<String, dynamic>> runDynamicCli({http.Client? client}) async {
+  client ??= http.Client();
+  try {
+    final resp = await client.get(
+      Uri.parse('http://localhost:8000/dynamic-scan/results'),
+    );
+    if (resp.statusCode == 200) {
+      final decoded = jsonDecode(resp.body);
+      if (decoded is Map<String, dynamic>) {
+        return decoded;
+      }
+    }
+  } catch (_) {}
+  return {'message': 'No results'};
 }
 
 Future<Map<String, dynamic>> runNetworkCli() async {
-  // In production this would call a real CLI or backend service.
-  await Future.delayed(const Duration(seconds: 1));
-  return {'status': 'network'};
+  try {
+    final result = await Process.run(
+      'python',
+      ['src/network_map.py', '192.168.0.0/24'],
+    );
+    if (result.exitCode == 0) {
+      final lines = const LineSplitter().convert(result.stdout.toString());
+      if (lines.isNotEmpty) {
+        final decoded = jsonDecode(lines.first);
+        if (decoded is List) {
+          return {'hosts': decoded};
+        } else if (decoded is Map<String, dynamic>) {
+          return decoded;
+        }
+      }
+    }
+  } catch (_) {}
+  return {'message': 'No results'};
 }
