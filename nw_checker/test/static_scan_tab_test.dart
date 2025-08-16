@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nw_checker/static_scan_tab.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 
 void main() {
   testWidgets('StaticScanTab shows Scan title', (WidgetTester tester) async {
@@ -9,9 +11,49 @@ void main() {
   });
 
   test('performStaticScan returns summary and findings', () async {
-    final result = await performStaticScan();
-    expect(result.containsKey('summary'), isTrue);
-    expect(result.containsKey('findings'), isTrue);
+    final client = MockClient((request) async {
+      return http.Response('{"risk_score": 42, "findings": []}', 200);
+    });
+    final result = await performStaticScan(client: client);
+    expect(result['summary'], ['リスクスコア: 42']);
+    expect(result['findings'], isEmpty);
+  });
+
+  test('performStaticScan reports non-200 responses', () async {
+    final client = MockClient((request) async {
+      return http.Response('{"detail": "fail"}', 500);
+    });
+    final result = await performStaticScan(client: client);
+    expect(result['summary'], ['スキャン失敗: fail']);
+    expect(result['findings'], isEmpty);
+  });
+
+  test('performStaticScan reports thrown exceptions', () async {
+    final client = MockClient((request) async {
+      throw Exception('boom');
+    });
+    final result = await performStaticScan(client: client);
+    expect((result['summary'] as List).first, contains('boom'));
+    expect(result['findings'], isEmpty);
+  });
+
+  testWidgets('error summary is displayed to user', (tester) async {
+    Future<Map<String, dynamic>> mockScan() async {
+      return {
+        'summary': ['スキャン失敗: Timeout'],
+        'findings': [],
+      };
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(home: StaticScanTab(scanner: mockScan)),
+    );
+
+    await tester.tap(find.byKey(const Key('staticButton')));
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(find.text('スキャン失敗: Timeout'), findsOneWidget);
   });
 
   testWidgets('port scan tile shows summary and details', (tester) async {
