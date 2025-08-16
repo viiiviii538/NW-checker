@@ -2,7 +2,44 @@ import asyncio
 from fastapi.testclient import TestClient
 
 from src import api
-from src.dynamic_scan import scheduler, storage
+from src.dynamic_scan import scheduler, storage, capture, analyze
+
+
+def test_dynamic_scan_start_stop_alias(monkeypatch, tmp_path):
+    client = TestClient(api.app)
+    store = storage.Storage(tmp_path / "res.db")
+    monkeypatch.setattr(storage, "Storage", lambda *args, **kwargs: store)
+
+    async def dummy_capture(queue, interface=None, duration=None):
+        return
+
+    async def dummy_analyse(queue, storage_obj, approved_macs=None):
+        return
+
+    monkeypatch.setattr(capture, "capture_packets", dummy_capture)
+    monkeypatch.setattr(analyze, "analyse_packets", dummy_analyse)
+
+    # start aliases behave identically
+    api.scan_scheduler = scheduler.DynamicScanScheduler()
+    resp_old = client.post("/scan/dynamic/start", json={"duration": 0})
+    asyncio.run(api.scan_scheduler.stop())
+
+    api.scan_scheduler = scheduler.DynamicScanScheduler()
+    resp_new = client.post("/dynamic-scan/start", json={"duration": 0})
+    assert resp_old.status_code == resp_new.status_code == 200
+    assert resp_old.json() == resp_new.json() == {"status": "scheduled"}
+    asyncio.run(api.scan_scheduler.stop())
+
+    # stop aliases behave identically
+    api.scan_scheduler = scheduler.DynamicScanScheduler()
+    client.post("/scan/dynamic/start", json={"duration": 0})
+    resp_old_stop = client.post("/scan/dynamic/stop")
+
+    api.scan_scheduler = scheduler.DynamicScanScheduler()
+    client.post("/dynamic-scan/start", json={"duration": 0})
+    resp_new_stop = client.post("/dynamic-scan/stop")
+    assert resp_old_stop.status_code == resp_new_stop.status_code == 200
+    assert resp_old_stop.json() == resp_new_stop.json() == {"status": "stopped"}
 
 
 def test_dynamic_scan_results_alias(monkeypatch, tmp_path):
