@@ -74,7 +74,7 @@ class _DynamicScanTabState extends State<DynamicScanTab> {
         }
         return Column(
           children: [
-            if (alertWidget != null) alertWidget!,
+            if (alertWidget != null) alertWidget,
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [

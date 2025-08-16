@@ -106,6 +106,7 @@ class DynamicScanApi {
 
   /// アラート通知を購読する。
   /// 現状は2秒毎に2件のダミーアラートを流す。
+  /// 実装済みの `/ws/dynamic-scan` WebSocket が利用可能になれば置き換え予定。
   static Stream<String> subscribeAlerts() {
     return Stream.periodic(const Duration(seconds: 2), (count) {
       if (count == 0) {
