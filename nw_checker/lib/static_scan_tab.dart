@@ -4,9 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 /// 静的スキャンAPIを呼び出し結果を返す
-Future<Map<String, dynamic>> performStaticScan() async {
+///
+/// [client] を渡すことでテスト時にモッククライアントを利用できる。
+Future<Map<String, dynamic>> performStaticScan({http.Client? client}) async {
+  final http.Client httpClient = client ?? http.Client();
   try {
-    final resp = await http
+    final resp = await httpClient
         .get(Uri.parse('http://localhost:8000/static_scan'))
         .timeout(const Duration(seconds: 5));
     if (resp.statusCode == 200) {
@@ -16,11 +19,30 @@ Future<Map<String, dynamic>> performStaticScan() async {
         'findings': decoded['findings'] ?? [],
       };
     }
-  } catch (_) {}
-  return {
-    'summary': ['スキャン失敗'],
-    'findings': [],
-  };
+
+    // 正常応答以外はエラー文言を返す
+    String message = 'HTTP ${resp.statusCode}';
+    try {
+      final body = jsonDecode(resp.body);
+      if (body is Map && body['error'] is String) {
+        message = body['error'] as String;
+      }
+    } catch (_) {}
+    return {
+      'summary': ['スキャン失敗: $message'],
+      'findings': [],
+    };
+  } catch (e) {
+    // 通信例外もエラー文言として返す
+    return {
+      'summary': ['スキャン失敗: $e'],
+      'findings': [],
+    };
+  } finally {
+    if (client == null) {
+      httpClient.close();
+    }
+  }
 }
 
 /// カテゴリごとのスキャン状態。
