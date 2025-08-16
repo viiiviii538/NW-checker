@@ -3,7 +3,7 @@ set -euo pipefail
 
 # ===== 基本設定 =====
 export DEBIAN_FRONTEND=noninteractive
-PROJECT_DIR="/workspace/NW-checker/nw_checker"
+PROJECT_DIR="/workspace/NW-checker"
 FLUTTER_VERSION=3.32.8
 FLUTTER_DIR="$HOME/flutter"
 export PATH="$FLUTTER_DIR/bin:$PATH"
@@ -46,8 +46,7 @@ fi
 
 echo "=== Python依存関係インストール ==="
 python -m pip install --upgrade pip
-# python-nmap と pytest は明示（requirements にもあるなら重複OK）
-pip install python-nmap pytest
+# 依存は requirements.txt で一括
 
 REQ_FILE="../requirements.txt"
 [ -f "requirements.txt" ] && REQ_FILE="requirements.txt"
@@ -86,8 +85,12 @@ fi
 echo "=== Flutter Doctor 実行 ==="
 flutter doctor || echo "Flutter Doctor 警告あり（続行）"
 
-echo "=== Flutter依存関係取得 ==="
-flutter pub get || { echo "flutter pub get 失敗"; exit 1; }
+if [ -f "pubspec.yaml" ]; then
+  echo "=== Flutter依存関係取得 ==="
+  flutter pub get || { echo "flutter pub get 失敗"; exit 1; }
+else
+  echo "⚠️ pubspec.yaml が無いので Flutter セットアップはスキップ"
+fi
 
 # ===== 改行統一 & Git設定（既存ロジック維持）=====
 echo "=== 改行統一設定(.gitattributes) ==="
