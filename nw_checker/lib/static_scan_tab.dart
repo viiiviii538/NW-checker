@@ -245,7 +245,6 @@ class _StaticScanTabState extends State<StaticScanTab> {
       case ScanStatus.ok:
         return Colors.blueGrey;
       case ScanStatus.pending:
-      default:
         return Colors.grey;
     }
   }
@@ -259,7 +258,6 @@ class _StaticScanTabState extends State<StaticScanTab> {
       case ScanStatus.ok:
         return 'OK';
       case ScanStatus.pending:
-      default:
         return '未実行';
     }
   }
