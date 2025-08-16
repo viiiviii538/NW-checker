@@ -11,6 +11,16 @@ import pytest
 from src.dynamic_scan import analyze
 
 
+@pytest.fixture
+def sample_blacklist(monkeypatch):
+    """load_blacklist をモックして既知のドメイン集合を返す"""
+    monkeypatch.setattr(
+        analyze, "load_blacklist", lambda path="data/dns_blacklist.txt": {"malicious.example"}
+    )
+    analyze.DNS_BLACKLIST = analyze.load_blacklist()
+    yield
+    analyze.DNS_BLACKLIST.clear()
+
 def test_geoip_lookup(monkeypatch):
     class FakeResp:
         status_code = 200
@@ -318,12 +328,8 @@ def test_record_dns_history_no_hostname(monkeypatch):
     assert analyze._dns_history == {}
 
 
-def test_record_dns_history_uses_loaded_blacklist(monkeypatch):
+def test_record_dns_history_uses_loaded_blacklist(monkeypatch, sample_blacklist):
     analyze._dns_history.clear()
-    monkeypatch.setattr(
-        analyze, "load_blacklist", lambda path="data/dns_blacklist.txt": {"malicious.example"}
-    )
-    analyze.DNS_BLACKLIST = analyze.load_blacklist()
     monkeypatch.setattr(
         analyze.socket, "gethostbyaddr", lambda ip: ("malicious.example", [], [])
     )
