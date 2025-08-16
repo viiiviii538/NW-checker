@@ -3,6 +3,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:nw_checker/static_scan_tab.dart';
 
 void main() {
+  testWidgets('StaticScanTab shows Scan title', (WidgetTester tester) async {
+    await tester.pumpWidget(const MaterialApp(home: StaticScanTab()));
+    expect(find.textContaining('Scan'), findsOneWidget);
+  });
+
   test('performStaticScan returns summary and findings', () async {
     final result = await performStaticScan();
     expect(result.containsKey('summary'), isTrue);
