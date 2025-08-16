@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="/workspace/NW-checker"
+ROOT="$(pwd)"
 cd "$ROOT"
 
 echo "== Python env =="
