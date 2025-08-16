@@ -49,7 +49,7 @@ void main() {
     expect(find.byType(SelectableText), findsNothing);
     await tester.tap(find.text('テストを実行'));
     await tester.pump();
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byType(LinearProgressIndicator), findsOneWidget);
     expect(find.byType(SelectableText), findsNothing);
     await tester.pump(const Duration(seconds: 30));
     await tester.pumpAndSettle();
@@ -103,7 +103,7 @@ void main() {
 
     await tester.tap(find.text('テストを実行'));
     await tester.pump();
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byType(LinearProgressIndicator), findsOneWidget);
     await tester.pump(const Duration(seconds: 30));
     await tester.pumpAndSettle();
 
