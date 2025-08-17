@@ -1,5 +1,6 @@
 """Static scan for UPnP/SSDP services using scapy."""
 
+# UPnP/SSDP応答から不要なサービス公開を検知する
 from scapy.all import IP, UDP, Raw, sr1  # type: ignore
 
 # SSDPのマルチキャストアドレスとポート
