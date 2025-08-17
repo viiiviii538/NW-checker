@@ -1,5 +1,6 @@
 """Active ARP spoofing test using scapy."""
 
+# ARPスプーフィング耐性を確認するアクティブテスト
 from __future__ import annotations
 
 import re

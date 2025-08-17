@@ -1,5 +1,6 @@
 """Static scan for SSL certificate issues."""
 
+# SSL証明書の期限切れや信頼性をチェックする
 from __future__ import annotations
 
 from datetime import datetime, timezone
