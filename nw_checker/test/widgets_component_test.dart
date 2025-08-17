@@ -122,4 +122,59 @@ void main() {
       expect(find.byIcon(Icons.check), findsOneWidget);
     });
   });
+
+  group('MetricCard', () {
+    testWidgets('displays label and value', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: MetricCard(label: 'Hosts', value: '10'),
+        ),
+      );
+      expect(find.text('Hosts'), findsOneWidget);
+      expect(find.text('10'), findsOneWidget);
+    });
+
+    testWidgets('shows icon when provided', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: MetricCard(
+            label: 'Hosts',
+            value: '10',
+            icon: Icons.computer,
+          ),
+        ),
+      );
+      expect(find.byIcon(Icons.computer), findsOneWidget);
+    });
+  });
+
+  group('SeverityBadge', () {
+    testWidgets('uses red for high severity', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(home: SeverityBadge(severity: 'high')),
+      );
+      final container = tester.widget<Container>(find.byType(Container));
+      final decoration = container.decoration as BoxDecoration;
+      expect(decoration.color, Colors.red);
+    });
+
+    testWidgets('uses orange for medium severity', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(home: SeverityBadge(severity: 'medium')),
+      );
+      final container = tester.widget<Container>(find.byType(Container));
+      final decoration = container.decoration as BoxDecoration;
+      expect(decoration.color, Colors.orange);
+    });
+
+    testWidgets('uses green for low severity', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(home: SeverityBadge(severity: 'low')),
+      );
+      final container = tester.widget<Container>(find.byType(Container));
+      final decoration = container.decoration as BoxDecoration;
+      expect(decoration.color, Colors.green);
+      expect(find.text('LOW'), findsOneWidget);
+    });
+  });
 }
