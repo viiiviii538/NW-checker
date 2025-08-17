@@ -1,13 +1,14 @@
 import asyncio
 import socket
+import json
+from collections import defaultdict
 from dataclasses import asdict, dataclass
 from datetime import datetime
-from collections import defaultdict
-from typing import Any, Dict, Iterable
-import json
 from pathlib import Path
+from typing import Any, Dict, Iterable, Optional, Callable, Tuple
 
 import httpx
+
 
 # 危険とされるプロトコルの名称
 DANGEROUS_PROTOCOLS = {"telnet", "ftp", "rdp"}
@@ -105,18 +106,27 @@ async def geoip_lookup(ip: str, db_path: str | None = None) -> Dict[str, Any]:
     return {}
 
 
-def reverse_dns_lookup(ip: str) -> str | None:
-    """DNS 逆引き。まず実DNSに問い合せ、成功したらキャッシュ更新。失敗時だけ過去キャッシュにフォールバック。"""
+# ここを差し替え
+def reverse_dns_lookup(
+    ip: str,
+    *,
+    gethostbyaddr: Optional[Callable[[str], Tuple[str, list[str], list[str]]]] = None,
+) -> str | None:
+    """
+    DNS 逆引き。成功時は結果を正規化してキャッシュ保存。
+    失敗時はキャッシュにフォールバック（なければ None）。
+    テストで monkeypatch しやすいように gethostbyaddr を依存注入可能。
+    """
+    gha = gethostbyaddr or socket.gethostbyaddr
     try:
-        hostname = socket.gethostbyaddr(ip)[0]  # ← テストがここを monkeypatch する
-        _dns_history[ip] = hostname             # 最新を保存
-        return hostname
+        host, _, _ = gha(ip)
+        host = host.rstrip(".").lower()  # 末尾ドット除去＆小文字化で安定化
+        _dns_history[ip] = host          # ✅ 成功時は必ず最新をキャッシュ
+        return host
     except Exception:
-        return _dns_history.get(ip)             # 失敗時のみ古い値
-
-
-
-
+        cached = _dns_history.get(ip)    # ✅ 失敗時は過去キャッシュを返す
+        return cached.rstrip(".").lower() if isinstance(cached, str) else None
+    
 def is_dangerous_protocol(protocol: str | None) -> bool:
     """危険プロトコルか判定する。
     文字列以外が渡された場合は危険ではないとみなす。

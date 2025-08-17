@@ -41,50 +41,44 @@ def _is_private(ip: str) -> bool:
 
 
 def scan() -> dict:
-    """DNS設定を検査し、問題があれば警告を返す。"""
     servers = _get_nameservers()
 
     external: List[str] = []
     invalid: List[str] = []
+
+    # ← details を最初に初期化（warnings を必ず持たせる）
+    details = {"servers": servers, "warnings": []}
+
     for ip in servers:
         try:
-            addr = ip_address(ip)
-            if not any(addr in net for net in _PRIVATE_NETS):
+            if not _is_private(ip):
                 external.append(ip)
         except ValueError:
             invalid.append(ip)
 
-    warnings: List[str] = []
-    details = {"servers": servers}
-
     if external:
-        warnings.append("External DNS detected: " + ", ".join(external))
+        details["warnings"].append("External DNS detected: " + ", ".join(external))
         details["external_servers"] = external
 
     if invalid:
-        warnings.append("Invalid DNS server IP: " + ", ".join(invalid))
+        details["warnings"].append("Invalid DNS server IP: " + ", ".join(invalid))
         details["invalid_servers"] = invalid
 
     dnssec_enabled = None
     try:
         valid = [ip for ip in servers if ip not in invalid]
         if valid:
-            pkt = (
-                IP(dst=valid[0])
-                / UDP(dport=53)
-                / DNS(rd=1, qd=DNSQR(qname="example.com"), ad=1)
-            )
+            pkt = IP(dst=valid[0]) / UDP(dport=53) / DNS(rd=1, qd=DNSQR(qname="example.com"), ad=1)
             resp = sr1(pkt, timeout=2, verbose=False)
             if resp and resp.haslayer(DNS):
                 dnssec_enabled = bool(getattr(resp[DNS], "ad", 0))
-    except Exception as exc:  # ← ここで即リターン！
-        details["error"] = str(exc)
+    except Exception as exc:
+        details["error"] = str(exc)      # 例外時は score=0 & error あり
         return {"category": "dns", "score": 0, "details": details}
 
     details["dnssec_enabled"] = bool(dnssec_enabled)
     if dnssec_enabled is False:
-        warnings.append("DNSSEC is disabled")
+        details["warnings"].append("DNSSEC is disabled")
 
-    details["warnings"] = warnings
-    score = len(warnings)
+    score = len(details["warnings"])
     return {"category": "dns", "score": score, "details": details}

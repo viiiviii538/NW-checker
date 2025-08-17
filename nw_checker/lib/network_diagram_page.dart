@@ -107,7 +107,7 @@ class _NetworkDiagramPageState extends State<NetworkDiagramPage> {
         ),
         Container(
           width: 200,
-          color: Theme.of(context).colorScheme.surfaceVariant,
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
           child: _selected == null
               ? const Center(child: Text('ノードを選択'))
               : Padding(
