@@ -24,7 +24,7 @@ void main() {
       return http.Response('{"detail": "fail"}', 500);
     });
     final result = await performStaticScan(client: client);
-    expect(result['summary'], ['スキャン失敗: fail']);
+    expect(result['summary'], ['スキャン失敗: HTTP 500: fail']);
     expect(result['findings'], isEmpty);
   });
 

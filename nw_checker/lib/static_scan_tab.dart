@@ -23,7 +23,7 @@ Future<Map<String, dynamic>> performStaticScan({http.Client? client}) async {
       try {
         final err = jsonDecode(resp.body);
         if (err is Map && err['detail'] != null) {
-          message = err['detail'].toString();
+          message = 'HTTP ${resp.statusCode}: ${err['detail']}';
         } else {
           message = 'HTTP ${resp.statusCode}';
         }
@@ -37,8 +37,9 @@ Future<Map<String, dynamic>> performStaticScan({http.Client? client}) async {
     }
   } catch (e) {
     // 例外発生時は例外メッセージを返す
+    final msg = e.toString();
     return {
-      'summary': ['スキャン失敗: $e'],
+      'summary': ['スキャン失敗: $msg'],
       'findings': [],
     };
   } finally {
