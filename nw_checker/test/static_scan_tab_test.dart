@@ -37,6 +37,25 @@ void main() {
     expect(result['findings'], isEmpty);
   });
 
+  testWidgets('HTTP error from performStaticScan is shown in UI',
+      (tester) async {
+    final client = MockClient((request) async {
+      return http.Response('{"detail": "server down"}', 503);
+    });
+
+    Future<Map<String, dynamic>> scanner() => performStaticScan(client: client);
+
+    await tester.pumpWidget(
+      MaterialApp(home: StaticScanTab(scanner: scanner)),
+    );
+
+    await tester.tap(find.byKey(const Key('staticButton')));
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(find.text('スキャン失敗: HTTP 503: server down'), findsOneWidget);
+  });
+
   testWidgets('error summary is displayed to user', (tester) async {
     Future<Map<String, dynamic>> mockScan() async {
       return {
