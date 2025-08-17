@@ -6,6 +6,7 @@ a warning is emitted when multiple servers respond, which may indicate a
 configuration conflict in the network.
 """
 
+# 不正DHCPサーバーの有無を調べる
 from scapy.all import (  # type: ignore
     Ether,
     IP,

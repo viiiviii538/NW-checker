@@ -3,6 +3,7 @@
 現在のDNSサーバーにクエリを実行し、外部サーバーの利用や
 DNSSECが無効な場合に警告を返す。"""
 
+# DNSサーバーの設定を検証し外部利用やDNSSEC無効を警告
 from ipaddress import ip_address, ip_network
 from typing import List
 

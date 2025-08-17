@@ -4,6 +4,7 @@ This scan tries a NetBIOS name query and negotiates an SMB connection to
 determine whether SMBv1 is enabled on the target host.
 """
 
+# SMBv1の有効化やNetBIOS名の公開状況を確認する
 from __future__ import annotations
 
 import subprocess

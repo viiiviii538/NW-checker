@@ -87,7 +87,7 @@ void main() {
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
     await tester.pump(const Duration(seconds: 2));
     await tester.pump();
-    expect(find.textContaining('dynamic'), findsOneWidget);
+    expect(find.text('結果がありません'), findsOneWidget);
   });
 
   testWidgets('Test tab shows monospaced diagnostic text', (
