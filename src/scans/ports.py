@@ -1,5 +1,6 @@
 """Static scan for risky open ports using basic socket checks."""
 
+# 危険なポートが開放されていないか確認する簡易チェック
 from __future__ import annotations
 
 import socket

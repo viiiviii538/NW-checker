@@ -1,5 +1,6 @@
 """Static scan for OS and service banners using nmap."""
 
+# OSやサービスのバナー情報からバージョン漏洩を調べる
 import nmap
 
 
