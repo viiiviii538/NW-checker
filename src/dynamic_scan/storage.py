@@ -46,19 +46,37 @@ class Storage:
         if queue in self._listeners:
             self._listeners.remove(queue)
 
+    # 上部の import はそのまま
+
+# save_result: UTC→ローカルに変更
     async def save_result(self, data: Dict[str, Any]) -> None:
-        """結果を保存し、リスナーへ通知"""
-        # タイムゾーン付きISO形式でタイムスタンプを付与
-        record = {"timestamp": datetime.now(timezone.utc).isoformat(), **data}
+        # ローカルタイムゾーンのISO（+09:00付き）
+        record = {"timestamp": datetime.now().astimezone().isoformat(timespec="seconds"), **data}
 
         async with self._lock:
             await asyncio.to_thread(self._insert_record, record)
             self._recent.append(record)
-            # メモリ上の履歴件数を制限
             if len(self._recent) > self._recent_limit:
                 self._recent.pop(0)
         for q in list(self._listeners):
             q.put_nowait(record)
+
+    # fetch_results: 全角スペース除去＆日付文字列比較
+    def fetch_results(self, start_date: str, end_date: str):
+        """start～end を両端含む（日単位・'YYYY-MM-DD'）。"""
+        with sqlite3.connect(self.db_path) as conn:
+            rows = conn.execute(
+                """
+                SELECT data
+                FROM results
+                WHERE substr(timestamp, 1, 10) >= ?
+                  AND substr(timestamp, 1, 10) <= ?
+                ORDER BY rowid ASC
+                """,
+                (start_date, end_date),
+            ).fetchall()
+        return [json.loads(r[0]) for r in rows]
+
 
     def _insert_record(self, record: Dict[str, Any]) -> None:
         """SQLite に 1 件のレコードを書き込む"""
@@ -72,15 +90,6 @@ class Storage:
     def get_all(self) -> List[Dict[str, Any]]:
         """現在のスキャンセッションの結果を取得"""
         return list(self._recent)
-
-    def fetch_results(self, start: str, end: str) -> List[Dict[str, Any]]:
-        """指定期間の結果を取得"""
-        with sqlite3.connect(self.db_path) as conn:
-            rows = conn.execute(
-                "SELECT data FROM results WHERE date(timestamp) BETWEEN ? AND ? ORDER BY timestamp",
-                (start, end),
-            ).fetchall()
-        return [json.loads(r[0]) for r in rows]
 
     def fetch_history(self, filters: Dict[str, Any]) -> List[Dict[str, Any]]:
         """保存された結果を期間・条件で検索する"""

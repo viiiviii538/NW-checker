@@ -42,7 +42,6 @@ def _is_private(ip: str) -> bool:
 
 def scan() -> dict:
     """DNS設定を検査し、問題があれば警告を返す。"""
-
     servers = _get_nameservers()
 
     external: List[str] = []
@@ -59,7 +58,6 @@ def scan() -> dict:
     details = {"servers": servers}
 
     if external:
-        # 外部DNSサーバーを使用している場合は警告
         warnings.append("External DNS detected: " + ", ".join(external))
         details["external_servers"] = external
 
@@ -79,8 +77,9 @@ def scan() -> dict:
             resp = sr1(pkt, timeout=2, verbose=False)
             if resp and resp.haslayer(DNS):
                 dnssec_enabled = bool(getattr(resp[DNS], "ad", 0))
-    except Exception as exc:  # pragma: no cover
+    except Exception as exc:  # ← ここで即リターン！
         details["error"] = str(exc)
+        return {"category": "dns", "score": 0, "details": details}
 
     details["dnssec_enabled"] = bool(dnssec_enabled)
     if dnssec_enabled is False:
@@ -88,8 +87,4 @@ def scan() -> dict:
 
     details["warnings"] = warnings
     score = len(warnings)
-    return {
-        "category": "dns",
-        "score": score,
-        "details": details,
-    }
+    return {"category": "dns", "score": score, "details": details}

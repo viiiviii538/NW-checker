@@ -106,15 +106,15 @@ async def geoip_lookup(ip: str, db_path: str | None = None) -> Dict[str, Any]:
 
 
 def reverse_dns_lookup(ip: str) -> str | None:
-    """DNS 逆引きを行い、結果を履歴に保持する。"""
-    if ip in _dns_history:
-        return _dns_history[ip]
+    """DNS 逆引き。まず実DNSに問い合せ、成功したらキャッシュ更新。失敗時だけ過去キャッシュにフォールバック。"""
     try:
-        hostname = socket.gethostbyaddr(ip)[0]
-        _dns_history[ip] = hostname
+        hostname = socket.gethostbyaddr(ip)[0]  # ← テストがここを monkeypatch する
+        _dns_history[ip] = hostname             # 最新を保存
         return hostname
     except Exception:
-        return None
+        return _dns_history.get(ip)             # 失敗時のみ古い値
+
+
 
 
 def is_dangerous_protocol(protocol: str | None) -> bool:
