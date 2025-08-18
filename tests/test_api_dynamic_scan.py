@@ -13,8 +13,8 @@ def test_dynamic_scan_endpoints(monkeypatch, tmp_path, base):
     # start_scan 内で Storage() が呼ばれても同じインスタンスを返すようにする
     monkeypatch.setattr(storage, "Storage", lambda *args, **kwargs: store)
 
-    async def dummy_capture(queue, interface=None, duration=None):
-        return
+    def dummy_capture(interface=None, duration=None):
+        return asyncio.Queue(), asyncio.create_task(asyncio.sleep(0))
 
     async def dummy_analyse(queue, storage_obj, approved_macs=None):
         return

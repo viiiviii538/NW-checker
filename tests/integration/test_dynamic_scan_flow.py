@@ -19,10 +19,15 @@ class DummyPacket:
 
 @pytest.mark.benchmark
 def test_dynamic_scan_full_flow(monkeypatch, tmp_path, benchmark):
-    async def fake_capture(queue: asyncio.Queue, interface=None, duration=None) -> None:
+    def fake_capture(interface=None, duration=None):
+        queue = asyncio.Queue()
         for _ in range(5):
             queue.put_nowait(DummyPacket())
-        await asyncio.sleep(0)
+
+        async def _task():
+            await asyncio.sleep(0)
+
+        return queue, asyncio.create_task(_task())
 
     monkeypatch.setattr(capture, "capture_packets", fake_capture)
     async def fake_geoip(ip: str):
@@ -31,8 +36,7 @@ def test_dynamic_scan_full_flow(monkeypatch, tmp_path, benchmark):
     monkeypatch.setattr(analyze, "geoip_lookup", fake_geoip)
     async def run_flow(db_name: str) -> tuple[int, storage.Storage]:
         local_store = storage.Storage(tmp_path / db_name)
-        queue: asyncio.Queue = asyncio.Queue()
-        capture_task = asyncio.create_task(capture.capture_packets(queue))
+        queue, capture_task = capture.capture_packets()
         analyse_task = asyncio.create_task(analyze.analyse_packets(queue, local_store))
         await capture_task
         await asyncio.wait_for(queue.join(), timeout=5)

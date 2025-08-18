@@ -25,9 +25,12 @@ def test_capture_packets_enqueue(monkeypatch):
     # AsyncSniffer をモックし、capture_packets 内で使用する
     monkeypatch.setattr(capture, "AsyncSniffer", FakeSniffer)
 
-    queue: asyncio.Queue = asyncio.Queue()
-    # duration=0 とすることで即終了させる
-    asyncio.run(capture.capture_packets(queue, duration=0))
+    async def runner():
+        queue, task = capture.capture_packets(duration=0)
+        await task
+        return queue
+
+    queue = asyncio.run(runner())
     assert queue.get_nowait() == "pkt"
 
 
@@ -52,10 +55,39 @@ def test_capture_packets_uses_parser(monkeypatch):
 
     monkeypatch.setattr(capture, "AsyncSniffer", FakeSniffer)
 
-    queue: asyncio.Queue = asyncio.Queue()
-    asyncio.run(capture.capture_packets(queue, duration=0))
+    async def runner():
+        queue, task = capture.capture_packets(duration=0)
+        await task
+        return queue
+
+    queue = asyncio.run(runner())
     assert called["pkt"] == "raw"
     assert queue.get_nowait() == "parsed-raw"
+
+
+def test_capture_packets_passes_interface(monkeypatch):
+    _patch_parser(monkeypatch)
+    captured = {}
+
+    class FakeSniffer:
+        def __init__(self, iface=None, prn=None):
+            captured["iface"] = iface
+            self.prn = prn
+
+        def start(self):
+            pass
+
+        def stop(self):  # pragma: no cover - 本テストでは処理なし
+            pass
+
+    monkeypatch.setattr(capture, "AsyncSniffer", FakeSniffer)
+
+    async def runner():
+        _, task = capture.capture_packets(interface="eth0", duration=0)
+        await task
+
+    asyncio.run(runner())
+    assert captured["iface"] == "eth0"
 
 
 def test_capture_packets_stops_after_duration(monkeypatch):
@@ -81,8 +113,12 @@ def test_capture_packets_stops_after_duration(monkeypatch):
     monkeypatch.setattr(capture, "AsyncSniffer", FakeSniffer)
     monkeypatch.setattr(capture.asyncio, "sleep", fake_sleep)
 
-    queue: asyncio.Queue = asyncio.Queue()
-    asyncio.run(capture.capture_packets(queue, duration=1))
+    async def runner():
+        queue, task = capture.capture_packets(duration=1)
+        await task
+        return queue
+
+    asyncio.run(runner())
 
     assert FakeSniffer.instance.started is True
     assert FakeSniffer.instance.stopped is True
@@ -106,16 +142,14 @@ def test_capture_packets_stops_when_cancelled(monkeypatch):
     # AsyncSniffer をモックし、capture_packets 内で使用する
     monkeypatch.setattr(capture, "AsyncSniffer", FakeSniffer)
 
-    queue: asyncio.Queue = asyncio.Queue()
-
     async def run_and_cancel():
-        # duration=None で起動し、タスクをキャンセル
-        task = asyncio.create_task(capture.capture_packets(queue))
+        queue, task = capture.capture_packets()
         await asyncio.sleep(0)
         assert FakeSniffer.instance.started is True
         task.cancel()
         with pytest.raises(asyncio.CancelledError):
             await task
+        return queue
 
     asyncio.run(run_and_cancel())
 

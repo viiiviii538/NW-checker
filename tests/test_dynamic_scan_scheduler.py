@@ -8,8 +8,8 @@ def test_scheduler_start_and_stop(monkeypatch):
     async def inner():
         sched = scheduler.DynamicScanScheduler()
 
-        async def dummy_capture(queue, interface=None, duration=None):
-            return
+        def dummy_capture(interface=None, duration=None):
+            return asyncio.Queue(), asyncio.create_task(asyncio.sleep(0))
 
         async def dummy_analyse(queue, storage_obj, approved_macs=None):
             return
@@ -50,8 +50,9 @@ def test_run_scan_executes_tasks(monkeypatch, tmp_path):
         sched.storage = storage.Storage(tmp_path / "res.db")
         flags = {"capture": False, "analyse": False}
 
-        async def dummy_capture(queue, interface=None, duration=None):
+        def dummy_capture(interface=None, duration=None):
             flags["capture"] = True
+            return asyncio.Queue(), asyncio.create_task(asyncio.sleep(0))
 
         async def dummy_analyse(queue, storage_obj, approved_macs=None):
             flags["analyse"] = True
