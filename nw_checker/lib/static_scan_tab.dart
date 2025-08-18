@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'api_config.dart';
 
 /// 静的スキャンAPIを呼び出し結果を返す
 Future<Map<String, dynamic>> performStaticScan({http.Client? client}) async {
@@ -9,7 +10,7 @@ Future<Map<String, dynamic>> performStaticScan({http.Client? client}) async {
   final c = client ?? http.Client();
   try {
     final resp = await c
-        .get(Uri.parse('http://localhost:8000/static_scan'))
+        .get(Uri.parse('${baseUrl()}/static_scan'))
         .timeout(const Duration(seconds: 5));
     if (resp.statusCode == 200) {
       final decoded = jsonDecode(resp.body) as Map<String, dynamic>;
