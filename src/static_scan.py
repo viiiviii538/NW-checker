@@ -26,39 +26,46 @@ def _load_scanners() -> List[Tuple[str, callable]]:
 
 
 def run_all(timeout: float = 5.0) -> Dict[str, List[Dict]]:
-    """静的スキャンモジュールを並列実行し結果を集約する。"""
+    """Execute all static scanners in parallel and aggregate their results.
 
+    Parameters
+    ----------
+    timeout:
+        Maximum time (in seconds) to wait for each individual scanner.
+
+    Returns
+    -------
+    dict
+        A mapping containing a ``findings`` list with each scanner's result and
+        the aggregated ``risk_score``.
+    """
+
+    # Discover available scanners then prioritise important ones.
     scanners = _load_scanners()
-
-    # ポートスキャンを最優先、次に OS 情報を取得するモジュールを実行
     priority = ["ports", "os_banner"]
     scanners.sort(key=lambda x: priority.index(x[0]) if x[0] in priority else len(priority))
 
     findings: List[Dict] = []
+    risk_score = 0
+
+    # Run all scanners concurrently while keeping the execution order defined
+    # above so that tests can rely on deterministic output positions.
     with ThreadPoolExecutor() as pool:
-        future_list = [(name, pool.submit(scan)) for name, scan in scanners]
-        for name, future in future_list:
+        futures = [(name, pool.submit(scan)) for name, scan in scanners]
+        for name, future in futures:
             try:
                 result = future.result(timeout=timeout)
             except TimeoutError:
-                result = {
-                    "category": name,
-                    "score": 0,
-                    "details": {"error": "timeout"},
-                }
-            except Exception as exc:  # noqa: BLE001 - スキャン失敗も結果に反映
-                result = {
-                    "category": name,
-                    "score": 0,
-                    "details": {"error": str(exc)},
-                }
+                result = {"category": name, "score": 0, "details": {"error": "timeout"}}
+            except Exception as exc:  # noqa: BLE001 - surface scan errors
+                result = {"category": name, "score": 0, "details": {"error": str(exc)}}
             else:
-                # 必須フィールドの欠損を補完
+                # Ensure mandatory fields exist even if the scanner omitted them.
                 result.setdefault("category", name)
                 result.setdefault("score", 0)
                 result.setdefault("details", {})
 
             findings.append(result)
+            risk_score += result.get("score", 0)
 
-    risk_score = sum(item.get("score", 0) for item in findings)
     return {"findings": findings, "risk_score": risk_score}
