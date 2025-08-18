@@ -42,20 +42,20 @@ def _is_private(ip: str) -> bool:
 
 
 def scan() -> dict:
+    category = "dns"
     servers = _get_nameservers()
 
     external: List[str] = []
     invalid: List[str] = []
-
-    # ← details を最初に初期化（warnings を必ず持たせる）
     details = {"servers": servers, "warnings": []}
 
-    for ip in servers:
-        try:
+    try:
+        for ip in servers:
             if not _is_private(ip):
                 external.append(ip)
-        except ValueError:
-            invalid.append(ip)
+    except Exception as exc:
+        details["error"] = str(exc)
+        return {"category": category, "score": 0, "details": details}
 
     if external:
         details["warnings"].append("External DNS detected: " + ", ".join(external))
@@ -74,12 +74,11 @@ def scan() -> dict:
             if resp and resp.haslayer(DNS):
                 dnssec_enabled = bool(getattr(resp[DNS], "ad", 0))
     except Exception as exc:
-        details["error"] = str(exc)      # 例外時は score=0 & error あり
-        return {"category": "dns", "score": 0, "details": details}
+        details["error"] = str(exc)
+        return {"category": category, "score": 0, "details": details}
 
     details["dnssec_enabled"] = bool(dnssec_enabled)
     if dnssec_enabled is False:
         details["warnings"].append("DNSSEC is disabled")
 
-    score = len(details["warnings"])
-    return {"category": "dns", "score": score, "details": details}
+    return {"category": category, "score": 0, "details": details}

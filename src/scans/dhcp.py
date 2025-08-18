@@ -20,14 +20,20 @@ from scapy.all import (  # type: ignore
 def scan(timeout: int = 2) -> dict:
     """Broadcast a DHCP discover and return responding servers.
 
-    Returns a mapping with the list of responding server IPs and warnings
-    if multiple servers answer which can indicate configuration conflicts.
+    Returns
+    -------
+    dict
+        {"category", "score", "details"} 形式。
+        エラー時は必ず details["error"] を含む。
     """
 
-    servers = set()
-    warnings = []
-    error = ""
+    category = "dhcp"
+    details: dict = {"servers": [], "warnings": []}
+
     try:
+        servers = set()
+        warnings = []
+
         discover = (
             Ether(dst="ff:ff:ff:ff:ff:ff")
             / IP(src="0.0.0.0", dst="255.255.255.255")
@@ -38,23 +44,15 @@ def scan(timeout: int = 2) -> dict:
         ans, _ = srp(discover, timeout=timeout, verbose=False)
         for _, pkt in ans:
             if DHCP in pkt:
-                # サーバーIPは重複を除外する
                 servers.add(pkt[IP].src)
-    except Exception as exc:  # pragma: no cover - 実行環境による
-        error = str(exc)
 
-    server_list = sorted(servers)
-    if len(server_list) > 1:
-        warnings.append(
-            "Multiple DHCP servers detected: " + ", ".join(server_list)
-        )
+        server_list = sorted(servers)
+        if len(server_list) > 1:
+            warnings.append("Multiple DHCP servers detected: " + ", ".join(server_list))
 
-    details = {"servers": server_list, "warnings": warnings}
-    if error:
-        details["error"] = error
-    return {
-        "category": "dhcp",
-        "score": 0 if error else len(server_list),
-        "details": details,
-    }
+        details.update({"servers": server_list, "warnings": warnings})
+        return {"category": category, "score": 0, "details": details}
 
+    except Exception as exc:
+        details["error"] = str(exc)
+        return {"category": category, "score": 0, "details": details}

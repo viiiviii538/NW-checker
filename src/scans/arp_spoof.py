@@ -39,27 +39,19 @@ def scan(
 ) -> dict:
     """Inject a spoofed ARP reply and watch for table changes.
 
-    Parameters
-    ----------
-    wait:
-        Packet送信後に待機する秒数。
-    fake_ip:
-        ARPテーブルに注入するIPアドレス。
-    fake_mac:
-        ``fake_ip`` に紐付ける偽のMACアドレス。
+    Returns
+    -------
+    dict
+        {"category", "score", "details"} 形式。
+        エラー時は必ず details["error"] を含む。
     """
+
+    category = "arp_spoof"
+    details: Dict[str, object] = {}
 
     try:
         before = _get_arp_table()
-    except Exception as exc:
-        # ARPテーブル取得失敗時はエラー内容を返す
-        return {
-            "category": "arp_spoof",
-            "score": 0,
-            "details": {"error": str(exc)},
-        }
 
-    try:
         pkt = ARP(
             op=2,  # is-at
             psrc=fake_ip,
@@ -69,32 +61,19 @@ def scan(
         )
         send(pkt, verbose=False)
         time.sleep(wait)
-    except Exception as exc:  # pragma: no cover - 実行環境による
-        return {
-            "category": "arp_spoof",
-            "score": 0,
-            "details": {"error": str(exc)},
-        }
 
-    try:
         after = _get_arp_table()
+
+        changed = before.get(fake_ip) != fake_mac and after.get(fake_ip) == fake_mac
+        explanation = (
+            "ARP table updated with spoofed entry"
+            if changed
+            else "No ARP poisoning detected"
+        )
+
+        details.update({"vulnerable": changed, "explanation": explanation})
+        return {"category": category, "score": 0, "details": details}
+
     except Exception as exc:
-        return {
-            "category": "arp_spoof",
-            "score": 0,
-            "details": {"error": str(exc)},
-        }
-
-    changed = before.get(fake_ip) != fake_mac and after.get(fake_ip) == fake_mac
-    explanation = (
-        "ARP table updated with spoofed entry"
-        if changed
-        else "No ARP poisoning detected"
-    )
-
-    return {
-        "category": "arp_spoof",
-        "score": 5 if changed else 0,
-        "details": {"vulnerable": changed, "explanation": explanation},
-    }
-
+        details["error"] = str(exc)
+        return {"category": category, "score": 0, "details": details}

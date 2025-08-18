@@ -29,14 +29,24 @@ def _extract_issuer(cert: dict) -> str:
 
 
 def scan(host: str = "example.com", port: int = 443) -> dict:
-    """Retrieve the server certificate and evaluate expiry and issuer."""
+    """Retrieve the server certificate and evaluate expiry and issuer.
 
-    expired = False
-    days_remaining: int | None = None
-    issuer = ""
-    cert_data: dict = {}
-    error = ""
+    Returns
+    -------
+    dict
+        {"category", "score", "details"} 形式。
+        エラー時は必ず details["error"] を含む。
+    """
+
+    category = "ssl_cert"
+    details: dict = {"host": host}
+
     try:
+        expired = False
+        days_remaining: int | None = None
+        issuer = ""
+        cert_data: dict = {}
+
         context = ssl.create_default_context()
         with socket.create_connection((host, port), timeout=2) as sock:
             with context.wrap_socket(sock, server_hostname=host) as ssock:
@@ -51,31 +61,17 @@ def scan(host: str = "example.com", port: int = 443) -> dict:
                     delta = expiry - datetime.now(timezone.utc)
                     days_remaining = delta.days
                     expired = days_remaining < 0
-    except Exception as exc:  # pragma: no cover
-        error = str(exc)
 
-    # スコア算出
-    score = 0
-    if expired:
-        score = 5
-    else:
-        if days_remaining is not None and days_remaining < 30:
-            score += 2
-        if issuer and all(t not in issuer for t in TRUSTED_ISSUERS):
-            score += 1
+        details.update(
+            {
+                "expired": expired,
+                "issuer": issuer,
+                "days_remaining": days_remaining,
+                "cert": cert_data,
+            }
+        )
+        return {"category": category, "score": 0, "details": details}
 
-    details = {
-        "host": host,
-        "expired": expired,
-        "issuer": issuer,
-        "days_remaining": days_remaining,
-        "cert": cert_data,
-    }
-    if error:
-        details["error"] = error
-    return {
-        "category": "ssl_cert",
-        "score": score,
-        "details": details,
-    }
-
+    except Exception as exc:
+        details["error"] = str(exc)
+        return {"category": category, "score": 0, "details": details}

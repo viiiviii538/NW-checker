@@ -27,42 +27,33 @@ RISKY_PORTS: Tuple[int, ...] = (
 def scan(target_host: str = "127.0.0.1") -> Dict[str, object]:
     """Check *target_host* for open ports considered risky.
 
-    Parameters
-    ----------
-    target_host: str
-        スキャン対象ホスト名。省略時は ``localhost`` を使用。
-
     Returns
     -------
     dict
-        ``{category, score, details}`` 形式の辞書を返す。
-        ``details`` には ``open_ports`` のリストを格納。
+        {"category", "score", "details"} 形式。
+        エラー時は score=0 で details に "error" を含む。
     """
 
+    category = "ports"
     open_ports: List[int] = []
-    error = ""
+    details: Dict[str, object] = {"target": target_host}
+
     try:
         for port in RISKY_PORTS:
             try:
-                # ソケット接続を試み、成功すればポートは開いているとみなす
                 with socket.create_connection((target_host, port), timeout=0.5):
                     open_ports.append(port)
             except OSError:
-                # 接続失敗時はポートが閉じていると判断
                 continue
-    except Exception as exc:  # pragma: no cover - 想定外エラー
-        error = str(exc)
-        open_ports = []
 
-    details = {"target": target_host, "open_ports": open_ports}
-    if error:
-        details["error"] = error
+        details["open_ports"] = open_ports
+        return {"category": category, "score": 0, "details": details}
 
-    return {
-        "category": "ports",
-        "score": 0 if error else len(open_ports),
-        "details": details,
-    }
+    except Exception as exc:
+        details["open_ports"] = []
+        details["error"] = str(exc)
+        return {"category": category, "score": 0, "details": details}
+
 
 
 if __name__ == "__main__":
