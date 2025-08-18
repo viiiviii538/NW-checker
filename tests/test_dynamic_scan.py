@@ -79,8 +79,12 @@ def test_capture_packets_enqueue(monkeypatch):
 
     monkeypatch.setattr(capture.parser, "parse_packet", lambda pkt: pkt)
     monkeypatch.setattr(capture, "AsyncSniffer", FakeSniffer)
-    queue: asyncio.Queue = asyncio.Queue()
-    asyncio.run(capture.capture_packets(queue, duration=0))
+    async def runner():
+        queue, task = capture.capture_packets(duration=0)
+        await task
+        return queue
+
+    queue = asyncio.run(runner())
     assert queue.get_nowait() == "pkt"
 
 

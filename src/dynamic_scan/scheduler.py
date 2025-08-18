@@ -53,9 +53,8 @@ class DynamicScanScheduler:
 
     async def _run_scan(self, interface: str | None, duration: int | None, approved_macs: Iterable[str] | None) -> None:
         """実際に 1 回のスキャンを実行する内部メソッド"""
-        queue: asyncio.Queue = asyncio.Queue()
-        self.capture_task = asyncio.create_task(
-            capture.capture_packets(queue, interface=interface, duration=duration)
+        queue, self.capture_task = capture.capture_packets(
+            interface=interface, duration=duration
         )
         self.analyse_task = asyncio.create_task(
             analyze.analyse_packets(queue, self.storage, approved_macs=approved_macs or [])

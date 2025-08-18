@@ -12,8 +12,8 @@ def test_dynamic_scan_start_stop(monkeypatch, tmp_path):
     # start_scan 内で新たな Storage() が生成されても同じものを使用させる
     monkeypatch.setattr(storage, "Storage", lambda *args, **kwargs: store)
 
-    async def dummy_capture(queue, interface=None, duration=None):
-        return
+    def dummy_capture(interface=None, duration=None):
+        return asyncio.Queue(), asyncio.create_task(asyncio.sleep(0))
 
     async def dummy_analyse(queue, storage_obj, approved_macs=None):
         return
