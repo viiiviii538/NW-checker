@@ -15,6 +15,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libpcap-dev
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -40,10 +41,9 @@ jobs:
         run: pytest -q
 
       - name: Note when skipped
-        if: ${{ steps.check_fl.outputs.exists != 'true' }}
+        if: ${{ steps.check_py.outputs.req != 'true' || steps.check_py.outputs.tests != 'true' }}
         run: |
-          echo 'Flutter: nw_checker/pubspec.yaml が無いのでスキップ'
-
+          echo 'Python: requirements.txt または tests/ が無いのでスキップ'
 
   flutter:
     name: Flutter tests
@@ -77,4 +77,5 @@ jobs:
 
       - name: Note when skipped
         if: ${{ steps.check_fl.outputs.exists != 'true' }}
-        run: echo "Flutter: nw_checker/pubspec.yaml が無いのでスキップ"
+        run: |
+          echo 'Flutter: nw_checker/pubspec.yaml が無いのでスキップ'
