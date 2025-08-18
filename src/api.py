@@ -123,6 +123,24 @@ async def get_results_v2():
     """
     return await get_results()
 
+# アンダースコア形式のエンドポイント (/dynamic_scan/*) へのエイリアス
+@app.post("/dynamic_scan/start")
+async def start_scan_v3(params: StartParams):
+    """動的スキャン開始エイリアス（アンダースコア形式）"""
+    return await start_scan_v2(params)
+
+
+@app.post("/dynamic_scan/stop")
+async def stop_scan_v3():
+    """動的スキャン停止エイリアス（アンダースコア形式）"""
+    return await stop_scan_v2()
+
+
+@app.get("/dynamic_scan/results")
+async def get_results_v3():
+    """動的スキャン結果取得エイリアス（アンダースコア形式）"""
+    return await get_results_v2()
+
 
 @app.get("/scan/dynamic/history")
 async def get_history(
