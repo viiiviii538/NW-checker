@@ -1,6 +1,8 @@
 import asyncio
 from scapy.all import AsyncSniffer
 
+from . import parser
+
 
 async def capture_packets(
     queue: asyncio.Queue,
@@ -20,10 +22,11 @@ async def capture_packets(
         indefinitely until cancelled.
     """
 
-    # Callback invoked for each captured packet; place packet on queue so
-    # analysis tasks can consume it immediately.
+    # Callback invoked for each captured packet; parse it and enqueue for
+    # analysis so downstream tasks work with a simple, normalized structure.
     def _enqueue(packet) -> None:
-        queue.put_nowait(packet)
+        parsed = parser.parse_packet(packet)
+        queue.put_nowait(parsed)
 
     sniffer = AsyncSniffer(iface=interface, prn=_enqueue)
     sniffer.start()

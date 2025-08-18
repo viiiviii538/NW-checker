@@ -4,7 +4,13 @@ import pytest
 from src.dynamic_scan import capture
 
 
+def _patch_parser(monkeypatch):
+    """Helper to patch parser.parse_packet with identity for tests."""
+    monkeypatch.setattr(capture.parser, "parse_packet", lambda pkt: pkt)
+
+
 def test_capture_packets_enqueue(monkeypatch):
+    _patch_parser(monkeypatch)
     class FakeSniffer:
         def __init__(self, iface=None, prn=None):
             self.prn = prn
@@ -25,7 +31,35 @@ def test_capture_packets_enqueue(monkeypatch):
     assert queue.get_nowait() == "pkt"
 
 
+def test_capture_packets_uses_parser(monkeypatch):
+    called = {}
+
+    def fake_parse(pkt):
+        called["pkt"] = pkt
+        return f"parsed-{pkt}"
+
+    monkeypatch.setattr(capture.parser, "parse_packet", fake_parse)
+
+    class FakeSniffer:
+        def __init__(self, iface=None, prn=None):
+            self.prn = prn
+
+        def start(self):
+            self.prn("raw")
+
+        def stop(self):  # pragma: no cover - 本テストでは処理なし
+            pass
+
+    monkeypatch.setattr(capture, "AsyncSniffer", FakeSniffer)
+
+    queue: asyncio.Queue = asyncio.Queue()
+    asyncio.run(capture.capture_packets(queue, duration=0))
+    assert called["pkt"] == "raw"
+    assert queue.get_nowait() == "parsed-raw"
+
+
 def test_capture_packets_stops_after_duration(monkeypatch):
+    _patch_parser(monkeypatch)
     class FakeSniffer:
         def __init__(self, iface=None, prn=None):
             self.started = False
@@ -56,6 +90,7 @@ def test_capture_packets_stops_after_duration(monkeypatch):
 
 
 def test_capture_packets_stops_when_cancelled(monkeypatch):
+    _patch_parser(monkeypatch)
     class FakeSniffer:
         def __init__(self, iface=None, prn=None):
             self.started = False
