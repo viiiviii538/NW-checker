@@ -45,7 +45,7 @@ jobs:
         if: ${{ steps.check_py.outputs.req != 'true' || steps.check_py.outputs.tests != 'true' }}
         run: echo "Python: requirements.txt または tests/ が無いのでスキップ"
 
-  flutter:
+  flutter:    
     name: Flutter tests
     runs-on: ubuntu-latest
     steps:
