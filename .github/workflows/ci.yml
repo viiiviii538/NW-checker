@@ -21,28 +21,28 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
-      # ← requirements.txt と tests/ の有無を先に調べておく
+      # ファイル有無チェック
       - name: Check python files
         id: check_py
         run: |
-          if [ -f requirements.txt ]; then echo "req=true" >> $GITHUB_OUTPUT; else echo "req=false" >> $GITHUB_OUTPUT; fi
-          if [ -d tests ] && ls tests/*.py >/dev/null 2>&1; then echo "tests=true" >> $GITHUB_OUTPUT; else echo "tests=false" >> $GITHUB_OUTPUT; fi
+          if [ -f requirements.txt ]; then echo "req=true" >> "$GITHUB_OUTPUT"; else echo "req=false" >> "$GITHUB_OUTPUT"; fi
+          if [ -d tests ] && ls tests/*.py >/dev/null 2>&1; then echo "tests=true" >> "$GITHUB_OUTPUT"; else echo "tests=false" >> "$GITHUB_OUTPUT"; fi
 
       - name: Install deps
-        if: steps.check_py.outputs.req == 'true'
+        if: ${{ steps.check_py.outputs.req == 'true' }}
         run: |
           python -m pip install -U pip
           pip install -r requirements.txt
           python -m pip install -e . || true
 
       - name: Run pytest
-        if: steps.check_py.outputs.req == 'true' && steps.check_py.outputs.tests == 'true'
+        if: ${{ steps.check_py.outputs.req == 'true' && steps.check_py.outputs.tests == 'true' }}
         env:
           PYTHONPATH: ${{ github.workspace }}
         run: pytest -q
 
       - name: Note when skipped
-        if: steps.check_py.outputs.req != 'true' || steps.check_py.outputs.tests != 'true'
+        if: ${{ steps.check_py.outputs.req != 'true' || steps.check_py.outputs.tests != 'true' }}
         run: echo "Python: requirements.txt または tests/ が無いのでスキップ"
 
   flutter:
@@ -51,31 +51,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # ← nw_checker/pubspec.yaml の有無を調べる
+      # nw_checker/pubspec.yaml の有無チェック
       - name: Check flutter files
         id: check_fl
         run: |
-          if [ -f nw_checker/pubspec.yaml ]; then echo "exists=true" >> $GITHUB_OUTPUT; else echo "exists=false" >> $GITHUB_OUTPUT; fi
+          if [ -f nw_checker/pubspec.yaml ]; then echo "exists=true" >> "$GITHUB_OUTPUT"; else echo "exists=false" >> "$GITHUB_OUTPUT"; fi
 
       - uses: subosito/flutter-action@v2
-        if: steps.check_fl.outputs.exists == 'true'
+        if: ${{ steps.check_fl.outputs.exists == 'true' }}
         with:
           channel: 'stable'
 
       - name: Flutter version
-        if: steps.check_fl.outputs.exists == 'true'
+        if: ${{ steps.check_fl.outputs.exists == 'true' }}
         run: flutter --version
 
       - name: Flutter pub get
-        if: steps.check_fl.outputs.exists == 'true'
+        if: ${{ steps.check_fl.outputs.exists == 'true' }}
         working-directory: nw_checker
         run: flutter pub get
 
       - name: Run flutter tests
-        if: steps.check_fl.outputs.exists == 'true'
+        if: ${{ steps.check_fl.outputs.exists == 'true' }}
         working-directory: nw_checker
         run: flutter test -r expanded
 
       - name: Note when skipped
-        if: steps.check_fl.outputs.exists != 'true'
+        if: ${{ steps.check_fl.outputs.exists != 'true' }}
         run: echo "Flutter: nw_checker/pubspec.yaml が無いのでスキップ"
