@@ -1,0 +1,60 @@
+name: CI
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  backend:
+    name: Python (pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: System deps (for scapy etc.)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libpcap-dev
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install deps (skip if no requirements.txt)
+        if: hashFiles('requirements.txt') != ''
+        run: |
+          python -m pip install -U pip
+          pip install -r requirements.txt
+          python -m pip install -e . || true
+
+      - name: Run pytest (skip if no tests)
+        if: hashFiles('requirements.txt') != '' && hashFiles('tests/**') != ''
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: pytest -q
+
+      - name: Note when skipped
+        if: hashFiles('requirements.txt') == '' || hashFiles('tests/**') == ''
+        run: echo "No requirements.txt or tests/ found. Skipping backend tests."
+
+  flutter:
+    name: Flutter tests
+    runs-on: ubuntu-latest
+    # ルートに pubspec.yaml が無ければスキップ
+    if: hashFiles('pubspec.yaml') != ''
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+      - run: flutter --version
+      - run: flutter pub get
+      - run: flutter test -r expanded
+
+  flutter_skip:
+    name: Flutter (skipped)
+    runs-on: ubuntu-latest
+    if: hashFiles('pubspec.yaml') == ''
+    steps:
+      - run: echo "No pubspec.yaml in repo root. Skipping Flutter tests."
