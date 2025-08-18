@@ -15,13 +15,11 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libpcap-dev
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
 
-      # ファイル有無チェック
       - name: Check python files
         id: check_py
         run: |
@@ -43,15 +41,15 @@ jobs:
 
       - name: Note when skipped
         if: ${{ steps.check_py.outputs.req != 'true' || steps.check_py.outputs.tests != 'true' }}
-        run: echo "Python: requirements.txt または tests/ が無いのでスキップ"
+        run: |
+          echo 'Python: requirements.txt または tests/ が無いのでスキップ'
 
-  flutter:    
+  flutter:
     name: Flutter tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      # nw_checker/pubspec.yaml の有無チェック
       - name: Check flutter files
         id: check_fl
         run: |
