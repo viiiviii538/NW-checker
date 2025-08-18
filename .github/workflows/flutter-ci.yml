@@ -43,7 +43,7 @@ jobs:
       - name: Note when skipped
         if: ${{ steps.check_py.outputs.req != 'true' || steps.check_py.outputs.tests != 'true' }}
         run: |
-          echo 'Python: requirements.txt または tests/ が無いのでスキップ'
+          echo 'Python: skipped (no requirements.txt or tests directory)'
 
   flutter:
     name: Flutter tests
@@ -56,8 +56,7 @@ jobs:
         run: |
           if [ -f nw_checker/pubspec.yaml ]; then echo "exists=true" >> "$GITHUB_OUTPUT"; else echo "exists=false" >> "$GITHUB_OUTPUT"; fi
 
-      - uses: subosito/flutter-action@v2
-      + uses: flutter-actions/setup-flutter@v2
+      - uses: flutter-actions/setup-flutter@v2
         if: ${{ steps.check_fl.outputs.exists == 'true' }}
         with:
           channel: 'stable'
@@ -79,4 +78,4 @@ jobs:
       - name: Note when skipped
         if: ${{ steps.check_fl.outputs.exists != 'true' }}
         run: |
-          echo 'Flutter: nw_checker/pubspec.yaml が無いのでスキップ'
+          echo 'Flutter: skipped (no nw_checker/pubspec.yaml)'
