@@ -37,17 +37,16 @@ void main() {
     expect(result['findings'], isEmpty);
   });
 
-  testWidgets('HTTP error from performStaticScan is shown in UI',
-      (tester) async {
+  testWidgets('HTTP error from performStaticScan is shown in UI', (
+    tester,
+  ) async {
     final client = MockClient((request) async {
       return http.Response('{"detail": "server down"}', 503);
     });
 
     Future<Map<String, dynamic>> scanner() => performStaticScan(client: client);
 
-    await tester.pumpWidget(
-      MaterialApp(home: StaticScanTab(scanner: scanner)),
-    );
+    await tester.pumpWidget(MaterialApp(home: StaticScanTab(scanner: scanner)));
 
     await tester.tap(find.byKey(const Key('staticButton')));
     await tester.pump();
@@ -925,5 +924,49 @@ void main() {
     await tester.tap(find.text('SSL証明書'));
     await tester.pumpAndSettle();
     expect(find.text('証明書は期限切れ'), findsOneWidget);
+  });
+
+  testWidgets('unknown category with error still shows card', (tester) async {
+    Future<Map<String, dynamic>> mockScan() async {
+      return {
+        'summary': [],
+        'findings': [
+          {
+            'category': 'mystery',
+            'score': 0,
+            'details': {'error': 'something failed'},
+          },
+        ],
+      };
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(home: StaticScanTab(scanner: mockScan)),
+    );
+
+    await tester.tap(find.byKey(const Key('staticButton')));
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(find.text('mystery'), findsOneWidget);
+
+    final tileFinder = find.ancestor(
+      of: find.text('mystery'),
+      matching: find.byType(ExpansionTile),
+    );
+    final chipFinder = find.descendant(
+      of: tileFinder,
+      matching: find.byType(Chip),
+    );
+    final chipLabel = (tester.widget<Chip>(chipFinder).label as Text).data;
+    expect(chipLabel, 'エラー');
+
+    final tileWidget = tester.widget<ExpansionTile>(tileFinder);
+    final detailTexts = tileWidget.children
+        .whereType<ListTile>()
+        .map((t) => (t.title as Text).data)
+        .whereType<String>()
+        .toList();
+    expect(detailTexts.join(' '), contains('error: something failed'));
   });
 }
