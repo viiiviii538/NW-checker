@@ -41,20 +41,25 @@ jobs:
   flutter:
     name: Flutter tests
     runs-on: ubuntu-latest
-    # ルートに pubspec.yaml が無ければスキップ
-    if: hashFiles('pubspec.yaml') != ''
+    # ← ここを root ではなく nw_checker/ を見るように変更
+    if: hashFiles('nw_checker/pubspec.yaml') != ''
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
       - run: flutter --version
-      - run: flutter pub get
-      - run: flutter test -r expanded
+      - name: Flutter pub get
+        working-directory: nw_checker
+        run: flutter pub get
+      - name: Run flutter tests
+        working-directory: nw_checker
+        run: flutter test -r expanded
 
   flutter_skip:
     name: Flutter (skipped)
     runs-on: ubuntu-latest
-    if: hashFiles('pubspec.yaml') == ''
+    # ← スキップ条件も nw_checker/ に変更
+    if: hashFiles('nw_checker/pubspec.yaml') == ''
     steps:
-      - run: echo "No pubspec.yaml in repo root. Skipping Flutter tests."
+      - run: echo "No pubspec.yaml in nw_checker/. Skipping Flutter tests."
