@@ -22,27 +22,26 @@ jobs:
           cache: 'pip'
 
       - name: Install deps (skip if no requirements.txt)
-        if: hashFiles('requirements.txt') != ''
+        if: ${{ hashFiles('requirements.txt') != '' }}
         run: |
           python -m pip install -U pip
           pip install -r requirements.txt
           python -m pip install -e . || true
 
       - name: Run pytest (skip if no tests)
-        if: hashFiles('requirements.txt') != '' && hashFiles('tests/**') != ''
+        if: ${{ hashFiles('requirements.txt') != '' && hashFiles('tests/**') != '' }}
         env:
           PYTHONPATH: ${{ github.workspace }}
         run: pytest -q
 
       - name: Note when skipped
-        if: hashFiles('requirements.txt') == '' || hashFiles('tests/**') == ''
+        if: ${{ hashFiles('requirements.txt') == '' || hashFiles('tests/**') == '' }}
         run: echo "No requirements.txt or tests/ found. Skipping backend tests."
 
   flutter:
     name: Flutter tests
     runs-on: ubuntu-latest
-    # ← ここを root ではなく nw_checker/ を見るように変更
-    if: hashFiles('nw_checker/pubspec.yaml') != ''
+    if: ${{ hashFiles('nw_checker/pubspec.yaml') != '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -59,7 +58,6 @@ jobs:
   flutter_skip:
     name: Flutter (skipped)
     runs-on: ubuntu-latest
-    # ← スキップ条件も nw_checker/ に変更
-    if: hashFiles('nw_checker/pubspec.yaml') == ''
+    if: ${{ hashFiles('nw_checker/pubspec.yaml') == '' }}
     steps:
       - run: echo "No pubspec.yaml in nw_checker/. Skipping Flutter tests."
