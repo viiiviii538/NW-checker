@@ -31,3 +31,11 @@ def test_run_all_executes_scanners_concurrently(monkeypatch):
     assert result["risk_score"] == 2
     categories = [item["category"] for item in result["findings"]]
     assert {"slow1", "slow2"} == set(categories)
+
+
+def test_run_all_handles_no_scanners(monkeypatch):
+    """When no scanners are discovered, run_all should return empty results."""
+    monkeypatch.setattr(static_scan, "_load_scanners", lambda: [])
+    result = static_scan.run_all()
+    assert result["findings"] == []
+    assert result["risk_score"] == 0

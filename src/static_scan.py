@@ -3,29 +3,26 @@
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
 from importlib import import_module
 from pkgutil import iter_modules
-from typing import Dict, List, Tuple
+from typing import Callable, Dict, List, Tuple
 
 from . import scans
 
 
-def _load_scanners() -> List[Tuple[str, callable]]:
-    """Discover scan functions under :mod:`src.scans`.
+def _load_scanners() -> List[Tuple[str, Callable[[], Dict]]]:
+    """Load scan callables defined in modules under :mod:`src.scans`."""
 
-    Returns a list of ``(module_name, scan_callable)`` tuples.
-    """
-
-    scanners: List[Tuple[str, callable]] = []
-    for mod_info in iter_modules(scans.__path__):
-        if mod_info.name.startswith("_"):
+    scanners: List[Tuple[str, Callable[[], Dict]]] = []
+    for mod in iter_modules(scans.__path__):
+        if mod.name.startswith("_"):
             continue
-        module = import_module(f"{scans.__name__}.{mod_info.name}")
-        scan_func = getattr(module, "scan", None)
-        if callable(scan_func):
-            scanners.append((mod_info.name, scan_func))
+        module = import_module(f"{scans.__name__}.{mod.name}")
+        scan_callable = getattr(module, "scan", None)
+        if callable(scan_callable):
+            scanners.append((mod.name, scan_callable))
     return scanners
 
 
-def run_all(timeout: float = 5.0) -> Dict[str, List[Dict]]:
+def run_all(timeout: float = 5.0) -> Dict[str, object]:
     """静的スキャンモジュールを並列実行し結果を集約する。"""
 
     scanners = _load_scanners()
@@ -36,8 +33,8 @@ def run_all(timeout: float = 5.0) -> Dict[str, List[Dict]]:
 
     findings: List[Dict] = []
     with ThreadPoolExecutor() as pool:
-        future_list = [(name, pool.submit(scan)) for name, scan in scanners]
-        for name, future in future_list:
+        futures = [(name, pool.submit(scan)) for name, scan in scanners]
+        for name, future in futures:
             try:
                 result = future.result(timeout=timeout)
             except TimeoutError:
