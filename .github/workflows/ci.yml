@@ -21,43 +21,61 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
-      - name: Install deps (skip if no requirements.txt)
-        if: ${{ hashFiles('requirements.txt') != '' }}
+      # ← requirements.txt と tests/ の有無を先に調べておく
+      - name: Check python files
+        id: check_py
+        run: |
+          if [ -f requirements.txt ]; then echo "req=true" >> $GITHUB_OUTPUT; else echo "req=false" >> $GITHUB_OUTPUT; fi
+          if [ -d tests ] && ls tests/*.py >/dev/null 2>&1; then echo "tests=true" >> $GITHUB_OUTPUT; else echo "tests=false" >> $GITHUB_OUTPUT; fi
+
+      - name: Install deps
+        if: steps.check_py.outputs.req == 'true'
         run: |
           python -m pip install -U pip
           pip install -r requirements.txt
           python -m pip install -e . || true
 
-      - name: Run pytest (skip if no tests)
-        if: ${{ hashFiles('requirements.txt') != '' && hashFiles('tests/**') != '' }}
+      - name: Run pytest
+        if: steps.check_py.outputs.req == 'true' && steps.check_py.outputs.tests == 'true'
         env:
           PYTHONPATH: ${{ github.workspace }}
         run: pytest -q
 
       - name: Note when skipped
-        if: ${{ hashFiles('requirements.txt') == '' || hashFiles('tests/**') == '' }}
-        run: echo "No requirements.txt or tests/ found. Skipping backend tests."
+        if: steps.check_py.outputs.req != 'true' || steps.check_py.outputs.tests != 'true'
+        run: echo "Python: requirements.txt または tests/ が無いのでスキップ"
 
   flutter:
     name: Flutter tests
     runs-on: ubuntu-latest
-    if: ${{ hashFiles('nw_checker/pubspec.yaml') != '' }}
     steps:
       - uses: actions/checkout@v4
+
+      # ← nw_checker/pubspec.yaml の有無を調べる
+      - name: Check flutter files
+        id: check_fl
+        run: |
+          if [ -f nw_checker/pubspec.yaml ]; then echo "exists=true" >> $GITHUB_OUTPUT; else echo "exists=false" >> $GITHUB_OUTPUT; fi
+
       - uses: subosito/flutter-action@v2
+        if: steps.check_fl.outputs.exists == 'true'
         with:
           channel: 'stable'
-      - run: flutter --version
+
+      - name: Flutter version
+        if: steps.check_fl.outputs.exists == 'true'
+        run: flutter --version
+
       - name: Flutter pub get
+        if: steps.check_fl.outputs.exists == 'true'
         working-directory: nw_checker
         run: flutter pub get
+
       - name: Run flutter tests
+        if: steps.check_fl.outputs.exists == 'true'
         working-directory: nw_checker
         run: flutter test -r expanded
 
-  flutter_skip:
-    name: Flutter (skipped)
-    runs-on: ubuntu-latest
-    if: ${{ hashFiles('nw_checker/pubspec.yaml') == '' }}
-    steps:
-      - run: echo "No pubspec.yaml in nw_checker/. Skipping Flutter tests."
+      - name: Note when skipped
+        if: steps.check_fl.outputs.exists != 'true'
+        run: echo "Flutter: nw_checker/pubspec.yaml が無いのでスキップ"
