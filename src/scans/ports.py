@@ -25,40 +25,35 @@ RISKY_PORTS: Tuple[int, ...] = (
 
 
 def scan(target_host: str = "127.0.0.1") -> Dict[str, object]:
-    """Check *target_host* for open ports considered risky.
-
-    Returns
-    -------
-    dict
-        {"category", "score", "details"} 形式。
-        エラー時は score=0 で details に "error" を含む。
-    """
-
+    """Check *target_host* for open ports considered risky."""
     category = "ports"
     open_ports: List[int] = []
     details: Dict[str, object] = {"target": target_host}
 
+    last_exc: Exception | None = None
+    tried = 0
+
     try:
         for port in RISKY_PORTS:
+            tried += 1
             try:
                 with socket.create_connection((target_host, port), timeout=0.5):
                     open_ports.append(port)
-            except OSError:
+            except OSError as e:
+                # 接続失敗（閉じてる等）は無視するが、最後の例外は覚えておく
+                last_exc = e
                 continue
 
         details["open_ports"] = open_ports
+
+        # 全部失敗（1つも接続成功なし）なら error を付ける
+        if not open_ports and last_exc is not None and tried > 0:
+            details["error"] = str(last_exc)
+
+        # スコアは開いてたポート数
+        return {"category": category, "score": len(open_ports), "details": details}
+
+    except Exception as e:
+        # 想定外の例外は error を付けて score=0
+        details.update({"open_ports": [], "error": str(e)})
         return {"category": category, "score": 0, "details": details}
-
-    except Exception as exc:
-        details["open_ports"] = []
-        details["error"] = str(exc)
-        return {"category": category, "score": 0, "details": details}
-
-
-
-if __name__ == "__main__":
-    import json
-    import sys
-
-    host = sys.argv[1] if len(sys.argv) > 1 else "127.0.0.1"
-    print(json.dumps(scan(host), indent=2, ensure_ascii=False))

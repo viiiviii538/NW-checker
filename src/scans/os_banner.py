@@ -8,7 +8,7 @@ def scan(target: str = "127.0.0.1") -> dict:
     """Attempt to grab OS and service banners from *target*.
 
     Returns a result dictionary containing discovered information.
-    Always returns score=0; errors are reported in details["error"].
+    score = len(banners) + (1 if os_name else 0).
     """
 
     category = "os_banner"
@@ -25,9 +25,7 @@ def scan(target: str = "127.0.0.1") -> dict:
         # サービスバナー取得
         tcp_info = host_info.get("tcp", {})
         for port, data in tcp_info.items():
-            banner = " ".join(
-                filter(None, [data.get("name"), data.get("version")])
-            ).strip()
+            banner = " ".join(filter(None, [data.get("name"), data.get("version")])).strip()
             if banner:
                 banners[int(port)] = banner
 
@@ -36,8 +34,9 @@ def scan(target: str = "127.0.0.1") -> dict:
         if os_match:
             os_name = os_match[0].get("name", "")
 
+        score = len(banners) + (1 if os_name else 0)
         details.update({"os": os_name, "banners": banners})
-        return {"category": category, "score": 0, "details": details}
+        return {"category": category, "score": score, "details": details}
 
     except Exception as exc:
         details.update({"os": "", "banners": {}, "error": str(exc)})
