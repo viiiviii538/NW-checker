@@ -1,24 +1,82 @@
-name: Flutter CI
-
+name: CI
 on:
   push:
-    branches: ["**"]
   pull_request:
+  workflow_dispatch:
 
 jobs:
-  tests:
+  backend:
+    name: Python (pytest)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Flutter
-        uses: flutter-actions/setup-flutter@v2
+
+      - name: System deps (for scapy etc.)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libpcap-dev
+
+      - uses: actions/setup-python@v5
         with:
-          channel: stable
-      - name: Verify flutter in PATH
-        run: which flutter
-      - name: Install dependencies
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Check python files
+        id: check_py
+        run: |
+          if [ -f requirements.txt ]; then echo "req=true" >> "$GITHUB_OUTPUT"; else echo "req=false" >> "$GITHUB_OUTPUT"; fi
+          if [ -d tests ] && ls tests/*.py >/dev/null 2>&1; then echo "tests=true" >> "$GITHUB_OUTPUT"; else echo "tests=false" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Install deps
+        if: ${{ steps.check_py.outputs.req == 'true' }}
+        run: |
+          python -m pip install -U pip
+          pip install -r requirements.txt
+          python -m pip install -e . || true
+
+      - name: Run pytest
+        if: ${{ steps.check_py.outputs.req == 'true' && steps.check_py.outputs.tests == 'true' }}
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: pytest -q
+
+      - name: Note when skipped
+        if: ${{ steps.check_py.outputs.req != 'true' || steps.check_py.outputs.tests != 'true' }}
+        run: |
+          echo 'Python: requirements.txt または tests/ が無いのでスキップ'
+
+  flutter:
+    name: Flutter tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check flutter files
+        id: check_fl
+        run: |
+          if [ -f nw_checker/pubspec.yaml ]; then echo "exists=true" >> "$GITHUB_OUTPUT"; else echo "exists=false" >> "$GITHUB_OUTPUT"; fi
+
+      - uses: subosito/flutter-action@v2
+      + uses: flutter-actions/setup-flutter@v2
+        if: ${{ steps.check_fl.outputs.exists == 'true' }}
+        with:
+          channel: 'stable'
+
+      - name: Flutter version
+        if: ${{ steps.check_fl.outputs.exists == 'true' }}
+        run: flutter --version
+
+      - name: Flutter pub get
+        if: ${{ steps.check_fl.outputs.exists == 'true' }}
         working-directory: nw_checker
         run: flutter pub get
+
       - name: Run flutter tests
+        if: ${{ steps.check_fl.outputs.exists == 'true' }}
         working-directory: nw_checker
-        run: flutter test
+        run: flutter test -r expanded
+
+      - name: Note when skipped
+        if: ${{ steps.check_fl.outputs.exists != 'true' }}
+        run: |
+          echo 'Flutter: nw_checker/pubspec.yaml が無いのでスキップ'
