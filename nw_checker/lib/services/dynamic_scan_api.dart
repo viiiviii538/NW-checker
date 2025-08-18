@@ -1,12 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
+import '../api_config.dart';
 import '../models/scan_report.dart';
 import 'package:http/http.dart' as http;
 
 /// ダミーの動的スキャンAPI。
 /// 実際のバックエンドとの通信は今後実装予定。
 class DynamicScanApi {
-  static const _baseUrl = 'http://localhost:8000';
+  static String get _baseUrl => baseUrl();
   static const String _token = String.fromEnvironment(
     'API_TOKEN',
     defaultValue: '',
