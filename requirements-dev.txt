@@ -1,0 +1,8 @@
+# 開発/テスト用パッケージ
+pytest==8.4.1
+pytest-benchmark==5.1.0
+
+# APIテストに必要
+fastapi==0.116.1
+uvicorn==0.35.0
+httpx==0.28.1
