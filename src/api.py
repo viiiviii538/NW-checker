@@ -27,6 +27,10 @@ API_TOKEN = os.getenv("API_TOKEN")
 
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
+        # ✅ /health は常に許可（外形監視・LB用のため）
+        if request.url.path == "/health":
+            return await call_next(request)
+
         if API_TOKEN:
             auth = request.headers.get("Authorization")
             if auth != f"Bearer {API_TOKEN}":
@@ -179,4 +183,8 @@ async def ws_dynamic_scan(websocket: WebSocket):
         pass
     finally:
         scan_scheduler.storage.remove_listener(queue)
+
+@app.get("/health", tags=["meta"], include_in_schema=False)
+def health():
+    return {"status": "ok"}
 
