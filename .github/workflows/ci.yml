@@ -39,10 +39,10 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}
         run: pytest -q
 
-      - name: Note when skipped
-        if: ${{ steps.check_py.outputs.req != 'true' || steps.check_py.outputs.tests != 'true' }}
+            - name: Note when skipped
+        if: ${{ steps.check_fl.outputs.exists != 'true' }}
         run: |
-          echo 'Python: requirements.txt または tests/ が無いのでスキップ'
+          echo 'Flutter: nw_checker/pubspec.yaml が無いのでスキップ'
 
   flutter:
     name: Flutter tests
