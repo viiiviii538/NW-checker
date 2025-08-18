@@ -50,35 +50,39 @@ def scan() -> dict:
     details = {"servers": servers, "warnings": []}
 
     try:
+        # invalid の検出（形式がIPでない）
         for ip in servers:
+            try:
+                ip_address(ip)
+            except ValueError:
+                invalid.append(ip)
+                continue
+            # privateでなければexternal
             if not _is_private(ip):
                 external.append(ip)
-    except Exception as exc:
-        details["error"] = str(exc)
-        return {"category": category, "score": 0, "details": details}
 
-    if external:
-        details["warnings"].append("External DNS detected: " + ", ".join(external))
-        details["external_servers"] = external
+        if external:
+            details["warnings"].append("External DNS detected: " + ", ".join(external))
+            details["external_servers"] = external
 
-    if invalid:
-        details["warnings"].append("Invalid DNS server IP: " + ", ".join(invalid))
-        details["invalid_servers"] = invalid
+        if invalid:
+            details["warnings"].append("Invalid DNS server IP: " + ", ".join(invalid))
+            details["invalid_servers"] = invalid
 
-    dnssec_enabled = None
-    try:
+        # DNSSECチェック（有効な最初のIPで）
+        dnssec_enabled = None
         valid = [ip for ip in servers if ip not in invalid]
         if valid:
             pkt = IP(dst=valid[0]) / UDP(dport=53) / DNS(rd=1, qd=DNSQR(qname="example.com"), ad=1)
             resp = sr1(pkt, timeout=2, verbose=False)
             if resp and resp.haslayer(DNS):
                 dnssec_enabled = bool(getattr(resp[DNS], "ad", 0))
+        details["dnssec_enabled"] = bool(dnssec_enabled)
+        if dnssec_enabled is False:
+            details["warnings"].append("DNSSEC is disabled")
+
+        return {"category": category, "score": len(details["warnings"]), "details": details}
+
     except Exception as exc:
         details["error"] = str(exc)
         return {"category": category, "score": 0, "details": details}
-
-    details["dnssec_enabled"] = bool(dnssec_enabled)
-    if dnssec_enabled is False:
-        details["warnings"].append("DNSSEC is disabled")
-
-    return {"category": category, "score": 0, "details": details}

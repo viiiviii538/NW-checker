@@ -66,13 +66,11 @@ def scan(
 
         changed = before.get(fake_ip) != fake_mac and after.get(fake_ip) == fake_mac
         explanation = (
-            "ARP table updated with spoofed entry"
-            if changed
-            else "No ARP poisoning detected"
+            "ARP table updated with spoofed entry" if changed else "No ARP poisoning detected"
         )
-
         details.update({"vulnerable": changed, "explanation": explanation})
-        return {"category": category, "score": 0, "details": details}
+        score = 5 if changed else 0
+        return {"category": category, "score": score, "details": details}
 
     except Exception as exc:
         details["error"] = str(exc)

@@ -39,41 +39,49 @@ def _nmblookup_names(target: str) -> list[str]:
 def scan(target: str) -> Dict[str, Any]:
     category = "smb_netbios"
     details: Dict[str, Any] = {"target": target, "netbios_names": [], "smb1_enabled": False}
+    last_error: str | None = None
 
     try:
         # --- NetBIOS name lookup ---
         names: List[str] = []
-        if NetBIOS is not None:
-            nb = NetBIOS()  # type: ignore
-            try:
-                names = nb.queryIPForName(target, timeout=2) or []
-            finally:
+        try:
+            if NetBIOS is not None:
+                nb = NetBIOS()  # type: ignore
                 try:
-                    nb.close()
-                except Exception:
-                    pass
+                    names = nb.queryIPForName(target, timeout=2) or []
+                finally:
+                    try: nb.close()
+                    except Exception: pass
+        except Exception as e:
+            # NetBIOS失敗は記録だけ。後で nmblookup フォールバック。
+            last_error = str(e)
+            names = []
 
         if not names:
+            # フォールバック: nmblookup
             names = _nmblookup_names(target)
         if names:
             details["netbios_names"] = names
 
         # --- SMB dialect negotiation ---
-        if SMBConnection is not None:
-            conn = SMBConnection(target, target, sess_port=445, timeout=2)  # type: ignore
-            try:
-                dialect = conn.getDialect()
-                details["smb1_enabled"] = (dialect == 0x0000)  # SMB1
-            finally:
+        try:
+            if SMBConnection is not None:
+                conn = SMBConnection(target, target, sess_port=445, timeout=2)  # type: ignore
                 try:
-                    conn.logoff()
-                except Exception:
-                    pass
+                    details["smb1_enabled"] = (conn.getDialect() == 0x0000)  # SMB1
+                finally:
+                    try: conn.logoff()
+                    except Exception: pass
+        except Exception as e:
+            # SMBのエラーは優先（テストが"connection refused"等を期待）
+            last_error = str(e)
 
-        # 正常時もスコアは 0 固定（テスト要件に合わせる）
-        return {"category": category, "score": 0, "details": details}
+        if last_error:
+            details["error"] = last_error
 
-    except Exception as exc:
-        # エラー発生時は必ず error を含めて返す
-        details["error"] = str(exc)
+        score = 5 if details["smb1_enabled"] else 0
+        return {"category": category, "score": score, "details": details}
+
+    except Exception as e:
+        details["error"] = str(e)
         return {"category": category, "score": 0, "details": details}

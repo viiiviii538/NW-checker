@@ -18,15 +18,6 @@ from scapy.all import (  # type: ignore
 
 
 def scan(timeout: int = 2) -> dict:
-    """Broadcast a DHCP discover and return responding servers.
-
-    Returns
-    -------
-    dict
-        {"category", "score", "details"} 形式。
-        エラー時は必ず details["error"] を含む。
-    """
-
     category = "dhcp"
     details: dict = {"servers": [], "warnings": []}
 
@@ -51,7 +42,7 @@ def scan(timeout: int = 2) -> dict:
             warnings.append("Multiple DHCP servers detected: " + ", ".join(server_list))
 
         details.update({"servers": server_list, "warnings": warnings})
-        return {"category": category, "score": 0, "details": details}
+        return {"category": category, "score": len(server_list), "details": details}
 
     except Exception as exc:
         details["error"] = str(exc)

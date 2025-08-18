@@ -29,15 +29,6 @@ def _extract_issuer(cert: dict) -> str:
 
 
 def scan(host: str = "example.com", port: int = 443) -> dict:
-    """Retrieve the server certificate and evaluate expiry and issuer.
-
-    Returns
-    -------
-    dict
-        {"category", "score", "details"} 形式。
-        エラー時は必ず details["error"] を含む。
-    """
-
     category = "ssl_cert"
     details: dict = {"host": host}
 
@@ -55,22 +46,24 @@ def scan(host: str = "example.com", port: int = 443) -> dict:
                 issuer = _extract_issuer(cert)
                 not_after = cert.get("notAfter")
                 if not_after:
-                    expiry = datetime.strptime(
-                        not_after, "%b %d %H:%M:%S %Y %Z"
-                    ).replace(tzinfo=timezone.utc)
+                    expiry = datetime.strptime(not_after, "%b %d %H:%M:%S %Y %Z").replace(tzinfo=timezone.utc)
                     delta = expiry - datetime.now(timezone.utc)
                     days_remaining = delta.days
                     expired = days_remaining < 0
 
+        score = 0
+        if expired:
+            score = 5
+        else:
+            if days_remaining is not None and days_remaining < 30:
+                score += 2
+            if issuer and all(t not in issuer for t in TRUSTED_ISSUERS):
+                score += 1
+
         details.update(
-            {
-                "expired": expired,
-                "issuer": issuer,
-                "days_remaining": days_remaining,
-                "cert": cert_data,
-            }
+            {"expired": expired, "issuer": issuer, "days_remaining": days_remaining, "cert": cert_data}
         )
-        return {"category": category, "score": 0, "details": details}
+        return {"category": category, "score": score, "details": details}
 
     except Exception as exc:
         details["error"] = str(exc)
