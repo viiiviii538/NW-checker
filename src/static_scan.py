@@ -26,42 +26,39 @@ def _load_scanners() -> List[Tuple[str, callable]]:
 
 
 def run_all(timeout: float = 5.0) -> Dict[str, List[Dict]]:
-    """Execute all static scans and aggregate their results.
+    """静的スキャンモジュールを並列実行し結果を集約する。"""
 
-    Each scan runs in a thread. Failures or timeouts still produce a result
-    entry with ``score`` 0 and an ``error`` message in ``details``.
-    """
+    scanners = _load_scanners()
+
+    # ポートスキャンを最優先、次に OS 情報を取得するモジュールを実行
+    priority = ["ports", "os_banner"]
+    scanners.sort(key=lambda x: priority.index(x[0]) if x[0] in priority else len(priority))
 
     findings: List[Dict] = []
-    scanners = _load_scanners()
-    # ポートスキャンを最優先し、OS/サービス情報を2番目に実行
-    priority = ["ports", "os_banner"]
-    scanners.sort(
-        key=lambda x: priority.index(x[0]) if x[0] in priority else len(priority)
-    )
-
-    with ThreadPoolExecutor() as executor:
-        future_map = {executor.submit(scan): name for name, scan in scanners}
-        for future, name in future_map.items():
+    with ThreadPoolExecutor() as pool:
+        future_list = [(name, pool.submit(scan)) for name, scan in scanners]
+        for name, future in future_list:
             try:
                 result = future.result(timeout=timeout)
-                # フィールド欠損時のフォールバック
-                result.setdefault("category", name)
-                result.setdefault("score", 0)
-                result.setdefault("details", {})
             except TimeoutError:
                 result = {
                     "category": name,
                     "score": 0,
                     "details": {"error": "timeout"},
                 }
-            except Exception as exc:  # noqa: BLE001 - エラーも結果に含める
+            except Exception as exc:  # noqa: BLE001 - スキャン失敗も結果に反映
                 result = {
                     "category": name,
                     "score": 0,
                     "details": {"error": str(exc)},
                 }
+            else:
+                # 必須フィールドの欠損を補完
+                result.setdefault("category", name)
+                result.setdefault("score", 0)
+                result.setdefault("details", {})
+
             findings.append(result)
 
-    total = sum(item.get("score", 0) for item in findings)
-    return {"findings": findings, "risk_score": total}
+    risk_score = sum(item.get("score", 0) for item in findings)
+    return {"findings": findings, "risk_score": risk_score}
