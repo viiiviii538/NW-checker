@@ -57,6 +57,7 @@ jobs:
           if [ -f nw_checker/pubspec.yaml ]; then echo "exists=true" >> "$GITHUB_OUTPUT"; else echo "exists=false" >> "$GITHUB_OUTPUT"; fi
 
       - uses: subosito/flutter-action@v2
+      + uses: flutter-actions/setup-flutter@v2
         if: ${{ steps.check_fl.outputs.exists == 'true' }}
         with:
           channel: 'stable'
