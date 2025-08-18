@@ -44,6 +44,7 @@ jobs:
         run: |
           echo 'Flutter: nw_checker/pubspec.yaml が無いのでスキップ'
 
+
   flutter:
     name: Flutter tests
     runs-on: ubuntu-latest
