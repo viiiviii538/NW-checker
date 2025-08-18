@@ -39,7 +39,7 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}
         run: pytest -q
 
-            - name: Note when skipped
+      - name: Note when skipped
         if: ${{ steps.check_fl.outputs.exists != 'true' }}
         run: |
           echo 'Flutter: nw_checker/pubspec.yaml が無いのでスキップ'
