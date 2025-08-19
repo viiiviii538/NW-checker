@@ -1,0 +1,15 @@
+# pyproject.toml（リポジトリ直下に新規作成）
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nw-checker"
+version = "0.1.0"
+description = "Network checker tool"
+requires-python = ">=3.11"
+
+[tool.setuptools.packages.find]
+# ルート直下（nw_checker など）と src/ 配下の両方を探索
+where = [".", "src"]
+exclude = ["tests*", "docs*", "data*", "latest*", ".vscode*", ".venv*", ".github*"]
