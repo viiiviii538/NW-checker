@@ -21,3 +21,4 @@ else:
             "fastapi が無いので Windows では pytest 全体を skip",
             allow_module_level=True,
         )
+        

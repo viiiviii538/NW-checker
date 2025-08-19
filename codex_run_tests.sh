@@ -1,14 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# --- 保険：pytest全体skipの回避フラグ（conftest対策）、文字化け防止など ---
+export FORCE_RUN_PYTEST=1
+export PYTHONUTF8=1
+export PIP_DISABLE_PIP_VERSION_CHECK=1
+
 ROOT="$(pwd)"
 cd "$ROOT"
 
-# ✅ ここを追加：.venv があれば必ず使う
+# ✅ .venv があれば必ず使う（Linux/macOS & Windows Git Bash対応）
 if [[ -f .venv/bin/activate ]]; then
   source .venv/bin/activate
 elif [[ -f .venv/Scripts/activate ]]; then
-  # Windows Git Bash 用
   source .venv/Scripts/activate
 fi
 python -c "import sys; print('PY:', sys.executable)"
@@ -18,7 +22,7 @@ python -V || true
 which python || true
 
 echo "== Setup Python deps =="
-python -m pip install -U pip
+python -m pip install -U pip wheel
 # 本番依存
 if [[ -f requirements.txt ]]; then
   pip install -r requirements.txt || true
@@ -28,14 +32,25 @@ if [[ -f requirements-dev.txt ]]; then
   cat requirements-dev.txt
   pip install -r requirements-dev.txt || true
 fi
-# 念のため FastAPI/Starlette 周りを明示（足りなければ入る）
-pip install fastapi uvicorn httpx anyio python-multipart || true
-# src を import できるように
+# 必要パッケージを明示（毎回クリーン環境想定）
+pip install fastapi uvicorn httpx anyio python-multipart
+pip install pytest pytest-benchmark
+# src を import できるように（pyproject/ setupが無い環境でも失敗を無視）
 python -m pip install -e . || true
 
 echo "== Verify deps =="
-python -c "import pkgutil;mods=['fastapi','starlette','httpx','anyio','multipart'];print('\n'.join([m+' '+('OK' if pkgutil.find_loader(m) else 'MISSING') for m in mods]))"
-python -c "import fastapi,starlette;print('fastapi',fastapi.__version__);print('starlette',starlette.__version__)"
+python - <<'PY'
+import pkgutil
+mods = ['fastapi','starlette','httpx','anyio','multipart','pytest']
+for m in mods:
+    print(f"{m}: {'OK' if pkgutil.find_loader(m) else 'MISSING'}")
+try:
+    import fastapi, starlette
+    print('fastapi', fastapi.__version__)
+    print('starlette', starlette.__version__)
+except Exception as e:
+    print('ver check skipped:', e)
+PY
 
 # --- Python tests ---
 echo '== PyTest =='
