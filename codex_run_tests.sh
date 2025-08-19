@@ -4,6 +4,15 @@ set -euo pipefail
 ROOT="$(pwd)"
 cd "$ROOT"
 
+# ✅ ここを追加：.venv があれば必ず使う
+if [[ -f .venv/bin/activate ]]; then
+  source .venv/bin/activate
+elif [[ -f .venv/Scripts/activate ]]; then
+  # Windows Git Bash 用
+  source .venv/Scripts/activate
+fi
+python -c "import sys; print('PY:', sys.executable)"
+
 echo "== Python env =="
 python -V || true
 which python || true
@@ -12,15 +21,15 @@ echo "== Setup Python deps =="
 python -m pip install -U pip
 # 本番依存
 if [[ -f requirements.txt ]]; then
-  pip install -r requirements.txt
+  pip install -r requirements.txt || true
 fi
 # 開発/テスト依存
 if [[ -f requirements-dev.txt ]]; then
   cat requirements-dev.txt
-  pip install -r requirements-dev.txt
+  pip install -r requirements-dev.txt || true
 fi
 # 念のため FastAPI/Starlette 周りを明示（足りなければ入る）
-pip install "fastapi==0.116.1" "starlette>=0.37" "httpx==0.28.1" "anyio>=3" "python-multipart>=0.0.9"
+pip install fastapi uvicorn httpx anyio python-multipart || true
 # src を import できるように
 python -m pip install -e . || true
 
@@ -30,7 +39,6 @@ python -c "import fastapi,starlette;print('fastapi',fastapi.__version__);print('
 
 # --- Python tests ---
 echo '== PyTest =='
-# src が見えるように（両方パス通す）
 export PYTHONPATH="$ROOT:$ROOT/src:${PYTHONPATH:-}"
 pytest -q
 
