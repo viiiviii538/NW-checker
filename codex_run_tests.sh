@@ -5,8 +5,9 @@ set -euo pipefail
 export FORCE_RUN_PYTEST=1
 export PYTHONUTF8=1
 export PIP_DISABLE_PIP_VERSION_CHECK=1
+echo "== codex_run_tests.sh START (FORCE_RUN_PYTEST=$FORCE_RUN_PYTEST) =="
 
-ROOT="$(pwd)"; cd "$ROOT"
+ROOT="$(pwd)"
 
 # venvがあれば使う
 if [[ -f .venv/bin/activate ]]; then
@@ -22,11 +23,11 @@ echo "== Using PY == $PY"
 "$PY" -c "import sys; print('PY:', sys.executable)"
 
 echo "== Setup Python deps =="
-"$PY" -m pip install -U pip wheel
+"$PY" -m pip install -U pip wheel setuptools
 [[ -f requirements.txt ]] && "$PY" -m pip install -r requirements.txt || true
 [[ -f requirements-dev.txt ]] && "$PY" -m pip install -r requirements-dev.txt || true
 "$PY" -m pip install fastapi uvicorn httpx anyio python-multipart pytest pytest-benchmark
-"$PY" -m pip install -e . || true
+"$PY" -m pip install -e .   # ← ここは失敗時に止める
 
 echo "== Verify deps =="
 "$PY" - <<'PY'
@@ -45,7 +46,7 @@ PY
 
 echo '== PyTest =='
 export PYTHONPATH="$ROOT:$ROOT/src:${PYTHONPATH:-}"
-"$PY" -m pytest -q
+"$PY" -m pytest -q -rA || "$PY" -m pytest -vv -rA
 
 # Flutter tests（あれば）
 if [[ -f "$ROOT/pubspec.yaml" ]]; then
