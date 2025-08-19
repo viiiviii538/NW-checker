@@ -128,7 +128,7 @@ EOF
     cat > "$HOOK" <<'EOF'
 #!/usr/bin/env bash
 set -e
-if git grep -n '<<<<<<< \|=======\|>>>>>>>' -- . >/dev/null 2>&1; then
+if git grep -n -E '^(<<<<<<<|=======|>>>>>>>) ' -- . >/dev/null 2>&1; then
   echo "[pre-commit] Merge conflict markers detected."; exit 1
 fi
 command -v dart >/dev/null 2>&1 && dart format .
@@ -149,7 +149,7 @@ command -v black >/dev/null 2>&1 && safe_run "black ." || true
 # ===== 競合マーカー検出（通知のみ）=====
 echo "=== マージ競合マーカー検出 ==="
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  if git grep -n '<<<<<<< \|=======\|>>>>>>>' -- . >/dev/null 2>&1; then
+  if git grep -n -E '^(<<<<<<<|=======|>>>>>>>) ' -- . >/dev/null 2>&1; then
     echo "ERROR: マージ競合マーカーを検出しました。解消してください。"
     git grep -n '<<<<<<< \|=======\|>>>>>>>' -- . || true
   fi
