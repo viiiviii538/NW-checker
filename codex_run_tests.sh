@@ -6,8 +6,7 @@ export FORCE_RUN_PYTEST=1
 export PYTHONUTF8=1
 export PIP_DISABLE_PIP_VERSION_CHECK=1
 
-ROOT="$(pwd)"
-cd "$ROOT"
+ROOT="$(pwd)"; cd "$ROOT"
 
 # venvがあれば使う
 if [[ -f .venv/bin/activate ]]; then
@@ -17,14 +16,15 @@ elif [[ -f .venv/Scripts/activate ]]; then
 fi
 
 # 以降はこのPythonに統一
-PY="$(command -v python)"
+PY="$(command -v python || command -v python3)"
+[ -n "$PY" ] || { echo "python not found"; exit 1; }
 echo "== Using PY == $PY"
 "$PY" -c "import sys; print('PY:', sys.executable)"
 
 echo "== Setup Python deps =="
 "$PY" -m pip install -U pip wheel
 [[ -f requirements.txt ]] && "$PY" -m pip install -r requirements.txt || true
-[[ -f requirements-dev.txt ]] && cat requirements-dev.txt && "$PY" -m pip install -r requirements-dev.txt || true
+[[ -f requirements-dev.txt ]] && "$PY" -m pip install -r requirements-dev.txt || true
 "$PY" -m pip install fastapi uvicorn httpx anyio python-multipart pytest pytest-benchmark
 "$PY" -m pip install -e . || true
 
@@ -43,12 +43,11 @@ except Exception as e:
     print('ver check skipped:', e)
 PY
 
-# --- Python tests ---
 echo '== PyTest =='
 export PYTHONPATH="$ROOT:$ROOT/src:${PYTHONPATH:-}"
 "$PY" -m pytest -q
 
-# --- Flutter tests ---
+# Flutter tests（あれば）
 if [[ -f "$ROOT/pubspec.yaml" ]]; then
   FLUT_DIR="$ROOT"
 elif [[ -f "$ROOT/nw_checker/pubspec.yaml" ]]; then
