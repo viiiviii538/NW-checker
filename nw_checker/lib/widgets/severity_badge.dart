@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-/// ログの重大度を示すバッジコンポーネントの雛形
+/// ログの重大度を示すバッジコンポーネントの雛形。
+/// スタイル指針は `docs/ui/style_guide.md` を参照。
 class SeverityBadge extends StatelessWidget {
   final String severity; // 'low', 'medium', 'high'
 

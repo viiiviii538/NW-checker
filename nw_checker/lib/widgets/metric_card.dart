@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-/// メトリクス表示用カードコンポーネントの雛形
+/// メトリクス表示用カードコンポーネントの雛形。
+/// スタイル指針は `docs/ui/style_guide.md` を参照。
 class MetricCard extends StatelessWidget {
   final String label; // 指標名
   final String value; // 指標値
