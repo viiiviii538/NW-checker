@@ -14,9 +14,11 @@ Python + Flutter 製のネットワーク診断ツール「NWC伝説」。
 2. 実装後は単体テストを作成し、PRに含める
 3. テストが全て通ることを確認してからマージ
 
-## テスト方針
-- Pythonは `pytest`、Flutterは `flutter test` を使用
-- 新機能追加時は必ずテストを1件以上追加
+## テスト
+- Run: bash codex_run_tests.sh
+- Do NOT run `pytest` directly.
+- Do NOT run `flutter test` directly.
+- 確認: ログ先頭に "== codex_run_tests.sh START (FORCE_RUN_PYTEST=1) ==" が出ること
 
 ## セットアップ
 - `setup.sh` と `flutter_env.sh` を必ず実行してから作業
