@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
-/// ログ表示用テーブルコンポーネントの雛形
+/// ログ表示用テーブルコンポーネントの雛形。
+///
+/// カラーやフォント設定は `docs/ui/style_guide.md` に準拠。
 class LogTable extends StatelessWidget {
   final List<DataRow> rows;
   final List<DataColumn> columns;
