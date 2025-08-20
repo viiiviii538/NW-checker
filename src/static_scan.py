@@ -1,23 +1,25 @@
 """Run all static scan modules concurrently with fault tolerance."""
 
+from __future__ import annotations
+
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
 from importlib import import_module
 from pkgutil import iter_modules
-from typing import Dict, List, Tuple
+from typing import Callable
 
 from . import scans
 
+# ``ports`` と ``os_banner`` は他の結果よりも重要なため優先表示する
+_PRIORITY_ORDER = ("ports", "os_banner")
 
-def _load_scanners() -> List[Tuple[str, callable]]:
-    """Discover scan functions under :mod:`src.scans`.
 
-    Returns a list of ``(module_name, scan_callable)`` tuples.
-    """
+def _load_scanners() -> list[tuple[str, Callable]]:
+    """Dynamically discover scan modules under :mod:`src.scans`."""
 
-    scanners: List[Tuple[str, callable]] = []
+    scanners: list[tuple[str, Callable]] = []
     for mod_info in iter_modules(scans.__path__):
         if mod_info.name.startswith("_"):
-            continue
+            continue  # private module
         module = import_module(f"{scans.__name__}.{mod_info.name}")
         scan_func = getattr(module, "scan", None)
         if callable(scan_func):
@@ -25,31 +27,20 @@ def _load_scanners() -> List[Tuple[str, callable]]:
     return scanners
 
 
-def run_all(timeout: float = 5.0) -> Dict[str, List[Dict]]:
-    """Execute all static scanners in parallel and aggregate their results.
+def run_all(timeout: float = 5.0) -> dict:
+    """Execute all discovered scanners concurrently and aggregate results."""
 
-    Parameters
-    ----------
-    timeout:
-        Maximum time (in seconds) to wait for each individual scanner.
-
-    Returns
-    -------
-    dict
-        A mapping containing a ``findings`` list with each scanner's result and
-        the aggregated ``risk_score``.
-    """
-
-    # Discover available scanners then prioritise important ones.
     scanners = _load_scanners()
-    priority = ["ports", "os_banner"]
-    scanners.sort(key=lambda x: priority.index(x[0]) if x[0] in priority else len(priority))
+    scanners.sort(
+        key=lambda x: _PRIORITY_ORDER.index(x[0])
+        if x[0] in _PRIORITY_ORDER
+        else len(_PRIORITY_ORDER)
+    )
 
-    findings: List[Dict] = []
+    findings: list[dict] = []
     risk_score = 0
 
-    # Run all scanners concurrently while keeping the execution order defined
-    # above so that tests can rely on deterministic output positions.
+    # Run scans concurrently yet preserve the defined order for deterministic output
     with ThreadPoolExecutor() as pool:
         futures = [(name, pool.submit(scan)) for name, scan in scanners]
         for name, future in futures:
@@ -57,10 +48,9 @@ def run_all(timeout: float = 5.0) -> Dict[str, List[Dict]]:
                 result = future.result(timeout=timeout)
             except TimeoutError:
                 result = {"category": name, "score": 0, "details": {"error": "timeout"}}
-            except Exception as exc:  # noqa: BLE001 - surface scan errors
+            except Exception as exc:  # noqa: BLE001 - bubble up scan errors
                 result = {"category": name, "score": 0, "details": {"error": str(exc)}}
             else:
-                # Ensure mandatory fields exist even if the scanner omitted them.
                 result.setdefault("category", name)
                 result.setdefault("score", 0)
                 result.setdefault("details", {})
