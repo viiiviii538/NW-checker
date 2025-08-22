@@ -68,3 +68,12 @@ def test_recent_limit(tmp_path):
     asyncio.run(store.save_result({"id": 3}))
     ids = [r["id"] for r in store.get_all()]
     assert ids == [2, 3]
+
+
+def test_dns_history(tmp_path):
+    store = Storage(tmp_path / "res.db")
+    asyncio.run(store.save_dns_history("1.1.1.1", "example.com"))
+    today = datetime.now().date().isoformat()
+    hist = store.fetch_dns_history(today, today)
+    assert hist[0]["ip"] == "1.1.1.1"
+    assert hist[0]["domain"] == "example.com"

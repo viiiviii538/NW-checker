@@ -35,6 +35,16 @@ class Storage:
                 )
                 """
             )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS dns_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp TEXT NOT NULL,
+                    ip TEXT NOT NULL,
+                    domain TEXT NOT NULL
+                )
+                """
+            )
             conn.commit()
 
     def add_listener(self, queue: asyncio.Queue) -> None:
@@ -61,6 +71,16 @@ class Storage:
         for q in list(self._listeners):
             q.put_nowait(record)
 
+    async def save_dns_history(self, ip: str, domain: str) -> None:
+        """逆引き結果を保存する"""
+        record = {
+            "timestamp": datetime.now().astimezone().isoformat(timespec="seconds"),
+            "ip": ip,
+            "domain": domain,
+        }
+        async with self._lock:
+            await asyncio.to_thread(self._insert_dns_record, record)
+
     # fetch_results: 全角スペース除去＆日付文字列比較
     def fetch_results(self, start_date: str, end_date: str):
         """start～end を両端含む（日単位・'YYYY-MM-DD'）。"""
@@ -84,6 +104,14 @@ class Storage:
             conn.execute(
                 "INSERT INTO results (timestamp, data) VALUES (?, ?)",
                 (record["timestamp"], json.dumps(record)),
+            )
+            conn.commit()
+
+    def _insert_dns_record(self, record: Dict[str, str]) -> None:
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute(
+                "INSERT INTO dns_history (timestamp, ip, domain) VALUES (?, ?, ?)",
+                (record["timestamp"], record["ip"], record["domain"]),
             )
             conn.commit()
 
@@ -120,3 +148,20 @@ class Storage:
         with sqlite3.connect(self.db_path) as conn:
             rows = conn.execute(query, params).fetchall()
         return [json.loads(r[0]) for r in rows]
+
+    def fetch_dns_history(self, start_date: str, end_date: str) -> List[Dict[str, str]]:
+        """逆引き履歴を日付範囲で取得"""
+        with sqlite3.connect(self.db_path) as conn:
+            rows = conn.execute(
+                """
+                SELECT timestamp, ip, domain FROM dns_history
+                WHERE substr(timestamp,1,10) >= ?
+                  AND substr(timestamp,1,10) <= ?
+                ORDER BY timestamp
+                """,
+                (start_date, end_date),
+            ).fetchall()
+        return [
+            {"timestamp": r[0], "ip": r[1], "domain": r[2]}
+            for r in rows
+        ]

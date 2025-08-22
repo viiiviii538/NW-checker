@@ -9,6 +9,7 @@ from typing import Any, Dict, Iterable, Optional, Callable, Tuple
 
 import httpx
 from . import geoip
+from .dns_analyzer import DOMAIN_BLACKLIST, reverse_dns_lookup, load_blacklist
 
 
 # 危険とされるプロトコルの名称
@@ -29,19 +30,8 @@ def load_dangerous_countries(path: str = "configs/dangerous_countries.json") -> 
 DANGEROUS_COUNTRIES = load_dangerous_countries()
 
 
-def load_blacklist(path: str = "data/dns_blacklist.txt") -> set[str]:
-    """ブラックリストファイルを読み込む"""
-
-    with open(path, encoding="utf-8") as f:
-        return {
-            line.strip()
-            for line in f
-            if line.strip() and not line.startswith("#")
-        }
-
-
-# DNS 逆引きのブラックリスト
-DNS_BLACKLIST = load_blacklist()
+# 互換性のため dns_analyzer のブラックリストをエクスポート
+DNS_BLACKLIST = DOMAIN_BLACKLIST
 
 CONFIG_PATH = Path(__file__).with_name("config.json")
 
@@ -79,8 +69,7 @@ class AnalysisResult:
         return merged
 
 
-# DNS 履歴と検出済みデバイスの簡易メモリ
-_dns_history: Dict[str, str] = {}
+# DNS 履歴は dns_analyzer でキャッシュ
 _known_devices: set[str] = set()
 
 
@@ -124,25 +113,6 @@ async def geoip_lookup(ip: str, db_path: str | None = None) -> Dict[str, Any]:
 
 
 # ここを差し替え
-def reverse_dns_lookup(
-    ip: str,
-    *,
-    gethostbyaddr: Optional[Callable[[str], Tuple[str, list[str], list[str]]]] = None,
-) -> str | None:
-    """
-    DNS 逆引き。成功時は結果を正規化してキャッシュ保存。
-    失敗時はキャッシュにフォールバック（なければ None）。
-    テストで monkeypatch しやすいように gethostbyaddr を依存注入可能。
-    """
-    gha = gethostbyaddr or socket.gethostbyaddr
-    try:
-        host, _, _ = gha(ip)
-        host = host.rstrip(".").lower()  # 末尾ドット除去＆小文字化で安定化
-        _dns_history[ip] = host          # ✅ 成功時は必ず最新をキャッシュ
-        return host
-    except Exception:
-        cached = _dns_history.get(ip)    # ✅ 失敗時は過去キャッシュを返す
-        return cached.rstrip(".").lower() if isinstance(cached, str) else None
     
 def is_dangerous_protocol(protocol: str | None) -> bool:
     """危険プロトコルか判定する。
@@ -275,6 +245,8 @@ async def analyse_packets(
 
         geoip_res = await assign_geoip_info(packet)
         dns_res = await asyncio.to_thread(record_dns_history, packet)
+        if dns_res.reverse_dns and geoip_res.src_ip:
+            await storage.save_dns_history(geoip_res.src_ip, dns_res.reverse_dns)
         dangerous_res = detect_dangerous_protocols(packet)
         new_dev_res = track_new_devices(packet)
         traffic_res = detect_traffic_anomalies(packet, traffic_stats)

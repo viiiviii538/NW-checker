@@ -6,7 +6,7 @@ from collections import defaultdict
 
 import pytest
 
-from src.dynamic_scan import analyze, capture, storage, geoip
+from src.dynamic_scan import analyze, capture, storage, geoip, dns_analyzer
 
 
 def test_geoip_lookup(monkeypatch):
@@ -32,8 +32,8 @@ def test_geoip_lookup(monkeypatch):
 
 
 def test_reverse_dns_lookup(monkeypatch):
-    monkeypatch.setattr(analyze.socket, "gethostbyaddr", lambda ip: ("host.example", [], []))
-    assert analyze.reverse_dns_lookup("1.1.1.1") == "host.example"
+    monkeypatch.setattr(dns_analyzer.socket, "gethostbyaddr", lambda ip: ("host.example", [], []))
+    assert dns_analyzer.reverse_dns_lookup("1.1.1.1") == "host.example"
 
 
 def test_is_dangerous_protocol():
@@ -138,6 +138,10 @@ def test_analyse_packets_pipeline(tmp_path, monkeypatch):
         assert data[0]["geoip"]["country"] == "Testland"
         assert data[0]["reverse_dns"] == "example.com"
         assert data[0]["country_code"] == "CN"
+        today = datetime.now().date().isoformat()
+        dns_hist = store.fetch_dns_history(today, today)
+        assert dns_hist[0]["ip"] == "8.8.8.8"
+        assert dns_hist[0]["domain"] == "example.com"
         assert data[0]["dangerous_country"] is True
 
     asyncio.run(runner())
