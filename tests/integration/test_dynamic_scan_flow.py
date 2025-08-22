@@ -5,7 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from src import api
-from src.dynamic_scan import analyze, capture, storage
+from src.dynamic_scan import analyze, capture, storage, geoip
 
 
 class DummyPacket:
@@ -34,6 +34,7 @@ def test_dynamic_scan_full_flow(monkeypatch, tmp_path, benchmark):
         return {"country": "Nowhere", "ip": ip}
 
     monkeypatch.setattr(analyze, "geoip_lookup", fake_geoip)
+    monkeypatch.setattr(geoip, "get_country", lambda ip: "US")
     async def run_flow(db_name: str) -> tuple[int, storage.Storage]:
         local_store = storage.Storage(tmp_path / db_name)
         queue, capture_task = capture.capture_packets()
