@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nw_checker/static_scan_tab.dart';
@@ -64,5 +66,37 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('ok'), findsOneWidget);
+  });
+
+  testWidgets('scan button disabled during loading', (tester) async {
+    int calls = 0;
+    final completer = Completer<Map<String, dynamic>>();
+    Future<Map<String, dynamic>> mockFetch() {
+      calls++;
+      return completer.future;
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: StaticScanTab(fetcher: mockFetch)),
+      ),
+    );
+
+    final buttonFinder = find.byKey(const Key('staticButton'));
+    await tester.tap(buttonFinder);
+    await tester.pump();
+
+    await tester.tap(buttonFinder);
+    await tester.pump();
+
+    await tester.idle();
+
+    expect(calls, 1);
+
+    completer.complete({'risk_score': 0, 'findings': []});
+    await tester.pumpAndSettle();
+
+    final button = tester.widget<ElevatedButton>(buttonFinder);
+    expect(button.onPressed, isNotNull);
   });
 }
