@@ -25,7 +25,8 @@ async def static_scan_endpoint(report: bool = False):
     report: bool, optional
         When ``True`` the server generates a PDF report and returns its path.
     """
-
+    # Execute the scan in a worker thread and enforce a timeout so the
+    # server remains responsive even if individual scanners hang.
     try:
         result = await asyncio.wait_for(
             asyncio.to_thread(static_scan.run_all),
