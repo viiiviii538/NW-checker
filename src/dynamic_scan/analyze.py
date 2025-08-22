@@ -46,8 +46,8 @@ class AnalysisResult:
     dst_ip: str | None = None
     protocol: str | None = None
     geoip: Dict[str, Any] | None = None
-    country_code: str | None = None
-    dangerous_country: bool | None = None
+    country_code: str | None = None  # ISO-3166 α-2 の国コード
+    dangerous_country: bool | None = None  # 危険国リストに含まれる場合 True
     reverse_dns: str | None = None
     reverse_dns_blacklisted: bool | None = None
     dangerous_protocol: bool | None = None
