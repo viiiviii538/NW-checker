@@ -1,5 +1,7 @@
+import asyncio
 import time
 
+import httpx
 from fastapi.testclient import TestClient
 from src import server
 
@@ -85,3 +87,28 @@ def test_static_scan_pdf_report(monkeypatch):
     assert called['data']['findings']['ports']['score'] == 5
     assert called['path'] == '/tmp/static_scan_report.pdf'
     assert resp.json()['report_path'] == '/tmp/static_scan_report.pdf'
+
+
+def test_static_scan_does_not_block_other_requests(monkeypatch):
+    """Static scan runs in background thread so other requests respond."""
+
+    def slow_run_all():
+        time.sleep(0.2)
+        return {}
+
+    monkeypatch.setattr(server.static_scan, 'run_all', slow_run_all)
+
+    async def make_requests():
+        transport = httpx.ASGITransport(app=server.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            slow_task = asyncio.create_task(client.get('/static_scan'))
+            await asyncio.sleep(0.01)
+            start = time.perf_counter()
+            resp = await client.get('/nope')
+            elapsed = time.perf_counter() - start
+            await slow_task
+            return resp, elapsed
+
+    resp, elapsed = asyncio.run(make_requests())
+    assert resp.status_code == 404
+    assert elapsed < 0.1
