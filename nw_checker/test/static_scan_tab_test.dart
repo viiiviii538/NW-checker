@@ -65,4 +65,25 @@ void main() {
 
     expect(find.text('ok'), findsOneWidget);
   });
+
+  testWidgets('shows placeholder when no findings', (tester) async {
+    Future<Map<String, dynamic>> mockFetch() async {
+      return {
+        'risk_score': 0,
+        'findings': [],
+      };
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: StaticScanTab(fetcher: mockFetch)),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('staticButton')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('結果なし'), findsOneWidget);
+    expect(find.textContaining('リスクスコア'), findsNothing);
+  });
 }
