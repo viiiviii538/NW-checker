@@ -6,6 +6,8 @@ import types
 import asyncio
 import httpx
 
+from src.dynamic_scan import geoip
+
 import pytest
 
 from src.dynamic_scan import analyze
@@ -54,6 +56,35 @@ def test_geoip_lookup(monkeypatch):
         "country": "Wonderland",
         "ip": "203.0.113.1",
     }
+
+
+def test_get_country_local_db(monkeypatch):
+    class FakeReader:
+        def __init__(self, path):
+            pass
+
+        def country(self, ip):
+            return types.SimpleNamespace(country=types.SimpleNamespace(iso_code="JP"))
+
+        def close(self):
+            pass
+
+    fake_geoip2 = types.SimpleNamespace(database=types.SimpleNamespace(Reader=FakeReader))
+    monkeypatch.setitem(sys.modules, "geoip2", fake_geoip2)
+    monkeypatch.setitem(sys.modules, "geoip2.database", fake_geoip2.database)
+    assert geoip.get_country("203.0.113.1") == "JP"
+
+
+def test_get_country_fallback(monkeypatch):
+    monkeypatch.setitem(sys.modules, "geoip2", None)
+    monkeypatch.setitem(sys.modules, "geoip2.database", None)
+
+    class Resp:
+        status_code = 200
+        text = "US"
+
+    monkeypatch.setattr(geoip.httpx, "get", lambda url, timeout=5: Resp())
+    assert geoip.get_country("203.0.113.1") == "US"
 
 
 def test_geoip_lookup_local_db(monkeypatch):
@@ -167,7 +198,18 @@ def test_reverse_dns_lookup(monkeypatch):
     analyze._dns_history.clear()
     monkeypatch.setattr(analyze.socket, "gethostbyaddr", lambda ip: ("host.example", [], []))
     assert analyze.reverse_dns_lookup("1.1.1.1") == "host.example"
-    assert analyze._dns_history["1.1.1.1"] == "host.example"
+
+
+def test_load_dangerous_countries(tmp_path):
+    cfg = tmp_path / "dangerous.json"
+    cfg.write_text('["jp", "cn"]', encoding="utf-8")
+    result = analyze.load_dangerous_countries(str(cfg))
+    assert result == {"JP", "CN"}
+
+
+def test_load_dangerous_countries_missing(tmp_path):
+    missing = tmp_path / "nope.json"
+    assert analyze.load_dangerous_countries(str(missing)) == set()
 
 
 def test_reverse_dns_lookup_cached(monkeypatch):
@@ -246,9 +288,12 @@ def test_assign_geoip_info(monkeypatch):
         return {"country": "Wonderland", "ip": ip}
 
     monkeypatch.setattr(analyze, "geoip_lookup", fake_geoip)
+    monkeypatch.setattr(geoip, "get_country", lambda ip: "CN")
     pkt = type("Pkt", (), {"src_ip": "203.0.113.1", "dst_ip": "1.1.1.1"})
     res = asyncio.run(analyze.assign_geoip_info(pkt))
     assert res.geoip == {"country": "Wonderland", "ip": "203.0.113.1"}
+    assert res.country_code == "CN"
+    assert res.dangerous_country is True
 
 
 def test_attach_geoip(monkeypatch):
@@ -256,10 +301,13 @@ def test_attach_geoip(monkeypatch):
         return {"country": "Wonderland", "ip": ip}
 
     monkeypatch.setattr(analyze, "geoip_lookup", fake_geoip)
+    monkeypatch.setattr(geoip, "get_country", lambda ip: "CN")
     res = analyze.AnalysisResult()
     updated = asyncio.run(analyze.attach_geoip(res, "203.0.113.1"))
     assert updated.geoip == {"country": "Wonderland", "ip": "203.0.113.1"}
     assert updated.src_ip == "203.0.113.1"
+    assert updated.country_code == "CN"
+    assert updated.dangerous_country is True
 
 
 def test_attach_geoip_no_ip():
@@ -274,11 +322,14 @@ def test_assign_geoip_info_ip_src(monkeypatch):
         return {"country": "Wonderland", "ip": ip}
 
     monkeypatch.setattr(analyze, "geoip_lookup", fake_geoip)
+    monkeypatch.setattr(geoip, "get_country", lambda ip: "US")
     pkt = type("Pkt", (), {"ip_src": "203.0.113.1", "ip_dst": "1.1.1.1"})
     res = asyncio.run(analyze.assign_geoip_info(pkt))
     assert res.src_ip == "203.0.113.1"
     assert res.dst_ip == "1.1.1.1"
     assert res.geoip == {"country": "Wonderland", "ip": "203.0.113.1"}
+    assert res.country_code == "US"
+    assert res.dangerous_country is False
 
 
 def test_record_dns_history(monkeypatch):

@@ -8,10 +8,25 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, Optional, Callable, Tuple
 
 import httpx
+from . import geoip
 
 
 # 危険とされるプロトコルの名称
 DANGEROUS_PROTOCOLS = {"telnet", "ftp", "rdp"}
+
+
+def load_dangerous_countries(path: str = "configs/dangerous_countries.json") -> set[str]:
+    """危険国リストを読み込む"""
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+            return {code.upper() for code in data}
+    except Exception:
+        return set()
+
+
+# 危険国コードの集合
+DANGEROUS_COUNTRIES = load_dangerous_countries()
 
 
 def load_blacklist(path: str = "data/dns_blacklist.txt") -> set[str]:
@@ -39,6 +54,8 @@ class AnalysisResult:
     dst_ip: str | None = None
     protocol: str | None = None
     geoip: Dict[str, Any] | None = None
+    country_code: str | None = None
+    dangerous_country: bool | None = None
     reverse_dns: str | None = None
     reverse_dns_blacklisted: bool | None = None
     dangerous_protocol: bool | None = None
@@ -177,6 +194,10 @@ async def attach_geoip(result: AnalysisResult, ip: str | None) -> AnalysisResult
         result.geoip = await geoip_lookup(ip)
         if result.src_ip is None:
             result.src_ip = ip
+        code = await asyncio.to_thread(geoip.get_country, ip)
+        result.country_code = code
+        if code:
+            result.dangerous_country = code in DANGEROUS_COUNTRIES
     return result
 
 
