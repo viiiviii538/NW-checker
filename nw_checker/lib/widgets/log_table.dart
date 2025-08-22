@@ -5,12 +5,14 @@ class LogTable extends StatelessWidget {
   final List<DataRow> rows;
   final List<DataColumn> columns;
   final String placeholder;
+  final bool showHeader;
 
   const LogTable({
     super.key,
     required this.rows,
     this.columns = const [DataColumn(label: Text('Log'))],
     this.placeholder = 'No logs',
+    this.showHeader = true,
   });
 
   @override
@@ -28,6 +30,10 @@ class LogTable extends StatelessWidget {
               ],
             ),
           ];
-    return DataTable(columns: columns, rows: displayRows);
+    return DataTable(
+      columns: columns,
+      rows: displayRows,
+      headingRowHeight: showHeader ? null : 0,
+    );
   }
 }

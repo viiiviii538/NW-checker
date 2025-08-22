@@ -5,12 +5,14 @@ class MetricCard extends StatelessWidget {
   final String label; // 指標名
   final String value; // 指標値
   final IconData? icon; // 任意のアイコン
+  final Color? backgroundColor; // 背景色
 
   const MetricCard({
     super.key,
     required this.label,
     required this.value,
     this.icon,
+    this.backgroundColor,
   });
 
   @override
@@ -18,6 +20,7 @@ class MetricCard extends StatelessWidget {
     return Card(
       elevation: 2,
       margin: const EdgeInsets.all(8),
+      color: backgroundColor,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
