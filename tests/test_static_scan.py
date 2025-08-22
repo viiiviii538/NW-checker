@@ -130,3 +130,21 @@ def test_ports_result_is_first():
 def test_os_banner_result_is_second():
     results = static_scan.run_all()
     assert results["findings"][1]["category"] == "os_banner"
+
+
+def test_run_all_prioritizes_ports_and_os_banner(monkeypatch):
+    """_load_scanners の順序に関わらず ports/os_banner が先頭になる"""
+
+    # Intentionally return out-of-order scanners to ensure run_all sorts them
+    unsorted = [
+        ("smb_netbios", STUB_SCANS["smb_netbios"]),
+        ("os_banner", STUB_SCANS["os_banner"]),
+        ("ports", STUB_SCANS["ports"]),
+    ]
+    monkeypatch.setattr(static_scan, "_load_scanners", lambda: unsorted)
+
+    results = static_scan.run_all()
+    categories = [item["category"] for item in results["findings"]]
+
+    # run_all should reorder to prioritise ports then os_banner
+    assert categories == ["ports", "os_banner", "smb_netbios"]
