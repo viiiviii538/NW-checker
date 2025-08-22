@@ -9,7 +9,9 @@ from typing import Any, Dict, List
 class Storage:
     """解析結果を SQLite で保持するストレージ層"""
 
-    def __init__(self, db_path: str = "dynamic_scan_results.db", *, max_recent: int = 100) -> None:
+    def __init__(
+        self, db_path: str = "dynamic_scan_results.db", *, max_recent: int = 100
+    ) -> None:
         """ストレージを初期化
 
         Args:
@@ -35,6 +37,17 @@ class Storage:
                 )
                 """
             )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS dns_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp TEXT NOT NULL,
+                    ip TEXT NOT NULL,
+                    hostname TEXT NOT NULL,
+                    blacklisted INTEGER NOT NULL
+                )
+                """
+            )
             conn.commit()
 
     def add_listener(self, queue: asyncio.Queue) -> None:
@@ -46,12 +59,26 @@ class Storage:
         if queue in self._listeners:
             self._listeners.remove(queue)
 
+    async def save_dns_history(self, ip: str, hostname: str, blacklisted: bool) -> None:
+        """逆引き結果を DNS 履歴として保存"""
+        record = (
+            datetime.now().astimezone().isoformat(timespec="seconds"),
+            ip,
+            hostname,
+            int(blacklisted),
+        )
+        async with self._lock:
+            await asyncio.to_thread(self._insert_dns_history, record)
+
     # 上部の import はそのまま
 
-# save_result: UTC→ローカルに変更
+    # save_result: UTC→ローカルに変更
     async def save_result(self, data: Dict[str, Any]) -> None:
         # ローカルタイムゾーンのISO（+09:00付き）
-        record = {"timestamp": datetime.now().astimezone().isoformat(timespec="seconds"), **data}
+        record = {
+            "timestamp": datetime.now().astimezone().isoformat(timespec="seconds"),
+            **data,
+        }
 
         async with self._lock:
             await asyncio.to_thread(self._insert_record, record)
@@ -77,13 +104,21 @@ class Storage:
             ).fetchall()
         return [json.loads(r[0]) for r in rows]
 
-
     def _insert_record(self, record: Dict[str, Any]) -> None:
         """SQLite に 1 件のレコードを書き込む"""
         with sqlite3.connect(self.db_path) as conn:
             conn.execute(
                 "INSERT INTO results (timestamp, data) VALUES (?, ?)",
                 (record["timestamp"], json.dumps(record)),
+            )
+            conn.commit()
+
+    def _insert_dns_history(self, record: tuple[str, str, str, int]) -> None:
+        """DNS 履歴を 1 件書き込む"""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute(
+                "INSERT INTO dns_history (timestamp, ip, hostname, blacklisted) VALUES (?, ?, ?, ?)",
+                record,
             )
             conn.commit()
 
@@ -120,3 +155,26 @@ class Storage:
         with sqlite3.connect(self.db_path) as conn:
             rows = conn.execute(query, params).fetchall()
         return [json.loads(r[0]) for r in rows]
+
+    def fetch_dns_history(self, start_date: str, end_date: str) -> List[Dict[str, Any]]:
+        """DNS 履歴を期間指定で取得"""
+        with sqlite3.connect(self.db_path) as conn:
+            rows = conn.execute(
+                """
+                SELECT timestamp, ip, hostname, blacklisted
+                FROM dns_history
+                WHERE substr(timestamp, 1, 10) >= ?
+                  AND substr(timestamp, 1, 10) <= ?
+                ORDER BY rowid ASC
+                """,
+                (start_date, end_date),
+            ).fetchall()
+        return [
+            {
+                "timestamp": ts,
+                "ip": ip,
+                "hostname": host,
+                "blacklisted": bool(bl),
+            }
+            for ts, ip, host, bl in rows
+        ]

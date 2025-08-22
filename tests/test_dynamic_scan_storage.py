@@ -10,13 +10,17 @@ def test_storage_save_and_fetch(tmp_path):
     q = asyncio.Queue()
     store.add_listener(q)
 
-    asyncio.run(store.save_result({"foo": "bar", "src_ip": "1.1.1.1", "protocol": "http"}))
+    asyncio.run(
+        store.save_result({"foo": "bar", "src_ip": "1.1.1.1", "protocol": "http"})
+    )
     first = store.get_all()[0]
     assert first["foo"] == "bar"
     assert q.get_nowait()["foo"] == "bar"
 
     store.remove_listener(q)
-    asyncio.run(store.save_result({"baz": "qux", "src_ip": "2.2.2.2", "protocol": "ftp"}))
+    asyncio.run(
+        store.save_result({"baz": "qux", "src_ip": "2.2.2.2", "protocol": "ftp"})
+    )
     assert len(store.get_all()) == 2
     assert q.empty()
 
@@ -68,3 +72,15 @@ def test_recent_limit(tmp_path):
     asyncio.run(store.save_result({"id": 3}))
     ids = [r["id"] for r in store.get_all()]
     assert ids == [2, 3]
+
+
+def test_save_and_fetch_dns_history(tmp_path):
+    store = Storage(tmp_path / "res.db")
+    asyncio.run(store.save_dns_history("1.1.1.1", "host.example", False))
+    asyncio.run(store.save_dns_history("2.2.2.2", "bad.example", True))
+    today = datetime.now().date()
+    start = (today - timedelta(days=1)).isoformat()
+    end = (today + timedelta(days=1)).isoformat()
+    history = store.fetch_dns_history(start, end)
+    assert history[0]["hostname"] == "host.example"
+    assert history[1]["blacklisted"] is True

@@ -1,21 +1,22 @@
 import asyncio
-import socket
 import json
 from collections import defaultdict
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Iterable, Optional, Callable, Tuple
+from typing import Any, Dict, Iterable
 
 import httpx
-from . import geoip
+from . import geoip, dns_analyzer
 
 
 # 危険とされるプロトコルの名称
 DANGEROUS_PROTOCOLS = {"telnet", "ftp", "rdp"}
 
 
-def load_dangerous_countries(path: str = "configs/dangerous_countries.json") -> set[str]:
+def load_dangerous_countries(
+    path: str = "configs/dangerous_countries.json",
+) -> set[str]:
     """危険国リストを読み込む"""
     try:
         with open(path, encoding="utf-8") as f:
@@ -29,19 +30,10 @@ def load_dangerous_countries(path: str = "configs/dangerous_countries.json") -> 
 DANGEROUS_COUNTRIES = load_dangerous_countries()
 
 
-def load_blacklist(path: str = "data/dns_blacklist.txt") -> set[str]:
-    """ブラックリストファイルを読み込む"""
-
-    with open(path, encoding="utf-8") as f:
-        return {
-            line.strip()
-            for line in f
-            if line.strip() and not line.startswith("#")
-        }
-
-
-# DNS 逆引きのブラックリスト
-DNS_BLACKLIST = load_blacklist()
+load_blacklist = dns_analyzer.load_blacklist
+DNS_BLACKLIST = dns_analyzer.DOMAIN_BLACKLIST
+reverse_dns_lookup = dns_analyzer.reverse_dns_lookup
+socket = dns_analyzer.socket
 
 CONFIG_PATH = Path(__file__).with_name("config.json")
 
@@ -80,7 +72,7 @@ class AnalysisResult:
 
 
 # DNS 履歴と検出済みデバイスの簡易メモリ
-_dns_history: Dict[str, str] = {}
+_dns_history = dns_analyzer._dns_cache
 _known_devices: set[str] = set()
 
 
@@ -123,27 +115,7 @@ async def geoip_lookup(ip: str, db_path: str | None = None) -> Dict[str, Any]:
     return {}
 
 
-# ここを差し替え
-def reverse_dns_lookup(
-    ip: str,
-    *,
-    gethostbyaddr: Optional[Callable[[str], Tuple[str, list[str], list[str]]]] = None,
-) -> str | None:
-    """
-    DNS 逆引き。成功時は結果を正規化してキャッシュ保存。
-    失敗時はキャッシュにフォールバック（なければ None）。
-    テストで monkeypatch しやすいように gethostbyaddr を依存注入可能。
-    """
-    gha = gethostbyaddr or socket.gethostbyaddr
-    try:
-        host, _, _ = gha(ip)
-        host = host.rstrip(".").lower()  # 末尾ドット除去＆小文字化で安定化
-        _dns_history[ip] = host          # ✅ 成功時は必ず最新をキャッシュ
-        return host
-    except Exception:
-        cached = _dns_history.get(ip)    # ✅ 失敗時は過去キャッシュを返す
-        return cached.rstrip(".").lower() if isinstance(cached, str) else None
-    
+
 def is_dangerous_protocol(protocol: str | None) -> bool:
     """危険プロトコルか判定する。
     文字列以外が渡された場合は危険ではないとみなす。
@@ -221,7 +193,9 @@ def record_dns_history(packet) -> AnalysisResult:
 
 def detect_dangerous_protocols(packet) -> AnalysisResult:
     """危険なプロトコルを検出"""
-    protocol = getattr(packet, "protocol", getattr(getattr(packet, "payload", None), "name", "unknown"))
+    protocol = getattr(
+        packet, "protocol", getattr(getattr(packet, "payload", None), "name", "unknown")
+    )
     dangerous = is_dangerous_protocol(protocol)
     return AnalysisResult(protocol=protocol, dangerous_protocol=dangerous)
 
@@ -235,9 +209,13 @@ def track_new_devices(packet) -> AnalysisResult:
     return AnalysisResult(new_device=is_new)
 
 
-def detect_traffic_anomalies(packet, stats, threshold: int | None = None) -> AnalysisResult:
+def detect_traffic_anomalies(
+    packet, stats, threshold: int | None = None
+) -> AnalysisResult:
     """通信量の異常を検出"""
-    key = getattr(packet, "src_ip", getattr(packet, "ip_src", getattr(packet, "src_mac", "")))
+    key = getattr(
+        packet, "src_ip", getattr(packet, "ip_src", getattr(packet, "src_mac", ""))
+    )
     size = getattr(packet, "size", getattr(packet, "len", 0))
     anomaly = detect_traffic_anomaly(stats, key, size, threshold=threshold)
     return AnalysisResult(traffic_anomaly=anomaly)
@@ -280,7 +258,9 @@ async def analyse_packets(
         traffic_res = detect_traffic_anomalies(packet, traffic_stats)
         out_res = detect_out_of_hours(packet, *schedule)
 
-        mac = getattr(packet, "src_mac", getattr(packet, "mac", getattr(packet, "src", "")))
+        mac = getattr(
+            packet, "src_mac", getattr(packet, "mac", getattr(packet, "src", ""))
+        )
         unapproved = is_unapproved_device(mac, approved)
         unapproved_res = AnalysisResult(unapproved_device=unapproved)
 
@@ -293,6 +273,12 @@ async def analyse_packets(
             out_res,
             unapproved_res,
         )
+        if combined.src_ip and combined.reverse_dns:
+            await storage.save_dns_history(
+                combined.src_ip,
+                combined.reverse_dns,
+                bool(combined.reverse_dns_blacklisted),
+            )
 
         await storage.save_result(combined.to_dict())
         queue.task_done()
