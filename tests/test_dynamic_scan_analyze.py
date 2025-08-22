@@ -198,7 +198,18 @@ def test_reverse_dns_lookup(monkeypatch):
     analyze._dns_history.clear()
     monkeypatch.setattr(analyze.socket, "gethostbyaddr", lambda ip: ("host.example", [], []))
     assert analyze.reverse_dns_lookup("1.1.1.1") == "host.example"
-    assert analyze._dns_history["1.1.1.1"] == "host.example"
+
+
+def test_load_dangerous_countries(tmp_path):
+    cfg = tmp_path / "dangerous.json"
+    cfg.write_text('["jp", "cn"]', encoding="utf-8")
+    result = analyze.load_dangerous_countries(str(cfg))
+    assert result == {"JP", "CN"}
+
+
+def test_load_dangerous_countries_missing(tmp_path):
+    missing = tmp_path / "nope.json"
+    assert analyze.load_dangerous_countries(str(missing)) == set()
 
 
 def test_reverse_dns_lookup_cached(monkeypatch):
