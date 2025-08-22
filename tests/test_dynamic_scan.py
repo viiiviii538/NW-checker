@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
 import contextlib
 from types import SimpleNamespace
 from collections import defaultdict
@@ -32,7 +32,9 @@ def test_geoip_lookup(monkeypatch):
 
 
 def test_reverse_dns_lookup(monkeypatch):
-    monkeypatch.setattr(analyze.socket, "gethostbyaddr", lambda ip: ("host.example", [], []))
+    monkeypatch.setattr(
+        analyze.socket, "gethostbyaddr", lambda ip: ("host.example", [], [])
+    )
     assert analyze.reverse_dns_lookup("1.1.1.1") == "host.example"
 
 
@@ -55,8 +57,14 @@ def test_is_unapproved_device():
 
 def test_detect_traffic_anomaly():
     stats = defaultdict(int)
-    assert analyze.detect_traffic_anomaly(stats, "host", 500_000, threshold=1_000_000) is False
-    assert analyze.detect_traffic_anomaly(stats, "host", 600_000, threshold=1_000_000) is True
+    assert (
+        analyze.detect_traffic_anomaly(stats, "host", 500_000, threshold=1_000_000)
+        is False
+    )
+    assert (
+        analyze.detect_traffic_anomaly(stats, "host", 600_000, threshold=1_000_000)
+        is True
+    )
 
 
 def test_is_night_traffic():
@@ -79,6 +87,7 @@ def test_capture_packets_enqueue(monkeypatch):
 
     monkeypatch.setattr(capture.parser, "parse_packet", lambda pkt: pkt)
     monkeypatch.setattr(capture, "AsyncSniffer", FakeSniffer)
+
     async def runner():
         queue, task = capture.capture_packets(duration=0)
         await task
@@ -101,6 +110,7 @@ def test_storage_save_and_get(tmp_path):
 def test_analyse_packets_pipeline(tmp_path, monkeypatch):
     async def runner():
         store = storage.Storage(tmp_path / "results.json")
+
         async def fake_geoip(ip):
             return {"country": "Testland", "ip": ip}
 
@@ -139,6 +149,12 @@ def test_analyse_packets_pipeline(tmp_path, monkeypatch):
         assert data[0]["reverse_dns"] == "example.com"
         assert data[0]["country_code"] == "CN"
         assert data[0]["dangerous_country"] is True
+        start = (datetime.now() - timedelta(days=1)).date().isoformat()
+        end = (datetime.now() + timedelta(days=1)).date().isoformat()
+        dns_hist = store.fetch_dns_history(start, end)
+        assert dns_hist[0]["ip"] == "8.8.8.8"
+        assert dns_hist[0]["hostname"] == "example.com"
+        assert dns_hist[0]["blacklisted"] is False
 
     asyncio.run(runner())
 
@@ -147,6 +163,7 @@ def test_analyse_packets_pipeline_in_hours(tmp_path, monkeypatch):
     async def runner():
         analyze._known_devices.clear()
         store = storage.Storage(tmp_path / "results.json")
+
         async def fake_geoip(ip):
             return {"country": "Testland", "ip": ip}
 
