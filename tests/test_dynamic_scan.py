@@ -6,7 +6,7 @@ from collections import defaultdict
 
 import pytest
 
-from src.dynamic_scan import analyze, capture, storage, geoip
+from src.dynamic_scan import analyze, capture, storage, geoip, dns_analyzer
 
 
 def test_geoip_lookup(monkeypatch):
@@ -32,8 +32,10 @@ def test_geoip_lookup(monkeypatch):
 
 
 def test_reverse_dns_lookup(monkeypatch):
-    monkeypatch.setattr(analyze.socket, "gethostbyaddr", lambda ip: ("host.example", [], []))
-    assert analyze.reverse_dns_lookup("1.1.1.1") == "host.example"
+    monkeypatch.setattr(
+        dns_analyzer.socket, "gethostbyaddr", lambda ip: ("host.example", [], [])
+    )
+    assert dns_analyzer.reverse_dns_lookup("1.1.1.1") == "host.example"
 
 
 def test_is_dangerous_protocol():
@@ -106,7 +108,7 @@ def test_analyse_packets_pipeline(tmp_path, monkeypatch):
 
         monkeypatch.setattr(analyze, "geoip_lookup", fake_geoip)
         monkeypatch.setattr(geoip, "get_country", lambda ip: "CN")
-        monkeypatch.setattr(analyze, "reverse_dns_lookup", lambda ip: "example.com")
+        monkeypatch.setattr(dns_analyzer, "reverse_dns_lookup", lambda ip: "example.com")
         queue: asyncio.Queue = asyncio.Queue()
         task = asyncio.create_task(
             analyze.analyse_packets(
@@ -152,7 +154,7 @@ def test_analyse_packets_pipeline_in_hours(tmp_path, monkeypatch):
 
         monkeypatch.setattr(analyze, "geoip_lookup", fake_geoip)
         monkeypatch.setattr(geoip, "get_country", lambda ip: "US")
-        monkeypatch.setattr(analyze, "reverse_dns_lookup", lambda ip: "example.com")
+        monkeypatch.setattr(dns_analyzer, "reverse_dns_lookup", lambda ip: "example.com")
         queue: asyncio.Queue = asyncio.Queue()
         task = asyncio.create_task(
             analyze.analyse_packets(

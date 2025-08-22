@@ -56,3 +56,10 @@ def test_dynamic_scan_results_underscore_alias(monkeypatch, tmp_path):
     assert resp_hyphen.status_code == 200
     assert resp_underscore.status_code == 200
     assert resp_hyphen.json() == resp_underscore.json()
+
+    # DNS history aliases behave identically
+    api.scan_scheduler.storage.save_dns_record("5.5.5.5", "example.com")
+    resp_hyphen_dns = client.get("/dynamic-scan/dns-history")
+    resp_underscore_dns = client.get("/dynamic_scan/dns-history")
+    assert resp_hyphen_dns.status_code == resp_underscore_dns.status_code == 200
+    assert resp_hyphen_dns.json() == resp_underscore_dns.json()

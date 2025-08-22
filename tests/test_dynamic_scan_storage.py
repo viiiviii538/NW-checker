@@ -1,5 +1,6 @@
 import asyncio
 
+import asyncio
 from datetime import datetime, timedelta
 
 from src.dynamic_scan.storage import Storage
@@ -68,3 +69,14 @@ def test_recent_limit(tmp_path):
     asyncio.run(store.save_result({"id": 3}))
     ids = [r["id"] for r in store.get_all()]
     assert ids == [2, 3]
+
+
+def test_dns_history_save_and_fetch(tmp_path):
+    store = Storage(tmp_path / "dns.db")
+    store.save_dns_record("1.1.1.1", "example.com")
+    store.save_dns_record("2.2.2.2", "malicious.example")
+    today = datetime.now().date().isoformat()
+    history = store.fetch_dns_history(today, today)
+    entries = {(h["ip"], h["hostname"]) for h in history}
+    assert ("1.1.1.1", "example.com") in entries
+    assert ("2.2.2.2", "malicious.example") in entries

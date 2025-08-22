@@ -35,6 +35,16 @@ class Storage:
                 )
                 """
             )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS dns_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp TEXT NOT NULL,
+                    ip TEXT NOT NULL,
+                    hostname TEXT NOT NULL
+                )
+                """
+            )
             conn.commit()
 
     def add_listener(self, queue: asyncio.Queue) -> None:
@@ -76,6 +86,41 @@ class Storage:
                 (start_date, end_date),
             ).fetchall()
         return [json.loads(r[0]) for r in rows]
+
+    def save_dns_record(self, ip: str, hostname: str) -> None:
+        """DNS 逆引き結果を保存"""
+        record = {
+            "timestamp": datetime.now().astimezone().isoformat(timespec="seconds"),
+            "ip": ip,
+            "hostname": hostname,
+        }
+        self._insert_dns_record(record)
+
+    def _insert_dns_record(self, record: Dict[str, Any]) -> None:
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute(
+                "INSERT INTO dns_history (timestamp, ip, hostname) VALUES (?, ?, ?)",
+                (record["timestamp"], record["ip"], record["hostname"]),
+            )
+            conn.commit()
+
+    def fetch_dns_history(self, start: str | None = None, end: str | None = None) -> List[Dict[str, Any]]:
+        """保存されたDNS履歴を期間で検索"""
+        query = "SELECT timestamp, ip, hostname FROM dns_history WHERE 1=1"
+        params: List[Any] = []
+        if start:
+            query += " AND substr(timestamp, 1, 10) >= ?"
+            params.append(start)
+        if end:
+            query += " AND substr(timestamp, 1, 10) <= ?"
+            params.append(end)
+        query += " ORDER BY timestamp"
+        with sqlite3.connect(self.db_path) as conn:
+            rows = conn.execute(query, params).fetchall()
+        return [
+            {"timestamp": ts, "ip": ip, "hostname": host}
+            for ts, ip, host in rows
+        ]
 
 
     def _insert_record(self, record: Dict[str, Any]) -> None:
