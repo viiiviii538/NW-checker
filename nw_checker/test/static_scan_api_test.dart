@@ -18,11 +18,34 @@ void main() {
     expect(result['findings'], isNotEmpty);
   });
 
-  test('fetchScan throws on non-200 response', () async {
+  test('fetchScan surfaces detail field in error response', () async {
     final client = MockClient((request) async {
       return http.Response('{"detail": "fail"}', 500);
     });
-    expect(StaticScanApi.fetchScan(client: client), throwsA(isA<Exception>()));
+    expect(
+      StaticScanApi.fetchScan(client: client),
+      throwsA(isA<Exception>().having((e) => e.toString(), 'message', contains('fail'))),
+    );
+  });
+
+  test('fetchScan surfaces message field in error response', () async {
+    final client = MockClient((request) async {
+      return http.Response('{"message": "oops"}', 400);
+    });
+    expect(
+      StaticScanApi.fetchScan(client: client),
+      throwsA(isA<Exception>().having((e) => e.toString(), 'message', contains('oops'))),
+    );
+  });
+
+  test('fetchScan surfaces error field in error response', () async {
+    final client = MockClient((request) async {
+      return http.Response('{"error": "bad"}', 400);
+    });
+    expect(
+      StaticScanApi.fetchScan(client: client),
+      throwsA(isA<Exception>().having((e) => e.toString(), 'message', contains('bad'))),
+    );
   });
 
   test('fetchScan throws on timeout', () async {
