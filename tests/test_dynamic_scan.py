@@ -6,7 +6,7 @@ from collections import defaultdict
 
 import pytest
 
-from src.dynamic_scan import analyze, capture, storage
+from src.dynamic_scan import analyze, capture, storage, geoip
 
 
 def test_geoip_lookup(monkeypatch):
@@ -105,6 +105,7 @@ def test_analyse_packets_pipeline(tmp_path, monkeypatch):
             return {"country": "Testland", "ip": ip}
 
         monkeypatch.setattr(analyze, "geoip_lookup", fake_geoip)
+        monkeypatch.setattr(geoip, "get_country", lambda ip: "CN")
         monkeypatch.setattr(analyze, "reverse_dns_lookup", lambda ip: "example.com")
         queue: asyncio.Queue = asyncio.Queue()
         task = asyncio.create_task(
@@ -136,6 +137,8 @@ def test_analyse_packets_pipeline(tmp_path, monkeypatch):
         assert data[0]["new_device"] is True
         assert data[0]["geoip"]["country"] == "Testland"
         assert data[0]["reverse_dns"] == "example.com"
+        assert data[0]["country_code"] == "CN"
+        assert data[0]["dangerous_country"] is True
 
     asyncio.run(runner())
 
@@ -148,6 +151,7 @@ def test_analyse_packets_pipeline_in_hours(tmp_path, monkeypatch):
             return {"country": "Testland", "ip": ip}
 
         monkeypatch.setattr(analyze, "geoip_lookup", fake_geoip)
+        monkeypatch.setattr(geoip, "get_country", lambda ip: "US")
         monkeypatch.setattr(analyze, "reverse_dns_lookup", lambda ip: "example.com")
         queue: asyncio.Queue = asyncio.Queue()
         task = asyncio.create_task(
@@ -173,5 +177,7 @@ def test_analyse_packets_pipeline_in_hours(tmp_path, monkeypatch):
             await task
         data = store.get_all()
         assert data[0]["out_of_hours"] is False
+        assert data[0]["country_code"] == "US"
+        assert data[0]["dangerous_country"] is False
 
     asyncio.run(runner())
