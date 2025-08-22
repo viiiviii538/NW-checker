@@ -14,23 +14,23 @@ def test_network_map_delegates(monkeypatch):
 
     def fake_discover(subnet):
         calls["subnet"] = subnet
-        return ["10.0.0.1"]
+        return [{"ip": "10.0.0.1"}]
 
     monkeypatch.setattr(network_map, "discover_hosts", fake_discover)
     result = network_map.network_map("10.0.0.0/24")
-    assert result == ["10.0.0.1"]
+    assert result == [{"ip": "10.0.0.1"}]
     assert calls["subnet"] == "10.0.0.0/24"
 
 
 def test_network_map_success(monkeypatch, capsys):
     """JSON output and success log are emitted on success."""
 
-    monkeypatch.setattr(network_map, "discover_hosts", lambda subnet: ["192.168.0.10"])
+    monkeypatch.setattr(network_map, "discover_hosts", lambda subnet: [{"ip": "192.168.0.10"}])
     exit_code = network_map.main(["192.168.0.0/24"])
     captured = capsys.readouterr()
     assert exit_code == 0
     out_lines = captured.out.strip().splitlines()
-    assert json.loads(out_lines[0]) == ["192.168.0.10"]
+    assert json.loads(out_lines[0]) == [{"ip": "192.168.0.10"}]
     assert "succeeded" in out_lines[1]
     assert captured.err == ""
 

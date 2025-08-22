@@ -117,5 +117,6 @@ def build_topology_for_subnet(subnet: str, use_snmp: bool = False, community: st
         JSON string containing a ``paths`` array, same as
         :func:`build_topology`.
     """
-    hosts = discover_hosts.discover_hosts(subnet)
+    discovered = discover_hosts.discover_hosts(subnet)
+    hosts = [h["ip"] if isinstance(h, dict) else h for h in discovered]
     return build_topology(hosts, use_snmp=use_snmp, community=community)
