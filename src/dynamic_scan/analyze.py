@@ -5,10 +5,11 @@ from collections import defaultdict
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Iterable, Optional, Callable, Tuple
+from typing import Any, Dict, Iterable, Optional
 
 import httpx
 from . import geoip
+from .dns_analyzer import is_blacklisted, reverse_dns_lookup
 
 
 # 危険とされるプロトコルの名称
@@ -28,20 +29,6 @@ def load_dangerous_countries(path: str = "configs/dangerous_countries.json") -> 
 # 危険国コードの集合
 DANGEROUS_COUNTRIES = load_dangerous_countries()
 
-
-def load_blacklist(path: str = "data/dns_blacklist.txt") -> set[str]:
-    """ブラックリストファイルを読み込む"""
-
-    with open(path, encoding="utf-8") as f:
-        return {
-            line.strip()
-            for line in f
-            if line.strip() and not line.startswith("#")
-        }
-
-
-# DNS 逆引きのブラックリスト
-DNS_BLACKLIST = load_blacklist()
 
 CONFIG_PATH = Path(__file__).with_name("config.json")
 
@@ -80,7 +67,6 @@ class AnalysisResult:
 
 
 # DNS 履歴と検出済みデバイスの簡易メモリ
-_dns_history: Dict[str, str] = {}
 _known_devices: set[str] = set()
 
 
@@ -123,27 +109,6 @@ async def geoip_lookup(ip: str, db_path: str | None = None) -> Dict[str, Any]:
     return {}
 
 
-# ここを差し替え
-def reverse_dns_lookup(
-    ip: str,
-    *,
-    gethostbyaddr: Optional[Callable[[str], Tuple[str, list[str], list[str]]]] = None,
-) -> str | None:
-    """
-    DNS 逆引き。成功時は結果を正規化してキャッシュ保存。
-    失敗時はキャッシュにフォールバック（なければ None）。
-    テストで monkeypatch しやすいように gethostbyaddr を依存注入可能。
-    """
-    gha = gethostbyaddr or socket.gethostbyaddr
-    try:
-        host, _, _ = gha(ip)
-        host = host.rstrip(".").lower()  # 末尾ドット除去＆小文字化で安定化
-        _dns_history[ip] = host          # ✅ 成功時は必ず最新をキャッシュ
-        return host
-    except Exception:
-        cached = _dns_history.get(ip)    # ✅ 失敗時は過去キャッシュを返す
-        return cached.rstrip(".").lower() if isinstance(cached, str) else None
-    
 def is_dangerous_protocol(protocol: str | None) -> bool:
     """危険プロトコルか判定する。
     文字列以外が渡された場合は危険ではないとみなす。
@@ -209,13 +174,18 @@ async def assign_geoip_info(packet) -> AnalysisResult:
     return await attach_geoip(result, src_ip)
 
 
-def record_dns_history(packet) -> AnalysisResult:
+def record_dns_history(packet, storage=None) -> AnalysisResult:
     """DNS 履歴を記録しブラックリストを確認"""
     src_ip = getattr(packet, "src_ip", getattr(packet, "ip_src", None))
     if not src_ip:
         return AnalysisResult()
     hostname = reverse_dns_lookup(src_ip)
-    blacklisted = hostname in DNS_BLACKLIST if hostname else None
+    if hostname and storage is not None:
+        try:
+            storage.save_dns_record(src_ip, hostname)
+        except Exception:
+            pass
+    blacklisted = is_blacklisted(hostname) if hostname else None
     return AnalysisResult(reverse_dns=hostname, reverse_dns_blacklisted=blacklisted)
 
 
@@ -274,7 +244,7 @@ async def analyse_packets(
         packet = await queue.get()
 
         geoip_res = await assign_geoip_info(packet)
-        dns_res = await asyncio.to_thread(record_dns_history, packet)
+        dns_res = await asyncio.to_thread(record_dns_history, packet, storage)
         dangerous_res = detect_dangerous_protocols(packet)
         new_dev_res = track_new_devices(packet)
         traffic_res = detect_traffic_anomalies(packet, traffic_stats)

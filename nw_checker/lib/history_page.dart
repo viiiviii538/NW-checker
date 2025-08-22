@@ -20,7 +20,7 @@ class _HistoryPageState extends State<HistoryPage> {
     try {
       final from = DateTime.parse(_fromController.text);
       final to = DateTime.parse(_toController.text);
-      _results = await DynamicScanApi.fetchHistory(from, to);
+      _results = await DynamicScanApi.fetchDnsHistory(from, to);
     } catch (_) {
       _results = [];
     }

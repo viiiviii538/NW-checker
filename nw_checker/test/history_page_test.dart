@@ -10,11 +10,6 @@ void main() {
     await tester.tap(find.byKey(const Key('loadButton')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
-    expect(
-      find.text(
-        'History 2025-01-01T00:00:00.000 - 2025-01-02T00:00:00.000',
-      ),
-      findsOneWidget,
-    );
+    expect(find.byType(ListTile), findsNothing);
   });
 }

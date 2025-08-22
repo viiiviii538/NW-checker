@@ -10,18 +10,20 @@ from src.dynamic_scan import geoip
 
 import pytest
 
-from src.dynamic_scan import analyze
+from src.dynamic_scan import analyze, dns_analyzer
 
 
 @pytest.fixture
 def sample_blacklist(monkeypatch):
     """load_blacklist をモックして既知のドメイン集合を返す"""
     monkeypatch.setattr(
-        analyze, "load_blacklist", lambda path="data/dns_blacklist.txt": {"malicious.example"}
+        dns_analyzer,
+        "load_blacklist",
+        lambda path="configs/domain_blacklist.txt": {"malicious.example"},
     )
-    analyze.DNS_BLACKLIST = analyze.load_blacklist()
+    dns_analyzer.DOMAIN_BLACKLIST = dns_analyzer.load_blacklist()
     yield
-    analyze.DNS_BLACKLIST.clear()
+    dns_analyzer.DOMAIN_BLACKLIST.clear()
 
 def test_geoip_lookup(monkeypatch):
     class FakeResp:
@@ -195,9 +197,11 @@ def test_geoip_lookup_request_error(monkeypatch):
 
 
 def test_reverse_dns_lookup(monkeypatch):
-    analyze._dns_history.clear()
-    monkeypatch.setattr(analyze.socket, "gethostbyaddr", lambda ip: ("host.example", [], []))
-    assert analyze.reverse_dns_lookup("1.1.1.1") == "host.example"
+    dns_analyzer._dns_cache.clear()
+    monkeypatch.setattr(
+        dns_analyzer.socket, "gethostbyaddr", lambda ip: ("host.example", [], [])
+    )
+    assert dns_analyzer.reverse_dns_lookup("1.1.1.1") == "host.example"
 
 
 def test_load_dangerous_countries(tmp_path):
@@ -213,12 +217,18 @@ def test_load_dangerous_countries_missing(tmp_path):
 
 
 def test_reverse_dns_lookup_cached(monkeypatch):
-    analyze._dns_history.clear()
-    monkeypatch.setattr(analyze.socket, "gethostbyaddr", lambda ip: ("host.example", [], []))
-    analyze.reverse_dns_lookup("1.1.1.1")
+    dns_analyzer._dns_cache.clear()
+    monkeypatch.setattr(
+        dns_analyzer.socket, "gethostbyaddr", lambda ip: ("host.example", [], [])
+    )
+    dns_analyzer.reverse_dns_lookup("1.1.1.1")
     # キャッシュが使われるため、以降のソケット呼び出しは発生しない
-    monkeypatch.setattr(analyze.socket, "gethostbyaddr", lambda ip: (_ for _ in ()).throw(AssertionError))
-    assert analyze.reverse_dns_lookup("1.1.1.1") == "host.example"
+    monkeypatch.setattr(
+        dns_analyzer.socket,
+        "gethostbyaddr",
+        lambda ip: (_ for _ in ()).throw(AssertionError),
+    )
+    assert dns_analyzer.reverse_dns_lookup("1.1.1.1") == "host.example"
 
 
 def test_is_dangerous_protocol():
@@ -333,14 +343,16 @@ def test_assign_geoip_info_ip_src(monkeypatch):
 
 
 def test_record_dns_history(monkeypatch):
-    analyze._dns_history.clear()
-    analyze.DNS_BLACKLIST.clear()
-    monkeypatch.setattr(analyze.socket, "gethostbyaddr", lambda ip: ("host.example", [], []))
+    dns_analyzer._dns_cache.clear()
+    dns_analyzer.DOMAIN_BLACKLIST.clear()
+    monkeypatch.setattr(
+        dns_analyzer.socket, "gethostbyaddr", lambda ip: ("host.example", [], [])
+    )
     pkt = type("Pkt", (), {"src_ip": "1.1.1.1"})
     res = analyze.record_dns_history(pkt)
     assert res.reverse_dns == "host.example"
     assert res.reverse_dns_blacklisted is False
-    assert analyze._dns_history["1.1.1.1"] == "host.example"
+    assert dns_analyzer._dns_cache["1.1.1.1"] == "host.example"
 
 
 def test_detect_dangerous_protocols():
@@ -370,19 +382,21 @@ def test_detect_out_of_hours():
     assert res.out_of_hours is True
 
 def test_record_dns_history_no_hostname(monkeypatch):
-    analyze._dns_history.clear()
-    monkeypatch.setattr(analyze, "reverse_dns_lookup", lambda ip: None)
+    dns_analyzer._dns_cache.clear()
+    monkeypatch.setattr(dns_analyzer, "reverse_dns_lookup", lambda ip: None)
     pkt = type("Pkt", (), {"src_ip": "1.1.1.1"})
     res = analyze.record_dns_history(pkt)
     assert res.reverse_dns is None
     assert res.reverse_dns_blacklisted is None
-    assert analyze._dns_history == {}
+    assert dns_analyzer._dns_cache == {}
 
 
 def test_record_dns_history_uses_loaded_blacklist(monkeypatch, sample_blacklist):
-    analyze._dns_history.clear()
+    dns_analyzer._dns_cache.clear()
     monkeypatch.setattr(
-        analyze.socket, "gethostbyaddr", lambda ip: ("malicious.example", [], [])
+        dns_analyzer.socket,
+        "gethostbyaddr",
+        lambda ip: ("malicious.example", [], []),
     )
     pkt = type("Pkt", (), {"src_ip": "4.4.4.4"})
     res = analyze.record_dns_history(pkt)
@@ -391,10 +405,12 @@ def test_record_dns_history_uses_loaded_blacklist(monkeypatch, sample_blacklist)
 
 
 def test_record_dns_history_blacklisted(monkeypatch):
-    analyze._dns_history.clear()
-    analyze.DNS_BLACKLIST.clear()
-    analyze.DNS_BLACKLIST.add("bad.example")
-    monkeypatch.setattr(analyze.socket, "gethostbyaddr", lambda ip: ("bad.example", [], []))
+    dns_analyzer._dns_cache.clear()
+    dns_analyzer.DOMAIN_BLACKLIST.clear()
+    dns_analyzer.DOMAIN_BLACKLIST.add("bad.example")
+    monkeypatch.setattr(
+        dns_analyzer.socket, "gethostbyaddr", lambda ip: ("bad.example", [], [])
+    )
     pkt = type("Pkt", (), {"src_ip": "2.2.2.2"})
     res = analyze.record_dns_history(pkt)
     assert res.reverse_dns == "bad.example"
@@ -402,20 +418,20 @@ def test_record_dns_history_blacklisted(monkeypatch):
 
 
 def test_record_dns_history_blacklisted_cached(monkeypatch):
-    analyze._dns_history.clear()
-    analyze.DNS_BLACKLIST.clear()
-    analyze.DNS_BLACKLIST.add("bad.example")
+    dns_analyzer._dns_cache.clear()
+    dns_analyzer.DOMAIN_BLACKLIST.clear()
+    dns_analyzer.DOMAIN_BLACKLIST.add("bad.example")
 
     # 1回目の呼び出しで DNS を解決して履歴に保存
     monkeypatch.setattr(
-        analyze.socket, "gethostbyaddr", lambda ip: ("bad.example", [], [])
+        dns_analyzer.socket, "gethostbyaddr", lambda ip: ("bad.example", [], [])
     )
     pkt = type("Pkt", (), {"src_ip": "3.3.3.3"})
     analyze.record_dns_history(pkt)
 
     # キャッシュされた結果を利用するため、ソケットは呼び出されない
     monkeypatch.setattr(
-        analyze.socket,
+        dns_analyzer.socket,
         "gethostbyaddr",
         lambda ip: (_ for _ in ()).throw(AssertionError),
     )
