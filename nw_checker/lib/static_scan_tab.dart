@@ -70,6 +70,7 @@ class _StaticScanTabState extends State<StaticScanTab> {
                       children: [
                         Text('スキャン失敗: $_error'),
                         const SizedBox(height: 8),
+                        // エラーが発生した場合は再試行ボタンを表示
                         ElevatedButton(
                           onPressed: _startScan,
                           child: const Text('再試行'),

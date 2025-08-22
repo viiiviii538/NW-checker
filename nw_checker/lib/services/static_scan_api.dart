@@ -15,6 +15,20 @@ class StaticScanApi {
       ? {'Content-Type': 'application/json'}
       : {'Content-Type': 'application/json', 'Authorization': 'Bearer $_token'};
 
+  /// エラーレスポンスから表示用メッセージを抽出する。
+  /// 既知フィールドが無い場合は HTTP ステータスを返す。
+  static String _extractMessage(http.Response resp) {
+    try {
+      final err = jsonDecode(resp.body);
+      if (err is Map) {
+        if (err['detail'] != null) return err['detail'].toString();
+        if (err['message'] != null) return err['message'].toString();
+        if (err['error'] != null) return err['error'].toString();
+      }
+    } catch (_) {}
+    return 'HTTP ${resp.statusCode}';
+  }
+
   /// 静的スキャンを実行し結果を取得する。
   /// 成功時は `findings` と `risk_score` を含むマップを返す。
   /// 失敗時は例外を投げる。
@@ -32,20 +46,7 @@ class StaticScanApi {
         final riskScore = decoded['risk_score'] ?? 0;
         return {'findings': findings, 'risk_score': riskScore};
       }
-      String message;
-      try {
-        final err = jsonDecode(resp.body);
-        if (err is Map && err['detail'] != null) {
-          message = err['detail'].toString();
-        } else if (err is Map && err['message'] != null) {
-          message = err['message'].toString();
-        } else {
-          message = 'HTTP ${resp.statusCode}';
-        }
-      } catch (_) {
-        message = 'HTTP ${resp.statusCode}';
-      }
-      throw Exception(message);
+      throw Exception(_extractMessage(resp));
     } catch (e) {
       // 呼び出し元で処理できるようそのまま再スロー
       rethrow;

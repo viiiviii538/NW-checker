@@ -25,6 +25,16 @@ void main() {
     expect(StaticScanApi.fetchScan(client: client), throwsA(isA<Exception>()));
   });
 
+  test('fetchScan surfaces message field in error response', () async {
+    final client = MockClient((request) async {
+      return http.Response('{"error": "bad"}', 400);
+    });
+    expect(
+      StaticScanApi.fetchScan(client: client),
+      throwsA(isA<Exception>().having((e) => e.toString(), 'message', contains('bad'))),
+    );
+  });
+
   test('fetchScan throws on timeout', () async {
     final client = MockClient((request) async {
       return Future.delayed(
