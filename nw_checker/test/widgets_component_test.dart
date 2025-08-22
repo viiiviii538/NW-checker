@@ -89,6 +89,16 @@ void main() {
       expect(find.text('Time'), findsOneWidget);
       expect(find.text('none'), findsOneWidget);
     });
+
+    testWidgets('hides header when showHeader is false', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(body: LogTable(rows: [], showHeader: false)),
+        ),
+      );
+      final table = tester.widget<DataTable>(find.byType(DataTable));
+      expect(table.headingRowHeight, 0);
+    });
   });
 
   group('AlertComponent', () {
@@ -137,14 +147,24 @@ void main() {
     testWidgets('shows icon when provided', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: MetricCard(
-            label: 'Hosts',
-            value: '10',
-            icon: Icons.computer,
-          ),
+          home: MetricCard(label: 'Hosts', value: '10', icon: Icons.computer),
         ),
       );
       expect(find.byIcon(Icons.computer), findsOneWidget);
+    });
+
+    testWidgets('supports custom background color', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: MetricCard(
+            label: 'Hosts',
+            value: '10',
+            backgroundColor: Colors.blue,
+          ),
+        ),
+      );
+      final card = tester.widget<Card>(find.byType(Card));
+      expect(card.color, Colors.blue);
     });
   });
 
@@ -175,6 +195,16 @@ void main() {
       final decoration = container.decoration as BoxDecoration;
       expect(decoration.color, Colors.green);
       expect(find.text('LOW'), findsOneWidget);
+    });
+
+    testWidgets('applies custom padding', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: SeverityBadge(severity: 'low', padding: EdgeInsets.all(20)),
+        ),
+      );
+      final container = tester.widget<Container>(find.byType(Container));
+      expect(container.padding, const EdgeInsets.all(20));
     });
   });
 }
