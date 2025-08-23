@@ -1,8 +1,22 @@
 import asyncio
 import time
+import types
+import sys
 
 import httpx
 from fastapi.testclient import TestClient
+
+scans_stub = types.ModuleType("src.scans")
+scans_stub.__path__ = []
+sys.modules["src.scans"] = scans_stub
+
+report_pkg = types.ModuleType("src.report")
+report_pkg.__path__ = []
+pdf_stub = types.ModuleType("src.report.pdf")
+pdf_stub.create_pdf = lambda data, path: None
+sys.modules["src.report"] = report_pkg
+sys.modules["src.report.pdf"] = pdf_stub
+
 from src import server
 
 

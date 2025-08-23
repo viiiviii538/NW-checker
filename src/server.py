@@ -1,6 +1,11 @@
 from __future__ import annotations
 
-"""HTTP server exposing the static scan API."""
+"""HTTP server exposing the static scan API.
+
+The static scan can take time and perform blocking operations.  To keep the
+API responsive we execute the scan in a background thread and apply a timeout
+so hung scanners do not block the event loop.
+"""
 
 import asyncio
 
