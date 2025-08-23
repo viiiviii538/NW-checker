@@ -12,8 +12,6 @@ import json
 import subprocess
 from typing import Iterable, List
 
-from . import discover_hosts
-
 try:
     from pysnmp.hlapi import (
         CommunityData,
@@ -31,13 +29,9 @@ except Exception:  # pragma: no cover - pysnmp may be unavailable
 LLDP_REMOTE_SYS_NAME_OID = "1.0.8802.1.1.2.1.4.1.1.9"
 
 
-def _run_traceroute(ip: str) -> str:
-    """Run ``traceroute`` and return its raw output."""
-    return subprocess.check_output(["traceroute", "-n", ip], text=True)
-
-
-def _parse_traceroute(output: str) -> List[str]:
-    """Parse traceroute output into a list of hop IP addresses."""
+def traceroute(ip: str) -> List[str]:
+    """Return hop IP addresses for ``ip`` using the system's traceroute."""
+    output = subprocess.check_output(["traceroute", "-n", ip], text=True)
     hops: List[str] = []
     for line in output.splitlines():
         line = line.strip()
@@ -73,33 +67,41 @@ def _get_lldp_neighbors(ip: str, community: str = "public") -> List[str]:
     return neighbors
 
 
-def build_topology(hosts: Iterable[str], use_snmp: bool = False, community: str = "public") -> str:
-    """Build topology paths for the given hosts.
+def _augment_with_snmp(hops: List[str], path: List[str], community: str = "public") -> None:
+    """Replace hop labels with LLDP neighbor names when available."""
+    if nextCmd is None:
+        return
+    for idx, hop in enumerate(hops[:-1]):  # 最終ホストは除外
+        neighbors = _get_lldp_neighbors(hop, community)
+        if neighbors:
+            path[idx + 1] = neighbors[0]
 
-    Args:
-        hosts: Iterable of IP addresses discovered on the network.
-        use_snmp: Whether to complement hop information via SNMP/LLDP.
-        community: SNMP community string if ``use_snmp`` is ``True``.
 
-    Returns:
-        JSON string containing a ``paths`` array.
+def build_paths(hosts: Iterable[str], use_snmp: bool = False, community: str = "public") -> dict:
+    """Construct labelled paths for ``hosts``.
+
+    Each path starts with ``LAN`` and converts hop IPs to generic labels
+    such as ``Router`` and ``Host``. When ``use_snmp`` is true and
+    :mod:`pysnmp` is available, the path is augmented with LLDP neighbor
+    names via :func:`_augment_with_snmp`.
     """
-    paths: List[List[str]] = []
+    results = []
     for ip in hosts:
-        raw = _run_traceroute(ip)
-        hops = _parse_traceroute(raw)
+        hops = traceroute(ip)
         path: List[str] = ["LAN"]
         for hop in hops:
-            label = "Host" if hop == ip else "Router"
-            if use_snmp and hop != ip:
-                neighbors = _get_lldp_neighbors(hop, community)
-                if neighbors:
-                    # Use the first discovered neighbor name
-                    path.append(neighbors[0])
-                    continue
-            path.append(label)
-        paths.append(path)
-    return json.dumps({"paths": paths})
+            path.append("Host" if hop == ip else "Router")
+        if use_snmp:
+            _augment_with_snmp(hops, path, community)
+        results.append({"ip": ip, "path": path})
+    return {"paths": results}
+
+
+def build_topology(hosts: Iterable[str], use_snmp: bool = False, community: str = "public") -> str:
+    """Backward compatible wrapper returning JSON string paths."""
+    data = build_paths(hosts, use_snmp=use_snmp, community=community)
+    # Historical format expected only the list of path arrays
+    return json.dumps({"paths": [entry["path"] for entry in data["paths"]]})
 
 
 def build_topology_for_subnet(subnet: str, use_snmp: bool = False, community: str = "public") -> str:
@@ -117,6 +119,8 @@ def build_topology_for_subnet(subnet: str, use_snmp: bool = False, community: st
         JSON string containing a ``paths`` array, same as
         :func:`build_topology`.
     """
+    from . import discover_hosts  # local import to avoid heavy dependency during import
+
     discovered = discover_hosts.discover_hosts(subnet)
     hosts = [h["ip"] if isinstance(h, dict) else h for h in discovered]
     return build_topology(hosts, use_snmp=use_snmp, community=community)
