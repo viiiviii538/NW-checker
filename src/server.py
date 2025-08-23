@@ -8,6 +8,7 @@ so hung scanners do not block the event loop.
 """
 
 import asyncio
+import logging
 
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
@@ -19,6 +20,7 @@ STATIC_SCAN_TIMEOUT = 60  # seconds
 REPORT_PATH = "/tmp/static_scan_report.pdf"
 
 app = FastAPI()
+logger = logging.getLogger(__name__)
 
 
 @app.get("/static_scan")
@@ -32,21 +34,25 @@ async def static_scan_endpoint(report: bool = False):
     """
     # Execute the scan in a worker thread and enforce a timeout so the
     # server remains responsive even if individual scanners hang.
+    logger.info("Starting static scan")
     try:
         result = await asyncio.wait_for(
             asyncio.to_thread(static_scan.run_all),
             timeout=STATIC_SCAN_TIMEOUT,
         )
     except asyncio.TimeoutError:
+        logger.warning("Static scan timed out")
         return JSONResponse(
             status_code=504,
             content={"status": "timeout", "message": "Static scan timed out"},
         )
     except Exception as exc:  # pylint: disable=broad-except
+        logger.exception("Static scan failed")
         return JSONResponse(
             status_code=500,
             content={"status": "error", "message": f"Static scan failed: {exc}"},
         )
+    logger.info("Static scan completed")
 
     findings = result.get("findings", {}) if isinstance(result, dict) else result
     risk_score = result.get("risk_score") if isinstance(result, dict) else None
