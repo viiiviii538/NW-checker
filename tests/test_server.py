@@ -65,6 +65,23 @@ def test_static_scan_non_dict(monkeypatch):
     assert data['risk_score'] is None
 
 
+def test_static_scan_none(monkeypatch):
+    """run_allがNoneを返した場合のハンドリングを確認"""
+
+    def none_run_all():
+        return None
+
+    monkeypatch.setattr(server.static_scan, 'run_all', none_run_all)
+    client = TestClient(server.app)
+
+    resp = client.get('/static_scan')
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data['status'] == 'ok'
+    assert data['findings'] is None
+    assert data['risk_score'] is None
+
+
 def test_static_scan_pdf_report(monkeypatch):
     """PDFレポート生成の呼び出しを確認"""
 
