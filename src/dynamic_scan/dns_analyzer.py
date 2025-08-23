@@ -1,6 +1,6 @@
 import socket
-from pathlib import Path
-from typing import Dict, Optional, Callable, Tuple
+from typing import Callable, Dict, Optional, Tuple
+
 
 # DNS 逆引き結果のキャッシュ
 _dns_cache: Dict[str, str] = {}
@@ -26,12 +26,16 @@ def reverse_dns_lookup(
     gethostbyaddr: Optional[Callable[[str], Tuple[str, list[str], list[str]]]] = None,
 ) -> str | None:
     """IP アドレスの逆引きを行いキャッシュする"""
+    cached = _dns_cache.get(ip_addr)
+    if cached:
+        return cached
+
     gha = gethostbyaddr or socket.gethostbyaddr
     try:
         host, _, _ = gha(ip_addr)
         host = host.rstrip(".").lower()
-        _dns_cache[ip_addr] = host  # 成功時はキャッシュ
+        _dns_cache[ip_addr] = host
         return host
-    except Exception:
-        cached = _dns_cache.get(ip_addr)
-        return cached.rstrip(".").lower() if isinstance(cached, str) else None
+    except Exception:  # pragma: no cover - 解決不能時
+        return None
+

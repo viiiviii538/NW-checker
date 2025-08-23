@@ -170,6 +170,25 @@ async def get_history_v2(
     return await get_history(start, end, device, protocol)
 
 
+@app.get("/scan/dynamic/dns-history")
+async def get_dns_history(start: str = Query(...), end: str = Query(...)):
+    return {
+        "results": scan_scheduler.storage.fetch_dns_history(start, end)
+    }
+
+
+@app.get("/dynamic-scan/dns-history")
+async def get_dns_history_v2(start: str = Query(...), end: str = Query(...)):
+    """動的スキャン DNS 履歴取得エイリアス"""
+    return await get_dns_history(start, end)
+
+
+@app.get("/dynamic_scan/dns-history")
+async def get_dns_history_v3(start: str = Query(...), end: str = Query(...)):
+    """動的スキャン DNS 履歴取得エイリアス（アンダースコア形式）"""
+    return await get_dns_history_v2(start, end)
+
+
 @app.websocket("/ws/scan/dynamic")
 @app.websocket("/ws/dynamic-scan")
 async def ws_dynamic_scan(websocket: WebSocket):
