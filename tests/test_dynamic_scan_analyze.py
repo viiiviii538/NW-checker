@@ -87,6 +87,41 @@ def test_get_country_fallback(monkeypatch):
     assert geoip.get_country("203.0.113.1") == "US"
 
 
+def test_get_country_api_error(monkeypatch):
+    monkeypatch.setitem(sys.modules, "geoip2", None)
+    monkeypatch.setitem(sys.modules, "geoip2.database", None)
+
+    class Resp:
+        status_code = 404
+        text = ""
+
+    monkeypatch.setattr(geoip.httpx, "get", lambda url, timeout=5: Resp())
+    assert geoip.get_country("203.0.113.1") is None
+
+
+def test_get_country_http_error(monkeypatch):
+    monkeypatch.setitem(sys.modules, "geoip2", None)
+    monkeypatch.setitem(sys.modules, "geoip2.database", None)
+
+    def boom(url, timeout=5):  # pragma: no cover - 例外発生のテスト
+        raise httpx.HTTPError("boom")
+
+    monkeypatch.setattr(geoip.httpx, "get", boom)
+    assert geoip.get_country("203.0.113.1") is None
+
+
+def test_get_country_lowercase(monkeypatch):
+    monkeypatch.setitem(sys.modules, "geoip2", None)
+    monkeypatch.setitem(sys.modules, "geoip2.database", None)
+
+    class Resp:
+        status_code = 200
+        text = "jp"
+
+    monkeypatch.setattr(geoip.httpx, "get", lambda url, timeout=5: Resp())
+    assert geoip.get_country("203.0.113.1") == "JP"
+
+
 def test_geoip_lookup_local_db(monkeypatch):
     class FakeReader:
         def __init__(self, path):
@@ -315,6 +350,19 @@ def test_attach_geoip_no_ip():
     updated = asyncio.run(analyze.attach_geoip(res, None))
     assert updated.geoip is None
     assert updated.src_ip is None
+
+
+def test_attach_geoip_no_country(monkeypatch):
+    async def fake_geoip(ip):
+        return {"country": "Wonderland", "ip": ip}
+
+    monkeypatch.setattr(analyze, "geoip_lookup", fake_geoip)
+    monkeypatch.setattr(geoip, "get_country", lambda ip: None)
+    res = analyze.AnalysisResult()
+    updated = asyncio.run(analyze.attach_geoip(res, "203.0.113.1"))
+    assert updated.geoip == {"country": "Wonderland", "ip": "203.0.113.1"}
+    assert updated.country_code is None
+    assert updated.dangerous_country is None
 
 
 def test_assign_geoip_info_ip_src(monkeypatch):

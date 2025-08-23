@@ -1,6 +1,8 @@
 """GeoIP ユーティリティ"""
 from __future__ import annotations
 
+from contextlib import closing
+
 import httpx
 
 
@@ -14,25 +16,25 @@ def get_country(ip_addr: str, db_path: str | None = None) -> str | None:
     """
     db_path = db_path or "/usr/share/GeoIP/GeoLite2-Country.mmdb"
 
+    # GeoIP2 データベースの利用を試みる
     try:  # pragma: no cover - 環境によっては DB が存在しない
         import geoip2.database
 
-        reader = geoip2.database.Reader(db_path)
-        try:
+        with closing(geoip2.database.Reader(db_path)) as reader:
             resp = reader.country(ip_addr)
             code = resp.country.iso_code
             if code:
                 return code.upper()
-        finally:
-            reader.close()
     except Exception:
+        # DB が使えない場合は外部 API にフォールバック
         pass
 
+    # 外部 API へのフォールバック
     try:
         resp = httpx.get(f"https://ipapi.co/{ip_addr}/country/", timeout=5)
         if resp.status_code == 200:
             code = resp.text.strip().upper()
             return code or None
-    except Exception:
+    except httpx.HTTPError:
         pass
     return None
