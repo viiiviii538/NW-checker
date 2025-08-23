@@ -1,6 +1,8 @@
 import asyncio
 from fastapi.testclient import TestClient
 
+from datetime import datetime, timedelta
+
 from src import api
 from src.dynamic_scan import capture, analyze, storage, scheduler
 
@@ -50,3 +52,20 @@ def test_dynamic_scan_websocket_broadcast(tmp_path):
         asyncio.run(api.scan_scheduler.storage.save_result({"foo": "bar"}))
         message = websocket.receive_json()
         assert message["foo"] == "bar"
+
+
+def test_dns_history_endpoint(tmp_path):
+    client = TestClient(api.app)
+    api.scan_scheduler = scheduler.DynamicScanScheduler()
+    api.scan_scheduler.storage = storage.Storage(tmp_path / "res.db")
+    asyncio.run(
+        api.scan_scheduler.storage.save_dns_history("1.1.1.1", "host.example", False)
+    )
+    start = (datetime.now() - timedelta(days=1)).date().isoformat()
+    end = (datetime.now() + timedelta(days=1)).date().isoformat()
+    resp = client.get(
+        "/scan/dynamic/dns-history", params={"start": start, "end": end}
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["results"][0]["hostname"] == "host.example"
