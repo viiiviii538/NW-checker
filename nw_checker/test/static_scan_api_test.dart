@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:nw_checker/services/static_scan_api.dart';
+import 'package:nw_checker/static_scan_api.dart';
 
 void main() {
   test('fetchScan returns findings and score', () async {
