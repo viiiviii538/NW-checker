@@ -1,9 +1,12 @@
 import socket
+from collections import OrderedDict
 from pathlib import Path
-from typing import Dict, Optional, Callable, Tuple
+from typing import Callable, Optional, Tuple
 
 # DNS 逆引き結果のキャッシュ
-_dns_cache: Dict[str, str] = {}
+_dns_cache: "OrderedDict[str, str]" = OrderedDict()
+# キャッシュの上限数
+_DNS_CACHE_MAX = 256
 
 
 def load_blacklist(path: str = "configs/domain_blacklist.txt") -> set[str]:
@@ -25,13 +28,25 @@ def reverse_dns_lookup(
     *,
     gethostbyaddr: Optional[Callable[[str], Tuple[str, list[str], list[str]]]] = None,
 ) -> str | None:
-    """IP アドレスの逆引きを行いキャッシュする"""
+    """IP アドレスの逆引きを行いキャッシュする
+
+    成功した結果は LRU 方式で ``_dns_cache`` に保存し、同じ IP への
+    再問い合わせを避ける。
+    """
+    # まずキャッシュを確認
+    cached = _dns_cache.get(ip_addr)
+    if cached is not None:
+        return cached
+
     gha = gethostbyaddr or socket.gethostbyaddr
     try:
         host, _, _ = gha(ip_addr)
         host = host.rstrip(".").lower()
-        _dns_cache[ip_addr] = host  # 成功時はキャッシュ
+        _dns_cache[ip_addr] = host
+        _dns_cache.move_to_end(ip_addr)
+        # キャッシュ上限を超えたら最も古いものを削除
+        if len(_dns_cache) > _DNS_CACHE_MAX:
+            _dns_cache.popitem(last=False)
         return host
     except Exception:
-        cached = _dns_cache.get(ip_addr)
-        return cached.rstrip(".").lower() if isinstance(cached, str) else None
+        return None
