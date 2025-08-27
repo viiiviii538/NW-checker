@@ -6,7 +6,7 @@ from collections import defaultdict
 
 import pytest
 
-from src.dynamic_scan import analyze, capture, storage, geoip
+from src.dynamic_scan import analyze, capture, storage, geoip, protocol_detector
 
 
 def test_geoip_lookup(monkeypatch):
@@ -39,13 +39,19 @@ def test_reverse_dns_lookup(monkeypatch):
 
 
 def test_is_dangerous_protocol():
-    assert analyze.is_dangerous_protocol("telnet")
-    assert not analyze.is_dangerous_protocol("http")
-    assert not analyze.is_dangerous_protocol(None)
+    assert protocol_detector.is_dangerous_protocol(23, 80)
+    assert protocol_detector.is_dangerous_protocol(80, 445)
+    assert not protocol_detector.is_dangerous_protocol(80, 8080)
+
+
+def test_detect_dangerous_protocols():
+    pkt = SimpleNamespace(src_port=23, dst_port=1000)
+    res = analyze.detect_dangerous_protocols(pkt)
+    assert res.dangerous_protocol is True
 
 
 def test_detect_dangerous_protocols_none():
-    pkt = SimpleNamespace(protocol=None)
+    pkt = SimpleNamespace(src_port=80, dst_port=8080)
     res = analyze.detect_dangerous_protocols(pkt)
     assert res.dangerous_protocol is False
 
@@ -131,6 +137,7 @@ def test_analyse_packets_pipeline(tmp_path, monkeypatch):
             dst_ip="1.1.1.1",
             src_mac="00:11:22:33:44:66",
             protocol="TELNET",
+            src_port=23,
             size=2_000_000,
             timestamp=datetime(2024, 1, 1, 2, 0, 0).timestamp(),
         )
@@ -184,6 +191,7 @@ def test_analyse_packets_pipeline_in_hours(tmp_path, monkeypatch):
             dst_ip="1.1.1.1",
             src_mac="00:11:22:33:44:77",
             protocol="TELNET",
+            src_port=23,
             size=2_000_000,
             timestamp=datetime(2024, 1, 1, 10, 0, 0).timestamp(),
         )

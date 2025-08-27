@@ -10,18 +10,21 @@ from src.dynamic_scan import geoip
 
 import pytest
 
-from src.dynamic_scan import analyze
+from src.dynamic_scan import analyze, protocol_detector
 
 
 @pytest.fixture
 def sample_blacklist(monkeypatch):
     """load_blacklist をモックして既知のドメイン集合を返す"""
     monkeypatch.setattr(
-        analyze, "load_blacklist", lambda path="data/dns_blacklist.txt": {"malicious.example"}
+        analyze,
+        "load_blacklist",
+        lambda path="data/dns_blacklist.txt": {"malicious.example"},
     )
     analyze.DNS_BLACKLIST = analyze.load_blacklist()
     yield
     analyze.DNS_BLACKLIST.clear()
+
 
 def test_geoip_lookup(monkeypatch):
     class FakeResp:
@@ -69,7 +72,9 @@ def test_get_country_local_db(monkeypatch):
         def close(self):
             pass
 
-    fake_geoip2 = types.SimpleNamespace(database=types.SimpleNamespace(Reader=FakeReader))
+    fake_geoip2 = types.SimpleNamespace(
+        database=types.SimpleNamespace(Reader=FakeReader)
+    )
     monkeypatch.setitem(sys.modules, "geoip2", fake_geoip2)
     monkeypatch.setitem(sys.modules, "geoip2.database", fake_geoip2.database)
     assert geoip.get_country("203.0.113.1") == "JP"
@@ -231,7 +236,9 @@ def test_geoip_lookup_request_error(monkeypatch):
 
 def test_reverse_dns_lookup(monkeypatch):
     analyze._dns_history.clear()
-    monkeypatch.setattr(analyze.socket, "gethostbyaddr", lambda ip: ("host.example", [], []))
+    monkeypatch.setattr(
+        analyze.socket, "gethostbyaddr", lambda ip: ("host.example", [], [])
+    )
     assert analyze.reverse_dns_lookup("1.1.1.1") == "host.example"
 
 
@@ -249,17 +256,23 @@ def test_load_dangerous_countries_missing(tmp_path):
 
 def test_reverse_dns_lookup_cached(monkeypatch):
     analyze._dns_history.clear()
-    monkeypatch.setattr(analyze.socket, "gethostbyaddr", lambda ip: ("host.example", [], []))
+    monkeypatch.setattr(
+        analyze.socket, "gethostbyaddr", lambda ip: ("host.example", [], [])
+    )
     analyze.reverse_dns_lookup("1.1.1.1")
     # キャッシュが使われるため、以降のソケット呼び出しは発生しない
-    monkeypatch.setattr(analyze.socket, "gethostbyaddr", lambda ip: (_ for _ in ()).throw(AssertionError))
+    monkeypatch.setattr(
+        analyze.socket,
+        "gethostbyaddr",
+        lambda ip: (_ for _ in ()).throw(AssertionError),
+    )
     assert analyze.reverse_dns_lookup("1.1.1.1") == "host.example"
 
 
 def test_is_dangerous_protocol():
-    assert analyze.is_dangerous_protocol("telnet")
-    assert not analyze.is_dangerous_protocol("http")
-    assert not analyze.is_dangerous_protocol(None)
+    assert protocol_detector.is_dangerous_protocol(23, 80)
+    assert protocol_detector.is_dangerous_protocol(80, 445)
+    assert not protocol_detector.is_dangerous_protocol(80, 8080)
 
 
 def test_is_unapproved_device():
@@ -269,8 +282,14 @@ def test_is_unapproved_device():
 
 def test_detect_traffic_anomaly():
     stats = defaultdict(int)
-    assert analyze.detect_traffic_anomaly(stats, "host", 500_000, threshold=1_000_000) is False
-    assert analyze.detect_traffic_anomaly(stats, "host", 600_000, threshold=1_000_000) is True
+    assert (
+        analyze.detect_traffic_anomaly(stats, "host", 500_000, threshold=1_000_000)
+        is False
+    )
+    assert (
+        analyze.detect_traffic_anomaly(stats, "host", 600_000, threshold=1_000_000)
+        is True
+    )
 
 
 def test_detect_traffic_anomaly_from_config(tmp_path, monkeypatch):
@@ -383,7 +402,9 @@ def test_assign_geoip_info_ip_src(monkeypatch):
 def test_record_dns_history(monkeypatch):
     analyze._dns_history.clear()
     analyze.DNS_BLACKLIST.clear()
-    monkeypatch.setattr(analyze.socket, "gethostbyaddr", lambda ip: ("host.example", [], []))
+    monkeypatch.setattr(
+        analyze.socket, "gethostbyaddr", lambda ip: ("host.example", [], [])
+    )
     pkt = type("Pkt", (), {"src_ip": "1.1.1.1"})
     res = analyze.record_dns_history(pkt)
     assert res.reverse_dns == "host.example"
@@ -392,7 +413,7 @@ def test_record_dns_history(monkeypatch):
 
 
 def test_detect_dangerous_protocols():
-    pkt = type("Pkt", (), {"protocol": "TELNET"})
+    pkt = type("Pkt", (), {"src_port": 23, "protocol": "TELNET"})
     res = analyze.detect_dangerous_protocols(pkt)
     assert res.dangerous_protocol is True
 
@@ -411,11 +432,10 @@ def test_detect_traffic_anomalies():
 
 
 def test_detect_out_of_hours():
-    pkt = type(
-        "Pkt", (), {"timestamp": datetime(2024, 1, 1, 3, 0).timestamp()}
-    )
+    pkt = type("Pkt", (), {"timestamp": datetime(2024, 1, 1, 3, 0).timestamp()})
     res = analyze.detect_out_of_hours(pkt, 9, 17)
     assert res.out_of_hours is True
+
 
 def test_record_dns_history_no_hostname(monkeypatch):
     analyze._dns_history.clear()
@@ -442,7 +462,9 @@ def test_record_dns_history_blacklisted(monkeypatch):
     analyze._dns_history.clear()
     analyze.DNS_BLACKLIST.clear()
     analyze.DNS_BLACKLIST.add("bad.example")
-    monkeypatch.setattr(analyze.socket, "gethostbyaddr", lambda ip: ("bad.example", [], []))
+    monkeypatch.setattr(
+        analyze.socket, "gethostbyaddr", lambda ip: ("bad.example", [], [])
+    )
     pkt = type("Pkt", (), {"src_ip": "2.2.2.2"})
     res = analyze.record_dns_history(pkt)
     assert res.reverse_dns == "bad.example"
@@ -473,13 +495,13 @@ def test_record_dns_history_blacklisted_cached(monkeypatch):
 
 
 def test_detect_dangerous_protocols_safe_protocol():
-    pkt = type("Pkt", (), {"protocol": "HTTP"})
+    pkt = type("Pkt", (), {"src_port": 80, "protocol": "HTTP"})
     res = analyze.detect_dangerous_protocols(pkt)
     assert res.dangerous_protocol is False
 
 
 def test_detect_dangerous_protocols_none_protocol():
-    pkt = type("Pkt", (), {"protocol": None})
+    pkt = type("Pkt", (), {})
     res = analyze.detect_dangerous_protocols(pkt)
     assert res.dangerous_protocol is False
 
@@ -491,25 +513,19 @@ def test_detect_traffic_anomalies_normal():
 
 
 def test_detect_out_of_hours_within_schedule():
-    pkt = type(
-        "Pkt", (), {"timestamp": datetime(2024, 1, 1, 10, 0).timestamp()}
-    )
+    pkt = type("Pkt", (), {"timestamp": datetime(2024, 1, 1, 10, 0).timestamp()})
     res = analyze.detect_out_of_hours(pkt, 9, 17)
     assert res.out_of_hours is False
 
 
 def test_detect_out_of_hours_at_start_hour():
-    pkt = type(
-        "Pkt", (), {"timestamp": datetime(2024, 1, 1, 9, 0).timestamp()}
-    )
+    pkt = type("Pkt", (), {"timestamp": datetime(2024, 1, 1, 9, 0).timestamp()})
     res = analyze.detect_out_of_hours(pkt, 9, 17)
     assert res.out_of_hours is False
 
 
 def test_detect_out_of_hours_at_end_hour():
-    pkt = type(
-        "Pkt", (), {"timestamp": datetime(2024, 1, 1, 17, 0).timestamp()}
-    )
+    pkt = type("Pkt", (), {"timestamp": datetime(2024, 1, 1, 17, 0).timestamp()})
     res = analyze.detect_out_of_hours(pkt, 9, 17)
     assert res.out_of_hours is True
 
