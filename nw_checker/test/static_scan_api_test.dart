@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:nw_checker/services/static_scan_api.dart';
+import 'package:nw_checker/static_scan_api.dart';
 
 void main() {
   test('fetchScan returns findings and score', () async {
@@ -47,6 +47,16 @@ void main() {
       throwsA(isA<Exception>().having((e) => e.toString(), 'message', contains('bad'))),
     );
   });
+  test('fetchScan reports HTTP code when unknown error format', () async {
+    final client = MockClient((request) async {
+      return http.Response('whatever', 418);
+    });
+    expect(
+      StaticScanApi.fetchScan(client: client),
+      throwsA(isA<Exception>().having((e) => e.toString(), 'message', contains('HTTP 418'))),
+    );
+  });
+
 
   test('fetchScan throws on timeout', () async {
     final client = MockClient((request) async {

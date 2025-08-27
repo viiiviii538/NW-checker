@@ -85,7 +85,6 @@ void main() {
     expect(find.text('結果なし'), findsOneWidget);
     expect(find.textContaining('リスクスコア'), findsNothing);
   });
-
   testWidgets('disables button while loading', (tester) async {
     final completer = Completer<Map<String, dynamic>>();
     var calls = 0;
@@ -129,5 +128,26 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 1));
     expect(calls, 2);
+  });
+  testWidgets('defaults risk score to 0 when missing', (tester) async {
+    Future<Map<String, dynamic>> mockFetch() async {
+      return {
+        'findings': [
+          {'category': 'c', 'score': 1},
+        ],
+      };
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: StaticScanTab(fetcher: mockFetch)),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('staticButton')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('リスクスコア: 0'), findsOneWidget);
+    expect(find.text('c'), findsOneWidget);
   });
 }
