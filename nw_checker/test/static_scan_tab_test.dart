@@ -200,9 +200,7 @@ void main() {
     Future<void> verify(int score, Color color) async {
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(
-            body: StaticScanTab(fetcher: () => mockFetch(score)),
-          ),
+          home: Scaffold(body: StaticScanTab(fetcher: () => mockFetch(score))),
         ),
       );
 
@@ -223,5 +221,30 @@ void main() {
     await verify(0, Colors.green.shade100);
     await verify(3, Colors.yellow.shade100);
     await verify(6, Colors.red.shade100);
+  });
+
+  testWidgets('generates report and shows path', (tester) async {
+    bool called = false;
+    Future<String> mockReport() async {
+      called = true;
+      return '/tmp/report.pdf';
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: StaticScanTab(
+            fetcher: () async => {'risk_score': 0, 'findings': []},
+            reportFetcher: mockReport,
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('reportButton')));
+    await tester.pumpAndSettle();
+
+    expect(called, isTrue);
+    expect(find.text('PDF: /tmp/report.pdf'), findsOneWidget);
   });
 }

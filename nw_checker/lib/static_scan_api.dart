@@ -32,20 +32,31 @@ class StaticScanApi {
 
   /// 静的スキャンを実行し結果を取得する。
   /// 成功時は `findings` と `risk_score` を含むマップを返す。
+  /// `report` が true の場合は `report_path` も含まれる。
   /// 失敗時は例外を投げる。
-  static Future<Map<String, dynamic>> fetchScan({http.Client? client}) async {
+  static Future<Map<String, dynamic>> fetchScan({
+    http.Client? client,
+    bool report = false,
+  }) async {
     final created = client == null;
     final c = client ?? http.Client();
     try {
+      final uri = report
+          ? Uri.parse('$_baseUrl/static_scan?report=true')
+          : Uri.parse('$_baseUrl/static_scan');
       final resp = await c
-          .get(Uri.parse('$_baseUrl/static_scan'), headers: _headers())
+          .get(uri, headers: _headers())
           .timeout(const Duration(seconds: 5));
       if (resp.statusCode == 200) {
         final decoded = jsonDecode(resp.body) as Map<String, dynamic>;
         final findings =
             (decoded['findings'] as List?)?.cast<Map<String, dynamic>>() ?? [];
         final riskScore = decoded['risk_score'] ?? 0;
-        return {'findings': findings, 'risk_score': riskScore};
+        final result = {'findings': findings, 'risk_score': riskScore};
+        if (decoded['report_path'] != null) {
+          result['report_path'] = decoded['report_path'];
+        }
+        return result;
       }
       throw Exception(_extractMessage(resp));
     } on TimeoutException {
@@ -59,5 +70,11 @@ class StaticScanApi {
         c.close();
       }
     }
+  }
+
+  /// PDFレポートを生成しそのパスを返す。
+  static Future<String> fetchReport({http.Client? client}) async {
+    final result = await fetchScan(client: client, report: true);
+    return result['report_path']?.toString() ?? '';
   }
 }
