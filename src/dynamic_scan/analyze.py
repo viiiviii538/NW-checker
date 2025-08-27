@@ -31,13 +31,12 @@ DANGEROUS_COUNTRIES = load_dangerous_countries()
 
 
 load_blacklist = dns_analyzer.load_blacklist
-DNS_BLACKLIST = dns_analyzer.DOMAIN_BLACKLIST
 socket = dns_analyzer.socket
 
 
 def reverse_dns_lookup(ip_addr: str):
     return dns_analyzer.reverse_dns_lookup(
-        ip_addr, gethostbyaddr=socket.gethostbyaddr
+        ip_addr, resolver=socket.gethostbyaddr
     )
 
 CONFIG_PATH = Path(__file__).with_name("config.json")
@@ -192,7 +191,7 @@ def record_dns_history(packet) -> AnalysisResult:
     if not src_ip:
         return AnalysisResult()
     hostname = reverse_dns_lookup(src_ip)
-    blacklisted = hostname in DNS_BLACKLIST if hostname else None
+    blacklisted = dns_analyzer.is_blacklisted(hostname) if hostname else None
     return AnalysisResult(reverse_dns=hostname, reverse_dns_blacklisted=blacklisted)
 
 

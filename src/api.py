@@ -170,6 +170,14 @@ async def get_history_v2(
     return await get_history(start, end, device, protocol)
 
 
+@app.get("/dynamic-scan/dns-history")
+async def get_dns_history(start: str, end: str):
+    """DNS 逆引き履歴を取得"""
+    return {
+        "history": scan_scheduler.storage.fetch_dns_history(start, end)
+    }
+
+
 @app.websocket("/ws/scan/dynamic")
 @app.websocket("/ws/dynamic-scan")
 async def ws_dynamic_scan(websocket: WebSocket):
