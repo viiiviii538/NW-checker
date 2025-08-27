@@ -232,7 +232,7 @@ def test_geoip_lookup_request_error(monkeypatch):
 def test_reverse_dns_lookup(monkeypatch):
     analyze._dns_history.clear()
     monkeypatch.setattr(analyze.socket, "gethostbyaddr", lambda ip: ("host.example", [], []))
-    assert analyze.reverse_dns_lookup("1.1.1.1") == "host.example"
+    assert analyze.reverse_dns_lookup("1.1.1.1") == ("host.example", False)
 
 
 def test_load_dangerous_countries(tmp_path):
@@ -253,7 +253,7 @@ def test_reverse_dns_lookup_cached(monkeypatch):
     analyze.reverse_dns_lookup("1.1.1.1")
     # キャッシュが使われるため、以降のソケット呼び出しは発生しない
     monkeypatch.setattr(analyze.socket, "gethostbyaddr", lambda ip: (_ for _ in ()).throw(AssertionError))
-    assert analyze.reverse_dns_lookup("1.1.1.1") == "host.example"
+    assert analyze.reverse_dns_lookup("1.1.1.1") == ("host.example", False)
 
 
 def test_is_dangerous_protocol():
@@ -388,7 +388,7 @@ def test_record_dns_history(monkeypatch):
     res = analyze.record_dns_history(pkt)
     assert res.reverse_dns == "host.example"
     assert res.reverse_dns_blacklisted is False
-    assert analyze._dns_history["1.1.1.1"] == "host.example"
+    assert analyze._dns_history["1.1.1.1"] == ("host.example", False)
 
 
 def test_detect_dangerous_protocols():
@@ -419,7 +419,7 @@ def test_detect_out_of_hours():
 
 def test_record_dns_history_no_hostname(monkeypatch):
     analyze._dns_history.clear()
-    monkeypatch.setattr(analyze, "reverse_dns_lookup", lambda ip: None)
+    monkeypatch.setattr(analyze, "reverse_dns_lookup", lambda ip: (None, None))
     pkt = type("Pkt", (), {"src_ip": "1.1.1.1"})
     res = analyze.record_dns_history(pkt)
     assert res.reverse_dns is None
