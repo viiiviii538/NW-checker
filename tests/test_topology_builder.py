@@ -1,6 +1,13 @@
 """Tests for building topology paths."""
 
-from src.topology_builder import build_paths, traceroute
+import json
+
+from src.topology_builder import (
+    build_paths,
+    build_topology,
+    build_topology_for_subnet,
+    traceroute,
+)
 
 
 def test_traceroute_parses_hops(monkeypatch):
@@ -54,5 +61,55 @@ def test_build_paths_with_snmp(monkeypatch):
     result = build_paths(["192.168.0.20"], use_snmp=True)
     assert result == {
         "paths": [{"ip": "192.168.0.20", "path": ["LAN", "SwitchA", "Host"]}]
+    }
+
+
+def test_build_topology_wrapper(monkeypatch):
+    """``build_topology`` wraps ``build_paths`` and outputs JSON."""
+
+    def fake_build_paths(hosts, use_snmp=False, community="public"):
+        assert hosts == ["192.168.0.30"]
+        assert use_snmp
+        assert community == "private"
+        return {
+            "paths": [
+                {"ip": "192.168.0.30", "path": ["LAN", "Router", "Host"]}
+            ]
+        }
+
+    monkeypatch.setattr("src.topology_builder.build_paths", fake_build_paths)
+
+    result = build_topology(["192.168.0.30"], use_snmp=True, community="private")
+    assert json.loads(result) == {"paths": [["LAN", "Router", "Host"]]}
+
+
+def test_build_topology_for_subnet(monkeypatch):
+    """Subnet wrapper discovers hosts then forwards to ``build_topology``."""
+
+    def fake_discover_hosts(subnet):
+        assert subnet == "192.168.0.0/24"
+        return [{"ip": "192.168.0.40"}, {"ip": "192.168.0.41"}]
+
+    captured = {}
+
+    def fake_build_topology(hosts, use_snmp=False, community="public"):
+        captured["hosts"] = hosts
+        captured["use_snmp"] = use_snmp
+        captured["community"] = community
+        return "JSON"
+
+    monkeypatch.setattr(
+        "src.discover_hosts.discover_hosts", fake_discover_hosts
+    )
+    monkeypatch.setattr("src.topology_builder.build_topology", fake_build_topology)
+
+    result = build_topology_for_subnet(
+        "192.168.0.0/24", use_snmp=True, community="private"
+    )
+    assert result == "JSON"
+    assert captured == {
+        "hosts": ["192.168.0.40", "192.168.0.41"],
+        "use_snmp": True,
+        "community": "private",
     }
 
