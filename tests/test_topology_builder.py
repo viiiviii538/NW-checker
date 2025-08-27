@@ -1,13 +1,16 @@
 """Tests for building topology paths."""
 
-import json
-
 from src.topology_builder import (
+    _augment_with_snmp,
+    _get_lldp_neighbors,
     build_paths,
     build_topology,
     build_topology_for_subnet,
     traceroute,
 )
+import json
+import sys
+import types
 
 
 def test_traceroute_parses_hops(monkeypatch):
@@ -122,9 +125,8 @@ def test_build_topology_for_subnet(monkeypatch):
         captured["community"] = community
         return "JSON"
 
-    monkeypatch.setattr(
-        "src.discover_hosts.discover_hosts", fake_discover_hosts
-    )
+    fake_module = types.SimpleNamespace(discover_hosts=fake_discover_hosts)
+    monkeypatch.setitem(sys.modules, "src.discover_hosts", fake_module)
     monkeypatch.setattr("src.topology_builder.build_topology", fake_build_topology)
 
     result = build_topology_for_subnet(
@@ -136,4 +138,39 @@ def test_build_topology_for_subnet(monkeypatch):
         "use_snmp": True,
         "community": "private",
     }
+
+
+def test_get_lldp_neighbors_parses_result(monkeypatch):
+    """LLDP neighbor names are extracted from SNMP walk results."""
+
+    def fake_nextCmd(*args, **kwargs):  # pragma: no cover - simple iterator
+        yield (None, 0, 0, [(None, "SwitchB")])
+
+    monkeypatch.setattr("src.topology_builder.nextCmd", fake_nextCmd)
+    monkeypatch.setattr("src.topology_builder.SnmpEngine", lambda: None)
+    monkeypatch.setattr("src.topology_builder.CommunityData", lambda *a, **k: None)
+    monkeypatch.setattr("src.topology_builder.UdpTransportTarget", lambda *a, **k: None)
+    monkeypatch.setattr("src.topology_builder.ContextData", lambda: None)
+    monkeypatch.setattr("src.topology_builder.ObjectType", lambda obj: obj)
+    monkeypatch.setattr("src.topology_builder.ObjectIdentity", lambda oid: oid)
+
+    assert _get_lldp_neighbors("192.168.0.1") == ["SwitchB"]
+
+
+def test_augment_with_snmp_replaces_router(monkeypatch):
+    """Router labels are replaced when LLDP neighbors are found."""
+
+    def fake_get_lldp_neighbors(ip, community="public"):
+        return ["SwitchC"]
+
+    hops = ["192.168.0.1", "192.168.0.2"]
+    path = ["LAN", "Router", "Host"]
+
+    monkeypatch.setattr(
+        "src.topology_builder._get_lldp_neighbors", fake_get_lldp_neighbors
+    )
+    monkeypatch.setattr("src.topology_builder.nextCmd", object())
+
+    _augment_with_snmp(hops, path)
+    assert path == ["LAN", "SwitchC", "Host"]
 
