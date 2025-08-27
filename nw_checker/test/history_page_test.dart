@@ -16,5 +16,11 @@ void main() {
       ),
       findsOneWidget,
     );
+    expect(
+      find.text(
+        'DNS History 2025-01-01T00:00:00.000 - 2025-01-02T00:00:00.000',
+      ),
+      findsOneWidget,
+    );
   });
 }

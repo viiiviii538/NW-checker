@@ -32,6 +32,7 @@ def test_geoip_lookup(monkeypatch):
 
 
 def test_reverse_dns_lookup(monkeypatch):
+    analyze.dns_analyzer._dns_cache.clear()
     monkeypatch.setattr(
         analyze.socket, "gethostbyaddr", lambda ip: ("host.example", [], [])
     )

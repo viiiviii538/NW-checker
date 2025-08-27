@@ -10,18 +10,18 @@ from src.dynamic_scan import geoip
 
 import pytest
 
-from src.dynamic_scan import analyze
+from src.dynamic_scan import analyze, dns_analyzer
 
 
 @pytest.fixture
 def sample_blacklist(monkeypatch):
     """load_blacklist をモックして既知のドメイン集合を返す"""
     monkeypatch.setattr(
-        analyze, "load_blacklist", lambda path="data/dns_blacklist.txt": {"malicious.example"}
+        dns_analyzer, "load_blacklist", lambda path="data/dns_blacklist.txt": {"malicious.example"}
     )
-    analyze.DNS_BLACKLIST = analyze.load_blacklist()
+    dns_analyzer.DOMAIN_BLACKLIST = dns_analyzer.load_blacklist()
     yield
-    analyze.DNS_BLACKLIST.clear()
+    dns_analyzer.DOMAIN_BLACKLIST.clear()
 
 def test_geoip_lookup(monkeypatch):
     class FakeResp:
@@ -303,8 +303,7 @@ def test_load_blacklist(tmp_path):
 
 def test_load_blacklist_missing_file(tmp_path):
     missing = tmp_path / "no_such_file.txt"
-    with pytest.raises(FileNotFoundError):
-        analyze.load_blacklist(missing)
+    assert analyze.load_blacklist(missing) == set()
 
 
 def test_load_blacklist_default_file():
@@ -382,13 +381,13 @@ def test_assign_geoip_info_ip_src(monkeypatch):
 
 def test_record_dns_history(monkeypatch):
     analyze._dns_history.clear()
-    analyze.DNS_BLACKLIST.clear()
+    dns_analyzer.DOMAIN_BLACKLIST.clear()
     monkeypatch.setattr(analyze.socket, "gethostbyaddr", lambda ip: ("host.example", [], []))
     pkt = type("Pkt", (), {"src_ip": "1.1.1.1"})
     res = analyze.record_dns_history(pkt)
     assert res.reverse_dns == "host.example"
     assert res.reverse_dns_blacklisted is False
-    assert analyze._dns_history["1.1.1.1"] == "host.example"
+    assert analyze._dns_history["1.1.1.1"][0] == "host.example"
 
 
 def test_detect_dangerous_protocols():
@@ -440,8 +439,8 @@ def test_record_dns_history_uses_loaded_blacklist(monkeypatch, sample_blacklist)
 
 def test_record_dns_history_blacklisted(monkeypatch):
     analyze._dns_history.clear()
-    analyze.DNS_BLACKLIST.clear()
-    analyze.DNS_BLACKLIST.add("bad.example")
+    dns_analyzer.DOMAIN_BLACKLIST.clear()
+    dns_analyzer.DOMAIN_BLACKLIST.add("bad.example")
     monkeypatch.setattr(analyze.socket, "gethostbyaddr", lambda ip: ("bad.example", [], []))
     pkt = type("Pkt", (), {"src_ip": "2.2.2.2"})
     res = analyze.record_dns_history(pkt)
@@ -451,8 +450,8 @@ def test_record_dns_history_blacklisted(monkeypatch):
 
 def test_record_dns_history_blacklisted_cached(monkeypatch):
     analyze._dns_history.clear()
-    analyze.DNS_BLACKLIST.clear()
-    analyze.DNS_BLACKLIST.add("bad.example")
+    dns_analyzer.DOMAIN_BLACKLIST.clear()
+    dns_analyzer.DOMAIN_BLACKLIST.add("bad.example")
 
     # 1回目の呼び出しで DNS を解決して履歴に保存
     monkeypatch.setattr(
