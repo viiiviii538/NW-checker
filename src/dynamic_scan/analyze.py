@@ -32,8 +32,13 @@ DANGEROUS_COUNTRIES = load_dangerous_countries()
 
 load_blacklist = dns_analyzer.load_blacklist
 DNS_BLACKLIST = dns_analyzer.DOMAIN_BLACKLIST
-reverse_dns_lookup = dns_analyzer.reverse_dns_lookup
 socket = dns_analyzer.socket
+
+
+def reverse_dns_lookup(ip_addr: str):
+    return dns_analyzer.reverse_dns_lookup(
+        ip_addr, gethostbyaddr=socket.gethostbyaddr
+    )
 
 CONFIG_PATH = Path(__file__).with_name("config.json")
 
