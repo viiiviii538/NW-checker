@@ -186,4 +186,42 @@ void main() {
     expect(warnCard.color, Colors.yellow.shade100);
     expect(badCard.color, Colors.red.shade100);
   });
+
+  testWidgets('risk score card reflects severity colors', (tester) async {
+    Future<Map<String, dynamic>> mockFetch(int total) async {
+      return {
+        'risk_score': total,
+        'findings': [
+          {'category': 'dummy', 'score': 0},
+        ],
+      };
+    }
+
+    Future<void> verify(int score, Color color) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: StaticScanTab(fetcher: () => mockFetch(score)),
+          ),
+        ),
+      );
+
+      await tester.tap(find.byKey(const Key('staticButton')));
+      await tester.pumpAndSettle();
+
+      final card = tester.widget<Card>(
+        find.ancestor(
+          of: find.text('リスクスコア: $score'),
+          matching: find.byType(Card),
+        ),
+      );
+      expect(card.color, color);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+    }
+
+    await verify(0, Colors.green.shade100);
+    await verify(3, Colors.yellow.shade100);
+    await verify(6, Colors.red.shade100);
+  });
 }
