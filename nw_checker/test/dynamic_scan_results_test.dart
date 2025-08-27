@@ -24,4 +24,25 @@ void main() {
     final badge = tester.widget<SeverityBadge>(find.byType(SeverityBadge));
     expect(badge.severity.toLowerCase(), 'high');
   });
+
+  testWidgets('SeverityBadge is red for high severity', (tester) async {
+    final categories = [
+      ScanCategory(name: 'protocols', severity: Severity.high, issues: ['ftp']),
+    ];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: DynamicScanResults(categories: categories)),
+      ),
+    );
+    await tester.tap(find.text('protocols'));
+    await tester.pumpAndSettle();
+    final container = tester.widget<Container>(
+      find.descendant(
+        of: find.byType(SeverityBadge),
+        matching: find.byType(Container),
+      ),
+    );
+    final decoration = container.decoration as BoxDecoration;
+    expect(decoration.color, Colors.red);
+  });
 }

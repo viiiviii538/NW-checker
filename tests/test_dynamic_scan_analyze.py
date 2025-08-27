@@ -267,6 +267,11 @@ def test_analyze_packet_helper():
     assert protocol_detector.analyze_packet(pkt) is True
 
 
+def test_analyze_packet_helper_safe():
+    pkt = type("Pkt", (), {"src_port": 80, "dst_port": 8080})
+    assert protocol_detector.analyze_packet(pkt) is False
+
+
 def test_is_unapproved_device():
     assert analyze.is_unapproved_device("00:aa", {"00:bb"})
     assert not analyze.is_unapproved_device("00:aa", {"00:aa"})
