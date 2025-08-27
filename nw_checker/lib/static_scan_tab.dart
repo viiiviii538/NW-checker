@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'services/static_scan_api.dart';
+import 'static_scan_api.dart';
 
 /// 静的スキャンタブ。
 /// ボタン押下で `/static_scan` を呼び出し結果を表示する。

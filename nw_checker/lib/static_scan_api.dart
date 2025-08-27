@@ -1,5 +1,5 @@
 import 'dart:convert';
-import '../api_config.dart';
+import 'api_config.dart';
 import 'package:http/http.dart' as http;
 
 /// 静的スキャンAPIへの通信を担当するサービス。
