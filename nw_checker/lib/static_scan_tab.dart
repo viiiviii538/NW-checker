@@ -113,43 +113,43 @@ class _StaticScanTabState extends State<StaticScanTab> {
                     ),
                   )
                 : _findings.isEmpty
-                ? const Center(child: Text('結果なし'))
-                : Column(
-                    children: [
-                      if (_riskScore != null)
-                        Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Card(
-                            color: _colorForScore(_riskScore!),
-                            child: ListTile(
-                              title: Text('リスクスコア: ${_riskScore ?? 0}'),
+                    ? const Center(child: Text('結果なし'))
+                    : Column(
+                        children: [
+                          if (_riskScore != null)
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Card(
+                                color: _colorForScore(_riskScore!),
+                                child: ListTile(
+                                  title: Text('リスクスコア: ${_riskScore ?? 0}'),
+                                ),
+                              ),
+                            ),
+                          Expanded(
+                            child: ListView.builder(
+                              itemCount: _findings.length,
+                              itemBuilder: (context, index) {
+                                final f = _findings[index];
+                                final category = f['category']?.toString() ?? '';
+                                final score = f['score'] as int? ?? 0;
+                                return Card(
+                                  color: _colorForScore(score),
+                                  child: ListTile(
+                                    title: Text(category),
+                                    trailing: Text(score.toString()),
+                                  ),
+                                );
+                              },
                             ),
                           ),
-                        ),
-                      Expanded(
-                        child: ListView.builder(
-                          itemCount: _findings.length,
-                          itemBuilder: (context, index) {
-                            final f = _findings[index];
-                            final category = f['category']?.toString() ?? '';
-                            final score = f['score'] as int? ?? 0;
-                            return Card(
-                              color: _colorForScore(score),
-                              child: ListTile(
-                                title: Text(category),
-                                trailing: Text(score.toString()),
-                              ),
-                            );
-                          },
-                        ),
+                        ],
                       ),
-                      if (_reportPath != null)
-                        Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Text('PDF: $_reportPath'),
-                        ),
-                    ],
-                  ),
+          ),
+        if (_reportPath != null)
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Text('PDF: $_reportPath'),
           ),
       ],
     );
