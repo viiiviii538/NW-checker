@@ -47,6 +47,16 @@ void main() {
       throwsA(isA<Exception>().having((e) => e.toString(), 'message', contains('bad'))),
     );
   });
+  test('fetchScan reports HTTP code when unknown error format', () async {
+    final client = MockClient((request) async {
+      return http.Response('whatever', 418);
+    });
+    expect(
+      StaticScanApi.fetchScan(client: client),
+      throwsA(isA<Exception>().having((e) => e.toString(), 'message', contains('HTTP 418'))),
+    );
+  });
+
 
   test('fetchScan throws on timeout', () async {
     final client = MockClient((request) async {
