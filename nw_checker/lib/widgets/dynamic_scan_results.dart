@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/scan_category.dart';
 import '../scan_result_detail_page.dart';
+import 'severity_badge.dart';
 
 /// 動的スキャン結果一覧ウィジェット。
 class DynamicScanResults extends StatelessWidget {
@@ -20,7 +21,13 @@ class DynamicScanResults extends StatelessWidget {
           children: cat.issues
               .map(
                 (e) => ListTile(
-                  title: Text(e),
+                  title: Row(
+                    children: [
+                      SeverityBadge(severity: cat.severity.name),
+                      const SizedBox(width: 8),
+                      Text(e),
+                    ],
+                  ),
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
