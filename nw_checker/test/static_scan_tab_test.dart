@@ -242,10 +242,9 @@ void main() {
     );
 
     await tester.tap(find.byKey(const Key('reportButton')));
-    await tester.pump();
-    await tester.pump();
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(called, isTrue);
+    expect(find.text('PDF: /tmp/report.pdf'), findsOneWidget);
   });
 }
