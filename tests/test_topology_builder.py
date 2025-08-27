@@ -38,6 +38,7 @@ def test_build_paths_basic(monkeypatch):
 
     monkeypatch.setattr("src.topology_builder.traceroute", fake_traceroute)
     monkeypatch.setattr("src.topology_builder._augment_with_snmp", fake_augment)
+    monkeypatch.setattr("src.topology_builder.nextCmd", object())
 
     result = build_paths(["192.168.0.10"])
     assert result == {
@@ -57,11 +58,34 @@ def test_build_paths_with_snmp(monkeypatch):
 
     monkeypatch.setattr("src.topology_builder.traceroute", fake_traceroute)
     monkeypatch.setattr("src.topology_builder._augment_with_snmp", fake_augment)
+    monkeypatch.setattr("src.topology_builder.nextCmd", object())
 
     result = build_paths(["192.168.0.20"], use_snmp=True)
     assert result == {
         "paths": [{"ip": "192.168.0.20", "path": ["LAN", "SwitchA", "Host"]}]
     }
+
+
+def test_build_paths_snmp_unavailable(monkeypatch):
+    """SNMP augmentation is skipped when pysnmp is absent."""
+
+    def fake_traceroute(ip):  # pragma: no cover - simple stub
+        return ["192.168.0.1", ip]
+
+    called = {"flag": False}
+
+    def fake_augment(hops, path, community="public"):
+        called["flag"] = True
+
+    monkeypatch.setattr("src.topology_builder.traceroute", fake_traceroute)
+    monkeypatch.setattr("src.topology_builder._augment_with_snmp", fake_augment)
+    monkeypatch.setattr("src.topology_builder.nextCmd", None)
+
+    result = build_paths(["192.168.0.50"], use_snmp=True)
+    assert result == {
+        "paths": [{"ip": "192.168.0.50", "path": ["LAN", "Router", "Host"]}]
+    }
+    assert not called["flag"]
 
 
 def test_build_topology_wrapper(monkeypatch):
