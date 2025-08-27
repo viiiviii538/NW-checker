@@ -150,4 +150,40 @@ void main() {
     expect(find.text('リスクスコア: 0'), findsOneWidget);
     expect(find.text('c'), findsOneWidget);
   });
+
+  testWidgets('tiles are color coded by score', (tester) async {
+    Future<Map<String, dynamic>> mockFetch() async {
+      return {
+        'risk_score': 7,
+        'findings': [
+          {'category': 'ok', 'score': 0},
+          {'category': 'warn', 'score': 2},
+          {'category': 'bad', 'score': 5},
+        ],
+      };
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: StaticScanTab(fetcher: mockFetch)),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('staticButton')));
+    await tester.pumpAndSettle();
+
+    final okCard = tester.widget<Card>(
+      find.ancestor(of: find.text('ok'), matching: find.byType(Card)),
+    );
+    final warnCard = tester.widget<Card>(
+      find.ancestor(of: find.text('warn'), matching: find.byType(Card)),
+    );
+    final badCard = tester.widget<Card>(
+      find.ancestor(of: find.text('bad'), matching: find.byType(Card)),
+    );
+
+    expect(okCard.color, Colors.green.shade100);
+    expect(warnCard.color, Colors.yellow.shade100);
+    expect(badCard.color, Colors.red.shade100);
+  });
 }
