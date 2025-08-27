@@ -38,7 +38,7 @@ class _StaticScanTabState extends State<StaticScanTab> {
           _isLoading = false;
           _findings =
               (result['findings'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-          _riskScore = result['risk_score'] as int?;
+          _riskScore = result['risk_score'] as int? ?? 0;
         });
       } catch (e) {
         if (!mounted) return;
@@ -80,24 +80,45 @@ class _StaticScanTabState extends State<StaticScanTab> {
                   )
                 : _findings.isEmpty
                 ? const Center(child: Text('結果なし'))
-                : ListView.builder(
-                    itemCount: _findings.length + 1,
-                    itemBuilder: (context, index) {
-                      if (index == 0) {
-                        final score = _riskScore ?? 0;
-                        return ListTile(title: Text('リスクスコア: $score'));
-                      }
-                      final f = _findings[index - 1];
-                      final category = f['category']?.toString() ?? '';
-                      final score = f['score']?.toString() ?? '0';
-                      return ListTile(
-                        title: Text(category),
-                        trailing: Text(score),
-                      );
-                    },
+                : Column(
+                    children: [
+                      if (_riskScore != null)
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Card(
+                            color: _colorForScore(_riskScore!),
+                            child: ListTile(
+                              title: Text('リスクスコア: ${_riskScore ?? 0}'),
+                            ),
+                          ),
+                        ),
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: _findings.length,
+                          itemBuilder: (context, index) {
+                            final f = _findings[index];
+                            final category = f['category']?.toString() ?? '';
+                            final score = f['score'] as int? ?? 0;
+                            return Card(
+                              color: _colorForScore(score),
+                              child: ListTile(
+                                title: Text(category),
+                                trailing: Text(score.toString()),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
                   ),
           ),
       ],
     );
+  }
+
+  Color _colorForScore(int score) {
+    if (score >= 5) return Colors.red.shade100;
+    if (score >= 1) return Colors.yellow.shade100;
+    return Colors.green.shade100;
   }
 }
