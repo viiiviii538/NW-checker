@@ -26,6 +26,12 @@ def reverse_dns_lookup(
     gethostbyaddr: Optional[Callable[[str], Tuple[str, list[str], list[str]]]] = None,
 ) -> str | None:
     """IP アドレスの逆引きを行いキャッシュする"""
+
+    # 既に逆引き済みならキャッシュを返す
+    cached = _dns_cache.get(ip_addr)
+    if isinstance(cached, str):
+        return cached
+
     gha = gethostbyaddr or socket.gethostbyaddr
     try:
         host, _, _ = gha(ip_addr)
@@ -33,5 +39,4 @@ def reverse_dns_lookup(
         _dns_cache[ip_addr] = host  # 成功時はキャッシュ
         return host
     except Exception:
-        cached = _dns_cache.get(ip_addr)
-        return cached.rstrip(".").lower() if isinstance(cached, str) else None
+        return None
