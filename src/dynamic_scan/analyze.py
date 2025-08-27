@@ -7,11 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable
 
 import httpx
-from . import geoip, dns_analyzer
-
-
-# 危険とされるプロトコルの名称
-DANGEROUS_PROTOCOLS = {"telnet", "ftp", "rdp"}
+from . import geoip, dns_analyzer, protocol_detector
 
 
 def load_dangerous_countries(
@@ -28,6 +24,10 @@ def load_dangerous_countries(
 
 # 危険国コードの集合
 DANGEROUS_COUNTRIES = load_dangerous_countries()
+
+# 危険プロトコル名の集合
+# ポート 21:FTP, 23:Telnet, 3389:RDP, 445:SMB など
+DANGEROUS_PROTOCOLS: set[str] = {"ftp", "telnet", "rdp", "smb"}
 
 
 load_blacklist = dns_analyzer.load_blacklist
@@ -120,15 +120,6 @@ async def geoip_lookup(ip: str, db_path: str | None = None) -> Dict[str, Any]:
 
 
 
-def is_dangerous_protocol(protocol: str | None) -> bool:
-    """危険プロトコルか判定する。
-    文字列以外が渡された場合は危険ではないとみなす。
-    """
-    if not isinstance(protocol, str):
-        return False
-    return protocol.lower() in DANGEROUS_PROTOCOLS
-
-
 def is_unapproved_device(mac: str, approved_macs: Iterable[str]) -> bool:
     """未承認デバイス (MACアドレス) か判定する。"""
     return mac not in set(approved_macs)
@@ -200,7 +191,7 @@ def detect_dangerous_protocols(packet) -> AnalysisResult:
     protocol = getattr(
         packet, "protocol", getattr(getattr(packet, "payload", None), "name", "unknown")
     )
-    dangerous = is_dangerous_protocol(protocol)
+    dangerous = protocol_detector.analyze_packet(packet)
     return AnalysisResult(protocol=protocol, dangerous_protocol=dangerous)
 
 
