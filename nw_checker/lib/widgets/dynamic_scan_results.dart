@@ -25,7 +25,8 @@ class DynamicScanResults extends StatelessWidget {
                     children: [
                       SeverityBadge(severity: cat.severity.name),
                       const SizedBox(width: 8),
-                      Text(e),
+                      // 長いメッセージでも折り返せるようにする
+                      Expanded(child: Text(e)),
                     ],
                   ),
                   onTap: () {
