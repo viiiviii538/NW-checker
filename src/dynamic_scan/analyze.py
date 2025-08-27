@@ -25,6 +25,10 @@ def load_dangerous_countries(
 # 危険国コードの集合
 DANGEROUS_COUNTRIES = load_dangerous_countries()
 
+# 危険プロトコル名の集合
+# ポート 21:FTP, 23:Telnet, 3389:RDP, 445:SMB など
+DANGEROUS_PROTOCOLS: set[str] = {"ftp", "telnet", "rdp", "smb"}
+
 
 load_blacklist = dns_analyzer.load_blacklist
 socket = dns_analyzer.socket
