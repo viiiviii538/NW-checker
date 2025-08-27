@@ -10,7 +10,7 @@ from src.dynamic_scan import geoip
 
 import pytest
 
-from src.dynamic_scan import analyze, dns_analyzer
+from src.dynamic_scan import analyze, dns_analyzer, protocol_detector
 
 
 @pytest.fixture
@@ -257,9 +257,19 @@ def test_reverse_dns_lookup_cached(monkeypatch):
 
 
 def test_is_dangerous_protocol():
-    assert analyze.is_dangerous_protocol("telnet")
-    assert not analyze.is_dangerous_protocol("http")
-    assert not analyze.is_dangerous_protocol(None)
+    assert protocol_detector.is_dangerous_protocol(21, 80)
+    assert not protocol_detector.is_dangerous_protocol(80, 8080)
+    assert not protocol_detector.is_dangerous_protocol(None, None)
+
+
+def test_analyze_packet_helper():
+    pkt = type("Pkt", (), {"src_port": 445, "dst_port": 1})
+    assert protocol_detector.analyze_packet(pkt) is True
+
+
+def test_analyze_packet_helper_safe():
+    pkt = type("Pkt", (), {"src_port": 80, "dst_port": 8080})
+    assert protocol_detector.analyze_packet(pkt) is False
 
 
 def test_is_unapproved_device():
@@ -391,7 +401,7 @@ def test_record_dns_history(monkeypatch):
 
 
 def test_detect_dangerous_protocols():
-    pkt = type("Pkt", (), {"protocol": "TELNET"})
+    pkt = type("Pkt", (), {"protocol": "TELNET", "src_port": 23})
     res = analyze.detect_dangerous_protocols(pkt)
     assert res.dangerous_protocol is True
 
@@ -472,13 +482,13 @@ def test_record_dns_history_blacklisted_cached(monkeypatch):
 
 
 def test_detect_dangerous_protocols_safe_protocol():
-    pkt = type("Pkt", (), {"protocol": "HTTP"})
+    pkt = type("Pkt", (), {"protocol": "HTTP", "src_port": 80})
     res = analyze.detect_dangerous_protocols(pkt)
     assert res.dangerous_protocol is False
 
 
 def test_detect_dangerous_protocols_none_protocol():
-    pkt = type("Pkt", (), {"protocol": None})
+    pkt = type("Pkt", (), {})
     res = analyze.detect_dangerous_protocols(pkt)
     assert res.dangerous_protocol is False
 

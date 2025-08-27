@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'api_config.dart';
 import 'package:http/http.dart' as http;
@@ -47,8 +48,11 @@ class StaticScanApi {
         return {'findings': findings, 'risk_score': riskScore};
       }
       throw Exception(_extractMessage(resp));
+    } on TimeoutException {
+      // タイムアウトは呼び出し元で明示的に扱えるよう再送出
+      rethrow;
     } catch (e) {
-      // 呼び出し元で処理できるようそのまま再スロー
+      // その他のエラーも呼び出し元に伝播
       rethrow;
     } finally {
       if (created) {
