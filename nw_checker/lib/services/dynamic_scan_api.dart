@@ -8,6 +8,9 @@ import 'package:http/http.dart' as http;
 /// 実際のバックエンドとの通信は今後実装予定。
 class DynamicScanApi {
   static String get _baseUrl => baseUrl();
+
+  /// HTTP クライアント（テスト用に差し替え可能）
+  static http.Client client = http.Client();
   static const String _token = String.fromEnvironment(
     'API_TOKEN',
     defaultValue: '',
@@ -20,7 +23,7 @@ class DynamicScanApi {
   /// スキャンを開始する。
   static Future<void> startScan() async {
     try {
-      await http.post(
+      await client.post(
         Uri.parse('$_baseUrl/dynamic-scan/start'),
         headers: _headers(),
         body: jsonEncode({}),
@@ -34,7 +37,7 @@ class DynamicScanApi {
   /// スキャンを停止する。
   static Future<void> stopScan() async {
     try {
-      await http.post(
+      await client.post(
         Uri.parse('$_baseUrl/dynamic-scan/stop'),
         headers: _headers(),
       );
@@ -46,7 +49,7 @@ class DynamicScanApi {
   /// 実際のAPI呼び出しを試み、失敗時はダミーデータを返す。
   static Stream<ScanReport> fetchResults() async* {
     try {
-      final resp = await http.get(
+      final resp = await client.get(
         Uri.parse('$_baseUrl/dynamic-scan/results'),
         headers: _headers(),
       );
@@ -87,7 +90,7 @@ class DynamicScanApi {
   /// 指定期間の履歴を取得する。
   static Future<List<String>> fetchHistory(DateTime from, DateTime to) async {
     try {
-      final resp = await http.get(
+      final resp = await client.get(
         Uri.parse(
           '$_baseUrl/dynamic-scan/history?start=${from.toIso8601String()}&end=${to.toIso8601String()}',
         ),
@@ -106,11 +109,14 @@ class DynamicScanApi {
   }
 
   /// DNS 履歴を取得する。
-  static Future<List<String>> fetchDnsHistory(DateTime from, DateTime to) async {
+  static Future<List<String>> fetchDnsHistory(
+    DateTime from,
+    DateTime to,
+  ) async {
     final f = from.toIso8601String().split('T').first;
     final t = to.toIso8601String().split('T').first;
     try {
-      final resp = await http.get(
+      final resp = await client.get(
         Uri.parse('$_baseUrl/dynamic-scan/dns-history?start=$f&end=$t'),
         headers: _headers(),
       );
@@ -119,19 +125,19 @@ class DynamicScanApi {
         final results = decoded['history'];
         if (results is List) {
           return results
-              .map((e) => e is Map
-                  ? '${e['timestamp']} ${e['ip']} ${e['hostname']}' +
-                      (e['blacklisted'] == true ? ' [BLACKLISTED]' : '')
-                  : e.toString())
+              .map(
+                (e) => e is Map
+                    ? '${e['timestamp']} ${e['ip']} ${e['hostname']}' +
+                          (e['blacklisted'] == true ? ' [BLACKLISTED]' : '')
+                    : e.toString(),
+              )
               .cast<String>()
               .toList();
         }
       }
     } catch (_) {}
     await Future.delayed(const Duration(milliseconds: 300));
-    return [
-      'DNS History ${from.toIso8601String()} - ${to.toIso8601String()}'
-    ];
+    return ['DNS History ${from.toIso8601String()} - ${to.toIso8601String()}'];
   }
 
   /// アラート通知を購読する。

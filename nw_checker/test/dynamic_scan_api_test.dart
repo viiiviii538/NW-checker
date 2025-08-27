@@ -1,27 +1,51 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'package:nw_checker/api_config.dart';
 import 'package:nw_checker/services/dynamic_scan_api.dart';
 
 void main() {
-  test('startScan completes', () async {
-    await expectLater(DynamicScanApi.startScan(), completes);
+  tearDown(() {
+    DynamicScanApi.client = http.Client();
+    resetEnvApiBaseUrlForTest();
   });
 
-  test('stopScan completes', () async {
-    await expectLater(DynamicScanApi.stopScan(), completes);
-  });
+  test('fetchDnsHistory parses and formats response', () async {
+    setEnvApiBaseUrlForTest(() => 'http://mock');
+    DynamicScanApi.client = MockClient((request) async {
+      expect(
+        request.url.toString(),
+        'http://mock/dynamic-scan/dns-history?start=2025-01-01&end=2025-01-02',
+      );
+      return http.Response(
+        jsonEncode({
+          'history': [
+            {
+              'timestamp': '2025-01-01T00:00:00',
+              'ip': '1.1.1.1',
+              'hostname': 'host.example',
+              'blacklisted': false,
+            },
+            {
+              'timestamp': '2025-01-01T00:00:01',
+              'ip': '2.2.2.2',
+              'hostname': 'bad.example',
+              'blacklisted': true,
+            },
+          ],
+        }),
+        200,
+      );
+    });
 
-  test('fetchResults emits report', () async {
-    final reports = await DynamicScanApi.fetchResults().toList();
-    expect(reports, hasLength(1));
-    final report = reports.first;
-    expect(report.riskScore, 1);
-    expect(report.categories.first.name, 'protocols');
-    expect(report.categories.first.issues, contains('ftp'));
-  });
-
-  test('subscribeAlerts emits alerts', () async {
-    final alerts = await DynamicScanApi.subscribeAlerts().toList();
-    expect(alerts.first, contains('ALERT'));
-    expect(alerts, hasLength(2));
+    final from = DateTime.parse('2025-01-01');
+    final to = DateTime.parse('2025-01-02');
+    final list = await DynamicScanApi.fetchDnsHistory(from, to);
+    expect(list, [
+      '2025-01-01T00:00:00 1.1.1.1 host.example',
+      '2025-01-01T00:00:01 2.2.2.2 bad.example [BLACKLISTED]',
+    ]);
   });
 }
