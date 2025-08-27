@@ -2,8 +2,8 @@ import socket
 from pathlib import Path
 from typing import Dict, Optional, Callable, Tuple
 
-# DNS 逆引き結果のキャッシュ
-_dns_cache: Dict[str, str] = {}
+# DNS 逆引き結果のキャッシュ (IP -> (ホスト名, ブラックリスト判定))
+_dns_cache: Dict[str, Tuple[str, bool]] = {}
 
 
 def load_blacklist(path: str = "configs/domain_blacklist.txt") -> set[str]:
@@ -24,14 +24,19 @@ def reverse_dns_lookup(
     ip_addr: str,
     *,
     gethostbyaddr: Optional[Callable[[str], Tuple[str, list[str], list[str]]]] = None,
-) -> str | None:
-    """IP アドレスの逆引きを行いキャッシュする"""
+) -> Tuple[str | None, bool | None]:
+    """IP アドレスの逆引きを行いキャッシュする。
+
+    戻り値は (ホスト名, ブラックリスト判定) のタプル。
+    逆引きに失敗しキャッシュも無い場合は (None, None) を返す。
+    """
     gha = gethostbyaddr or socket.gethostbyaddr
     try:
         host, _, _ = gha(ip_addr)
         host = host.rstrip(".").lower()
-        _dns_cache[ip_addr] = host  # 成功時はキャッシュ
-        return host
+        blacklisted = host in DOMAIN_BLACKLIST
+        _dns_cache[ip_addr] = (host, blacklisted)  # 成功時はキャッシュ
+        return host, blacklisted
     except Exception:
         cached = _dns_cache.get(ip_addr)
-        return cached.rstrip(".").lower() if isinstance(cached, str) else None
+        return cached if cached else (None, None)

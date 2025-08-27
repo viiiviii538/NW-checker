@@ -35,7 +35,7 @@ def test_reverse_dns_lookup(monkeypatch):
     monkeypatch.setattr(
         analyze.socket, "gethostbyaddr", lambda ip: ("host.example", [], [])
     )
-    assert analyze.reverse_dns_lookup("1.1.1.1") == "host.example"
+    assert analyze.reverse_dns_lookup("1.1.1.1") == ("host.example", False)
 
 
 def test_is_dangerous_protocol():
@@ -116,7 +116,7 @@ def test_analyse_packets_pipeline(tmp_path, monkeypatch):
 
         monkeypatch.setattr(analyze, "geoip_lookup", fake_geoip)
         monkeypatch.setattr(geoip, "get_country", lambda ip: "CN")
-        monkeypatch.setattr(analyze, "reverse_dns_lookup", lambda ip: "example.com")
+        monkeypatch.setattr(analyze, "reverse_dns_lookup", lambda ip: ("example.com", False))
         queue: asyncio.Queue = asyncio.Queue()
         task = asyncio.create_task(
             analyze.analyse_packets(
@@ -169,7 +169,7 @@ def test_analyse_packets_pipeline_in_hours(tmp_path, monkeypatch):
 
         monkeypatch.setattr(analyze, "geoip_lookup", fake_geoip)
         monkeypatch.setattr(geoip, "get_country", lambda ip: "US")
-        monkeypatch.setattr(analyze, "reverse_dns_lookup", lambda ip: "example.com")
+        monkeypatch.setattr(analyze, "reverse_dns_lookup", lambda ip: ("example.com", False))
         queue: asyncio.Queue = asyncio.Queue()
         task = asyncio.create_task(
             analyze.analyse_packets(

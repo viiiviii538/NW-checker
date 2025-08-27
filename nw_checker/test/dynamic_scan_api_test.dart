@@ -24,4 +24,13 @@ void main() {
     expect(alerts.first, contains('ALERT'));
     expect(alerts, hasLength(2));
   });
+
+  test('fetchDnsHistory returns entries', () async {
+    final hist = await DynamicScanApi.fetchDnsHistory(
+      DateTime(2025, 1, 1),
+      DateTime(2025, 1, 2),
+    );
+    expect(hist, isNotEmpty);
+    expect(hist.first, contains('DNS History'));
+  });
 }
