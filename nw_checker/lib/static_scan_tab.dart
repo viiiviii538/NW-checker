@@ -7,9 +7,12 @@ class StaticScanTab extends StatefulWidget {
   const StaticScanTab({
     super.key,
     Future<Map<String, dynamic>> Function()? fetcher,
-  }) : fetcher = fetcher ?? StaticScanApi.fetchScan;
+    Future<String> Function()? reportFetcher,
+  }) : fetcher = fetcher ?? StaticScanApi.fetchScan,
+       reportFetcher = reportFetcher ?? StaticScanApi.fetchReport;
 
   final Future<Map<String, dynamic>> Function() fetcher;
+  final Future<String> Function() reportFetcher;
 
   @override
   State<StaticScanTab> createState() => _StaticScanTabState();
@@ -20,6 +23,7 @@ class _StaticScanTabState extends State<StaticScanTab> {
   String? _error;
   List<Map<String, dynamic>> _findings = [];
   int? _riskScore;
+  String? _reportPath;
 
   void _startScan() {
     setState(() {
@@ -27,6 +31,7 @@ class _StaticScanTabState extends State<StaticScanTab> {
       _error = null;
       _findings = [];
       _riskScore = null;
+      _reportPath = null;
     });
 
     // UI が進捗表示を描画できるように次フレームで実行
@@ -50,14 +55,43 @@ class _StaticScanTabState extends State<StaticScanTab> {
     });
   }
 
+  void _generateReport() async {
+    // Scan結果とは独立してレポートのみ生成する
+    setState(() {
+      _reportPath = null;
+    });
+    try {
+      final path = await widget.reportFetcher();
+      if (!mounted) return;
+      setState(() {
+        _reportPath = path;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _reportPath = 'error';
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        ElevatedButton(
-          key: const Key('staticButton'),
-          onPressed: _isLoading ? null : _startScan,
-          child: const Text('スキャン開始'),
+        Row(
+          children: [
+            ElevatedButton(
+              key: const Key('staticButton'),
+              onPressed: _isLoading ? null : _startScan,
+              child: const Text('スキャン開始'),
+            ),
+            const SizedBox(width: 8),
+            ElevatedButton(
+              key: const Key('reportButton'),
+              onPressed: _generateReport,
+              child: const Text('PDF生成'),
+            ),
+          ],
         ),
         if (_isLoading)
           const Expanded(child: Center(child: CircularProgressIndicator()))
@@ -109,6 +143,11 @@ class _StaticScanTabState extends State<StaticScanTab> {
                           },
                         ),
                       ),
+                      if (_reportPath != null)
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Text('PDF: $_reportPath'),
+                        ),
                     ],
                   ),
           ),

@@ -24,7 +24,13 @@ void main() {
     });
     expect(
       StaticScanApi.fetchScan(client: client),
-      throwsA(isA<Exception>().having((e) => e.toString(), 'message', contains('fail'))),
+      throwsA(
+        isA<Exception>().having(
+          (e) => e.toString(),
+          'message',
+          contains('fail'),
+        ),
+      ),
     );
   });
 
@@ -34,7 +40,13 @@ void main() {
     });
     expect(
       StaticScanApi.fetchScan(client: client),
-      throwsA(isA<Exception>().having((e) => e.toString(), 'message', contains('oops'))),
+      throwsA(
+        isA<Exception>().having(
+          (e) => e.toString(),
+          'message',
+          contains('oops'),
+        ),
+      ),
     );
   });
 
@@ -44,7 +56,13 @@ void main() {
     });
     expect(
       StaticScanApi.fetchScan(client: client),
-      throwsA(isA<Exception>().having((e) => e.toString(), 'message', contains('bad'))),
+      throwsA(
+        isA<Exception>().having(
+          (e) => e.toString(),
+          'message',
+          contains('bad'),
+        ),
+      ),
     );
   });
   test('fetchScan reports HTTP code when unknown error format', () async {
@@ -53,10 +71,28 @@ void main() {
     });
     expect(
       StaticScanApi.fetchScan(client: client),
-      throwsA(isA<Exception>().having((e) => e.toString(), 'message', contains('HTTP 418'))),
+      throwsA(
+        isA<Exception>().having(
+          (e) => e.toString(),
+          'message',
+          contains('HTTP 418'),
+        ),
+      ),
     );
   });
 
+  test('fetchReport returns report path', () async {
+    final client = MockClient((request) async {
+      expect(request.url.queryParameters['report'], 'true');
+      return http.Response(
+        '{"risk_score": 1, "findings": [], "report_path": "/tmp/r.pdf"}',
+        200,
+      );
+    });
+
+    final path = await StaticScanApi.fetchReport(client: client);
+    expect(path, '/tmp/r.pdf');
+  });
 
   test('fetchScan throws on timeout', () async {
     final client = MockClient((request) async {
