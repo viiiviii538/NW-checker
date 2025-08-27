@@ -13,6 +13,7 @@ class _HistoryPageState extends State<HistoryPage> {
   final _fromController = TextEditingController();
   final _toController = TextEditingController();
   List<String> _results = [];
+  List<String> _dnsHistory = [];
   bool _loading = false;
 
   Future<void> _load() async {
@@ -21,8 +22,10 @@ class _HistoryPageState extends State<HistoryPage> {
       final from = DateTime.parse(_fromController.text);
       final to = DateTime.parse(_toController.text);
       _results = await DynamicScanApi.fetchHistory(from, to);
+      _dnsHistory = await DynamicScanApi.fetchDnsHistory(from, to);
     } catch (_) {
       _results = [];
+      _dnsHistory = [];
     }
     if (mounted) {
       setState(() => _loading = false);
@@ -58,9 +61,13 @@ class _HistoryPageState extends State<HistoryPage> {
               child: CircularProgressIndicator(),
             ),
             Expanded(
-              child: ListView.builder(
-                itemCount: _results.length,
-                itemBuilder: (context, index) => ListTile(title: Text(_results[index])),
+              child: ListView(
+                children: [
+                  for (final r in _results) ListTile(title: Text(r)),
+                  const Divider(),
+                  const ListTile(title: Text('DNS History')),
+                  for (final h in _dnsHistory) ListTile(title: Text(h)),
+                ],
               ),
             ),
           ],

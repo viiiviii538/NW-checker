@@ -65,3 +65,17 @@ def test_dynamic_scan_endpoints(monkeypatch, tmp_path, base):
     hist2 = resp5.json()["results"]
     assert len(hist2) == 1
     assert hist2[0]["protocol"] == "ftp"
+
+    asyncio.run(
+        api.scan_scheduler.storage.save_dns_history(
+            "3.3.3.3", "host.example", False
+        )
+    )
+    resp6 = client.get(
+        f"{base}/dns-history",
+        params={"start": "1970-01-01", "end": "2100-01-01"},
+    )
+    assert resp6.status_code == 200
+    dns_hist = resp6.json()["history"]
+    assert len(dns_hist) == 1
+    assert dns_hist[0]["ip"] == "3.3.3.3"

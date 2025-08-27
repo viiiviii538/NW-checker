@@ -105,6 +105,39 @@ class DynamicScanApi {
     return ['History ${from.toIso8601String()} - ${to.toIso8601String()}'];
   }
 
+  /// 指定期間のDNS履歴を取得する。
+  static Future<List<String>> fetchDnsHistory(DateTime from, DateTime to) async {
+    try {
+      final resp = await http.get(
+        Uri.parse(
+          '$_baseUrl/dynamic-scan/dns-history?start=${from.toIso8601String()}&end=${to.toIso8601String()}',
+        ),
+        headers: _headers(),
+      );
+      if (resp.statusCode == 200) {
+        final decoded = jsonDecode(resp.body) as Map<String, dynamic>;
+        final results = decoded['history'];
+        if (results is List) {
+          return results
+              .map((e) {
+                if (e is Map) {
+                  final ts = e['timestamp'] ?? '';
+                  final ip = e['ip'] ?? '';
+                  final host = e['hostname'] ?? '';
+                  final bl = (e['blacklisted'] == true) ? ' (blacklisted)' : '';
+                  return '$ts $ip $host$bl';
+                }
+                return e.toString();
+              })
+              .cast<String>()
+              .toList();
+        }
+      }
+    } catch (_) {}
+    await Future.delayed(const Duration(milliseconds: 300));
+    return ['DNS History ${from.toIso8601String()} - ${to.toIso8601String()}'];
+  }
+
   /// アラート通知を購読する。
   /// 現状は2秒毎に2件のダミーアラートを流す。
   /// 実装済みの `/ws/dynamic-scan` WebSocket が利用可能になれば置き換え予定。

@@ -9,14 +9,22 @@ _dns_cache: "OrderedDict[str, str]" = OrderedDict()
 _DNS_CACHE_MAX = 256
 
 
-def load_blacklist(path: str = "configs/domain_blacklist.txt") -> set[str]:
+def load_blacklist(path: str | None = None) -> set[str]:
     """ブラックリストファイルを読み込み"""
-    with open(path, encoding="utf-8") as f:
-        return {
-            line.strip().lower()
-            for line in f
-            if line.strip() and not line.startswith("#")
-        }
+    path_obj = (
+        Path(path)
+        if path
+        else Path(__file__).resolve().parents[2] / "configs" / "domain_blacklist.txt"
+    )
+    try:
+        with path_obj.open(encoding="utf-8") as f:
+            return {
+                line.strip().lower()
+                for line in f
+                if line.strip() and not line.startswith("#")
+            }
+    except FileNotFoundError:
+        return set()
 
 
 # 逆引きドメインのブラックリスト
