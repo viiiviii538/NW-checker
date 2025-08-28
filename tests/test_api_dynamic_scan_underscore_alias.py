@@ -1,8 +1,13 @@
 import asyncio
+import pytest
+
+pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
 
 from src import api
 from src.dynamic_scan import scheduler, storage, capture, analyze
+
+pytestmark = pytest.mark.fastapi
 
 
 def test_dynamic_scan_start_stop_underscore_alias(monkeypatch, tmp_path):

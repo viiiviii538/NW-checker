@@ -1,7 +1,11 @@
 import time
+import pytest
 
+pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
 from src import server
+
+pytestmark = pytest.mark.fastapi
 
 
 def test_static_scan_success(monkeypatch):

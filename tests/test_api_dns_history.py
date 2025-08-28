@@ -1,8 +1,13 @@
 import asyncio
+import pytest
+
+pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
 
 from src import api
 from src.dynamic_scan import scheduler, storage
+
+pytestmark = pytest.mark.fastapi
 
 
 def test_dns_history_endpoint(tmp_path):

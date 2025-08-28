@@ -1,9 +1,13 @@
 import asyncio
 import pytest
+
+pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
 
 from src import api
 from src.dynamic_scan import capture, analyze, storage, scheduler
+
+pytestmark = pytest.mark.fastapi
 
 @pytest.mark.parametrize("base", ["/scan/dynamic", "/dynamic-scan"])
 def test_dynamic_scan_endpoints(monkeypatch, tmp_path, base):
