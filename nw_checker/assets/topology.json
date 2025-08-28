@@ -1,7 +1,0 @@
-{
-  "nodes": [
-    {"id": "router", "label": "Router", "x": 100, "y": 100, "details": "Main router"},
-    {"id": "server", "label": "Server", "x": 300, "y": 100, "details": "Application server"},
-    {"id": "pc", "label": "PC", "x": 200, "y": 200, "details": "Client PC"}
-  ]
-}
