@@ -3,14 +3,15 @@ import json
 import sqlite3
 from datetime import datetime
 from pathlib import Path
-from typing import List
+from typing import List, Set
 
 # 設定ファイルとデータベースのパス
 CONFIG_PATH = Path("configs/approved_devices.json")
 DB_PATH = Path("dynamic_scan_results.db")
 
 # 既知デバイス集合と WebSocket リスナー
-_known_devices: set[str] = set()
+# Set of approved/seen device MAC addresses. Populated on module import.
+_known_devices: Set[str] = set()
 _listeners: List[asyncio.Queue] = []
 
 
@@ -41,7 +42,10 @@ def remove_listener(queue: asyncio.Queue) -> None:
 
 
 def track_device(mac_addr: str) -> bool:
-    """デバイスの MAC アドレスを追跡し、新規なら DB と WebSocket に通知"""
+    """デバイスの MAC アドレスを追跡し、新規なら DB と WebSocket に通知.
+
+    Returns True if the address was newly registered, otherwise False.
+    """
     mac = mac_addr.lower()
     if not mac or mac in _known_devices:
         return False
