@@ -11,6 +11,8 @@ pytestmark = pytest.mark.fastapi
 
 
 def test_dynamic_scan_start_stop_alias(monkeypatch, tmp_path):
+    # 認証トークンが設定されていると 401 になるため無効化
+    monkeypatch.setattr(api, "API_TOKEN", None, raising=False)
     client = TestClient(api.app)
     store = storage.Storage(tmp_path / "res.db")
     monkeypatch.setattr(storage, "Storage", lambda *args, **kwargs: store)
@@ -48,6 +50,7 @@ def test_dynamic_scan_start_stop_alias(monkeypatch, tmp_path):
 
 
 def test_dynamic_scan_results_alias(monkeypatch, tmp_path):
+    monkeypatch.setattr(api, "API_TOKEN", None, raising=False)
     client = TestClient(api.app)
     store = storage.Storage(tmp_path / "res.db")
     api.scan_scheduler = scheduler.DynamicScanScheduler()
@@ -64,6 +67,7 @@ def test_dynamic_scan_results_alias(monkeypatch, tmp_path):
 
 
 def test_dynamic_scan_ws_alias(monkeypatch):
+    monkeypatch.setattr(api, "API_TOKEN", None, raising=False)
     client = TestClient(api.app)
     holder: dict[str, asyncio.Queue] = {}
 
