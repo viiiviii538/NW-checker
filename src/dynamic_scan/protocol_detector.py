@@ -5,7 +5,15 @@
 from typing import Optional
 
 # 危険とされるポート番号集合
-DANGEROUS_PORTS: set[int] = {21, 23, 3389, 445}
+# FTP(21), Telnet(23), RDP(3389), SMB(445) などの典型的な脆弱サービス
+# VNC やその他の管理用プロトコルも一緒に監視する
+DANGEROUS_PORTS: set[int] = {
+    21,  # FTP
+    23,  # Telnet
+    3389,  # RDP
+    445,  # SMB
+    5900,  # VNC
+}
 
 
 def is_dangerous_protocol(src_port: Optional[int], dst_port: Optional[int]) -> bool:

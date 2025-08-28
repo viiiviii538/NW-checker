@@ -37,20 +37,40 @@ def test_dynamic_scan_endpoints(monkeypatch, tmp_path, base):
     # ストレージに異なるデータを保存し履歴 API のフィルタを検証
     asyncio.run(
         api.scan_scheduler.storage.save_result(
-            {"key": "value", "src_ip": "1.1.1.1", "protocol": "http"}
+            {
+                "key": "value",
+                "src_ip": "1.1.1.1",
+                "protocol": "http",
+                "dangerous_protocol": False,
+            }
         )
     )
     asyncio.run(
         api.scan_scheduler.storage.save_result(
-            {"key": "other", "src_ip": "2.2.2.2", "protocol": "ftp"}
+            {
+                "key": "other",
+                "src_ip": "2.2.2.2",
+                "protocol": "ftp",
+                "dangerous_protocol": True,
+            }
+        )
+    )
+    asyncio.run(
+        api.scan_scheduler.storage.save_result(
+            {
+                "key": "third",
+                "src_ip": "3.3.3.3",
+                "protocol": None,
+                "dangerous_protocol": True,
+            }
         )
     )
 
     resp3 = client.get(f"{base}/results")
     assert resp3.status_code == 200
     body = resp3.json()
-    assert body["risk_score"] == 1
-    assert body["categories"][0]["issues"] == ["ftp"]
+    assert body["risk_score"] == 2
+    assert body["categories"][0]["issues"] == ["ftp", "unknown"]
 
     resp4 = client.get(
         f"{base}/history",
