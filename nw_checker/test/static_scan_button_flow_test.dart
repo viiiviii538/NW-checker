@@ -29,4 +29,22 @@ void main() {
     expect(find.text('リスクスコア: 1'), findsOneWidget);
     expect(find.text('demo'), findsOneWidget);
   });
+
+  testWidgets('static scan button surfaces errors', (tester) async {
+    Future<Map<String, dynamic>> mockFetch() async {
+      throw Exception('fail');
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: StaticScanTab(fetcher: mockFetch)),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('staticButton')));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('fail'), findsOneWidget);
+    expect(find.text('再試行'), findsOneWidget);
+  });
 }
