@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable
 
 import httpx
-from . import geoip, dns_analyzer, protocol_detector
+from . import geoip, dns_analyzer, protocol_detector, device_tracker
 
 
 def load_dangerous_countries(
@@ -75,9 +75,8 @@ class AnalysisResult:
         return merged
 
 
-# DNS 履歴と検出済みデバイスの簡易メモリ
+# DNS 履歴のキャッシュ
 _dns_history = dns_analyzer._dns_cache
-_known_devices: set[str] = set()
 
 
 async def geoip_lookup(ip: str, db_path: str | None = None) -> Dict[str, Any]:
@@ -198,9 +197,7 @@ def detect_dangerous_protocols(packet) -> AnalysisResult:
 def track_new_devices(packet) -> AnalysisResult:
     """新たに観測されたデバイスを追跡"""
     mac = getattr(packet, "src_mac", getattr(packet, "mac", getattr(packet, "src", "")))
-    is_new = mac not in _known_devices
-    if is_new:
-        _known_devices.add(mac)
+    is_new = device_tracker.track_device(mac)
     return AnalysisResult(new_device=is_new)
 
 
