@@ -25,7 +25,6 @@ def test_dns_scan_success(monkeypatch):
     assert result["details"]["servers"] == ["8.8.8.8"]
     assert any("External DNS" in w for w in result["details"]["warnings"])
 
-
 def test_dns_scan_error(monkeypatch):
     monkeypatch.setattr(dns, "sr1", lambda *_, **__: (_ for _ in ()).throw(RuntimeError("boom")))
     result = dns.scan()
