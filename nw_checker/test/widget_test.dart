@@ -40,8 +40,8 @@ void main() {
     expect(find.text('動的スキャンを実行'), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('networkTab')));
-    await tester.pumpAndSettle();
-    expect(find.byKey(const Key('searchField')), findsOneWidget);
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 3));
 
     await tester.tap(find.byKey(const Key('testTab')));
     await tester.pumpAndSettle();

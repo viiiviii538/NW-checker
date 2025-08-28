@@ -15,18 +15,41 @@ def test_dns_scan_success(monkeypatch):
         def __getitem__(self, item):
             return self
 
+        def haslayer(self, layer):  # noqa: D401
+            return True
+
     monkeypatch.setattr(dns, "_get_nameservers", lambda path="/etc/resolv.conf": ["8.8.8.8"])
     monkeypatch.setattr(dns, "sr1", lambda *_, **__: FakeResp())
     result = dns.scan()
-    assert result["score"] >= 0
+    assert result["score"] == 1
     assert result["details"]["servers"] == ["8.8.8.8"]
-
+    assert any("External DNS" in w for w in result["details"]["warnings"])
 
 def test_dns_scan_error(monkeypatch):
     monkeypatch.setattr(dns, "sr1", lambda *_, **__: (_ for _ in ()).throw(RuntimeError("boom")))
     result = dns.scan()
     assert result["score"] == 0
     assert "boom" in result["details"]["error"]
+
+
+def test_dns_scan_dnssec_disabled(monkeypatch):
+    class FakeResp:
+        ancount = 1
+        arcount = 0
+        ad = 0
+
+        def __getitem__(self, item):
+            return self
+
+        def haslayer(self, layer):  # noqa: D401
+            return True
+
+    monkeypatch.setattr(dns, "_get_nameservers", lambda path="/etc/resolv.conf": ["192.168.1.1"])
+    monkeypatch.setattr(dns, "sr1", lambda *_, **__: FakeResp())
+    result = dns.scan()
+    assert result["score"] == 1
+    assert result["details"]["dnssec_enabled"] is False
+    assert any("DNSSEC is disabled" in w for w in result["details"]["warnings"])
 
 
 def test_dhcp_scan_success(monkeypatch):
@@ -48,6 +71,13 @@ def test_dhcp_scan_error(monkeypatch):
     result = dhcp.scan()
     assert result["score"] == 0
     assert "dhcp fail" in result["details"]["error"]
+
+
+def test_dhcp_scan_no_servers(monkeypatch):
+    monkeypatch.setattr(dhcp, "srp", lambda *_, **__: ([], None))
+    result = dhcp.scan()
+    assert result["score"] == 0
+    assert result["details"]["servers"] == []
 
 
 class DummySock:
@@ -111,3 +141,14 @@ def test_arp_spoof_scan_error(monkeypatch):
     result = arp_spoof.scan(wait=0)
     assert result["score"] == 0
     assert "table fail" in result["details"]["error"]
+
+
+def test_arp_spoof_scan_not_vulnerable(monkeypatch):
+    tables = [{}, {}]
+    monkeypatch.setattr(arp_spoof, "_get_arp_table", lambda: tables.pop(0))
+    monkeypatch.setattr(arp_spoof, "send", lambda *_, **__: None)
+    monkeypatch.setattr(arp_spoof.time, "sleep", lambda _: None)
+    result = arp_spoof.scan(wait=0)
+    assert result["score"] == 0
+    assert result["details"]["vulnerable"] is False
+    assert "No ARP poisoning" in result["details"]["explanation"]

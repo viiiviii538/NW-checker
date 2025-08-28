@@ -27,6 +27,17 @@ def test_run_all_aggregates_scores(monkeypatch):
     results = static_scan.run_all()
     total = sum(item["score"] for item in results["findings"])
     assert results["risk_score"] == total
+    categories = {f["category"] for f in results["findings"]}
+    assert categories == {
+        "ports",
+        "os_banner",
+        "smb_netbios",
+        "upnp",
+        "arp_spoof",
+        "dhcp",
+        "dns",
+        "ssl_cert",
+    }
     assert [f["category"] for f in results["findings"]][:2] == ["ports", "os_banner"]
 
 
@@ -44,3 +55,4 @@ def test_run_all_handles_module_errors(monkeypatch):
     by_cat = {r["category"]: r for r in results["findings"]}
     assert by_cat["dns"]["score"] == 0
     assert by_cat["dns"]["details"]["error"] == "boom"
+    assert results["risk_score"] == len(modules) - 1
