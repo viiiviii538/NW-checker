@@ -54,6 +54,10 @@ def test_is_dangerous_protocol():
     assert not protocol_detector.is_dangerous_protocol(None, None)
 
 
+def test_is_dangerous_protocol_winrm():
+    assert protocol_detector.is_dangerous_protocol(5985, 80)
+
+
 def test_detect_dangerous_protocols_safe_ports():
     pkt = SimpleNamespace(protocol="HTTP", src_port=80, dst_port=8080)
     res = analyze.detect_dangerous_protocols(pkt)
@@ -62,6 +66,12 @@ def test_detect_dangerous_protocols_safe_ports():
 
 def test_detect_dangerous_protocols_dst_port():
     pkt = SimpleNamespace(protocol="RDP", src_port=80, dst_port=3389)
+    res = analyze.detect_dangerous_protocols(pkt)
+    assert res.dangerous_protocol is True
+
+
+def test_detect_dangerous_protocols_src_port():
+    pkt = SimpleNamespace(protocol="SMB", src_port=445, dst_port=1234)
     res = analyze.detect_dangerous_protocols(pkt)
     assert res.dangerous_protocol is True
 

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nw_checker/models/scan_category.dart';
 import 'package:nw_checker/widgets/dynamic_scan_results.dart';
-import 'package:nw_checker/widgets/severity_badge.dart';
+import 'package:nw_checker/widgets/danger_badge.dart';
 
 void main() {
   testWidgets('DynamicScanResults expands categories and shows issues', (
@@ -20,12 +20,10 @@ void main() {
     await tester.tap(find.text('protocols'));
     await tester.pumpAndSettle();
     expect(find.text('ftp'), findsOneWidget);
-    expect(find.byType(SeverityBadge), findsOneWidget);
-    final badge = tester.widget<SeverityBadge>(find.byType(SeverityBadge));
-    expect(badge.severity.toLowerCase(), 'high');
+    expect(find.byType(DangerBadge), findsOneWidget);
   });
 
-  testWidgets('SeverityBadge is red for high severity', (tester) async {
+  testWidgets('DangerBadge is red', (tester) async {
     final categories = [
       ScanCategory(name: 'protocols', severity: Severity.high, issues: ['ftp']),
     ];
@@ -38,7 +36,7 @@ void main() {
     await tester.pumpAndSettle();
     final container = tester.widget<Container>(
       find.descendant(
-        of: find.byType(SeverityBadge),
+        of: find.byType(DangerBadge),
         matching: find.byType(Container),
       ),
     );

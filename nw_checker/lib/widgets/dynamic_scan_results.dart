@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/scan_category.dart';
 import '../scan_result_detail_page.dart';
+import 'danger_badge.dart';
 import 'severity_badge.dart';
 
 /// 動的スキャン結果一覧ウィジェット。
@@ -23,7 +24,10 @@ class DynamicScanResults extends StatelessWidget {
                 (e) => ListTile(
                   title: Row(
                     children: [
-                      SeverityBadge(severity: cat.severity.name),
+                      if (cat.name == 'protocols')
+                        const DangerBadge()
+                      else
+                        SeverityBadge(severity: cat.severity.name),
                       const SizedBox(width: 8),
                       // 長いメッセージでも折り返せるようにする
                       Expanded(child: Text(e)),

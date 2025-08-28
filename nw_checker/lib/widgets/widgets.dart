@@ -5,3 +5,4 @@ export 'alert_component.dart';
 export 'dynamic_scan_results.dart';
 export 'metric_card.dart';
 export 'severity_badge.dart';
+export 'danger_badge.dart';
