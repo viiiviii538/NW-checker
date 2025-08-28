@@ -6,13 +6,17 @@ from typing import Optional
 
 # 危険とされるポート番号集合
 # FTP(21), Telnet(23), RDP(3389), SMB(445) などの典型的な脆弱サービス
-# VNC やその他の管理用プロトコルも一緒に監視する
+# VNC や WinRM(5985/5986) などの管理用プロトコルも監視対象とする
 DANGEROUS_PORTS: set[int] = {
     21,  # FTP
     23,  # Telnet
     3389,  # RDP
     445,  # SMB
     5900,  # VNC
+    5901,  # VNC alt
+    5985,  # WinRM HTTP
+    5986,  # WinRM HTTPS
+    2323,  # Telnet alternate
 }
 
 
@@ -23,8 +27,8 @@ def is_dangerous_protocol(src_port: Optional[int], dst_port: Optional[int]) -> b
     )
 
 
-def analyze_packet(packet) -> bool:
+def analyze_packet(pkt) -> bool:
     """パケット内のポートを解析し危険プロトコルか判定する"""
-    src = getattr(packet, "src_port", getattr(packet, "sport", None))
-    dst = getattr(packet, "dst_port", getattr(packet, "dport", None))
-    return is_dangerous_protocol(src, dst)
+    src_port = getattr(pkt, "src_port", getattr(pkt, "sport", None))
+    dst_port = getattr(pkt, "dst_port", getattr(pkt, "dport", None))
+    return is_dangerous_protocol(src_port, dst_port)
