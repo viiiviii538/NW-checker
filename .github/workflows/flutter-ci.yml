@@ -1,64 +1,22 @@
 name: CI
+
 on:
   push:
+    paths:
+      - 'nw_checker/**'
+      - '.github/workflows/flutter-ci.yml'
   pull_request:
-  workflow_dispatch:
+    paths:
+      - 'nw_checker/**'
+      - '.github/workflows/flutter-ci.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  backend:
-    name: Python (pytest)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: System deps (for scapy etc.)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libpcap-dev
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-
-      - name: Check python files
-        id: check_py
-        run: |
-          if [ -f requirements.txt ]; then echo "req=true" >> "$GITHUB_OUTPUT"; else echo "req=false" >> "$GITHUB_OUTPUT"; fi
-          if git ls-files 'tests/**/*.py' >/dev/null 2>&1; then echo "tests=true" >> "$GITHUB_OUTPUT"; else echo "tests=false" >> "$GITHUB_OUTPUT"; fi
-
-      - name: Install deps
-        if: ${{ steps.check_py.outputs.req == 'true' }}
-        run: |
-          set -eux
-          python -m pip install -U pip
-          pip install -r requirements.txt
-          # dev依存（あれば）
-          if [ -f requirements-dev.txt ]; then cat requirements-dev.txt; pip install -r requirements-dev.txt; fi
-          # 念のため保険で明示インストール
-          pip install "fastapi==0.116.1" "starlette>=0.37" "httpx==0.28.1" "anyio>=3" "python-multipart>=0.0.9"
-          # 開発インストール（src解決用）
-          python -m pip install -e . || true
-
-      - name: Verify deps
-        if: ${{ steps.check_py.outputs.req == 'true' }}
-        run: |
-          python -c "import pkgutil;mods=['fastapi','starlette','httpx','anyio','multipart'];print('\n'.join([m+' '+('OK' if pkgutil.find_loader(m) else 'MISSING') for m in mods]))"
-          python -c "import fastapi,starlette;print('fastapi',fastapi.__version__);print('starlette',starlette.__version__)"
-
-      - name: Run pytest
-        if: ${{ steps.check_py.outputs.req == 'true' && steps.check_py.outputs.tests == 'true' }}
-        env:
-          PYTHONPATH: ${{ github.workspace }}
-        run: pytest -q
-
-      - name: Note when skipped
-        if: ${{ steps.check_py.outputs.req != 'true' || steps.check_py.outputs.tests != 'true' }}
-        run: |
-          echo 'Python: skipped (no requirements.txt or tests directory)'
-
   flutter:
-    name: Flutter tests
+    name: Flutter テスト
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

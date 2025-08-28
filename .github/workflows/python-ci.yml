@@ -3,20 +3,24 @@ name: Python CI
 on:
   push:
     paths:
-      - '**.py'
-      - '.github/workflows/python-ci.yml'
+      - 'src/**'
+      - 'tests/**'
+      - 'pyproject.toml'
       - 'requirements*.txt'
       - 'pytest.ini'
-      - 'codex_run_tests.sh'
-      - 'tests/**'
+      - '.github/workflows/python-ci.yml'
   pull_request:
     paths:
-      - '**.py'
-      - '.github/workflows/python-ci.yml'
+      - 'src/**'
+      - 'tests/**'
+      - 'pyproject.toml'
       - 'requirements*.txt'
       - 'pytest.ini'
-      - 'codex_run_tests.sh'
-      - 'tests/**'
+      - '.github/workflows/python-ci.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   python-tests:
@@ -30,14 +34,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt -r requirements-dev.txt
-      - name: Prepare (Codex shim)
-        shell: bash
-        run: |
-          chmod +x ./codex_run_tests.sh
-          ./codex_run_tests.sh
       - name: Run tests
         shell: bash
-        run: ./codex_run_tests.sh
+        run: pytest -m "not fastapi" -vv
 
   python-fastapi-tests:
     runs-on: ubuntu-latest
@@ -51,10 +50,5 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt -r requirements-dev.txt
           pip install "fastapi[all]" uvicorn httpx pytest-asyncio
-      - name: Prepare (Codex shim)
-        shell: bash
-        run: |
-          chmod +x ./codex_run_tests.sh
-          ./codex_run_tests.sh
       - name: Run FastAPI tests
         run: pytest -m fastapi -vv
