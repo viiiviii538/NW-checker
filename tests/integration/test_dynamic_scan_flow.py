@@ -16,6 +16,7 @@ class DummyPacket:
     src_ip = "1.1.1.1"
     dst_ip = "2.2.2.2"
     protocol = "TELNET"
+    src_port = 23
     src_mac = "00:11:22:33:44:55"
     size = 100
     timestamp = 0.0

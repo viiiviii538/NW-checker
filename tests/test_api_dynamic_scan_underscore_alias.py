@@ -11,6 +11,7 @@ pytestmark = pytest.mark.fastapi
 
 
 def test_dynamic_scan_start_stop_underscore_alias(monkeypatch, tmp_path):
+    monkeypatch.setattr(api, "API_TOKEN", None, raising=False)
     client = TestClient(api.app)
     store = storage.Storage(tmp_path / "res.db")
     monkeypatch.setattr(storage, "Storage", lambda *args, **kwargs: store)
@@ -48,6 +49,7 @@ def test_dynamic_scan_start_stop_underscore_alias(monkeypatch, tmp_path):
 
 
 def test_dynamic_scan_results_underscore_alias(monkeypatch, tmp_path):
+    monkeypatch.setattr(api, "API_TOKEN", None, raising=False)
     client = TestClient(api.app)
     store = storage.Storage(tmp_path / "res.db")
     api.scan_scheduler = scheduler.DynamicScanScheduler()

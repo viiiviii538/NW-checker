@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 def test_flutter_workflow_runs_flutter_test():
     """flutter-ci workflow should run flutter tests"""
     # Explicit encoding avoids UnicodeDecodeError on Windows CI where the
