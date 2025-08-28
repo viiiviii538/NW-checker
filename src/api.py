@@ -103,7 +103,12 @@ def _aggregate_results(records: list[dict]) -> dict:
         for r in records
         if r.get("dangerous_protocol")
     ]
-    score = len(dangerous_list)
+    traffic_list = [
+        r.get("src_ip") or r.get("src_mac") or "unknown"
+        for r in records
+        if r.get("traffic_anomaly")
+    ]
+    score = len(dangerous_list) + len(traffic_list)
     dangerous = sorted(set(dangerous_list))
     categories: list[dict] = []
     if dangerous:
@@ -112,6 +117,14 @@ def _aggregate_results(records: list[dict]) -> dict:
                 "name": "protocols",
                 "severity": "high",
                 "issues": dangerous,
+            }
+        )
+    if traffic_list:
+        categories.append(
+            {
+                "name": "traffic",
+                "severity": "medium",
+                "issues": sorted(set(traffic_list)),
             }
         )
     return {"risk_score": score, "categories": categories}

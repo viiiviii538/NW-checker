@@ -45,4 +45,23 @@ void main() {
     final decoration = container.decoration as BoxDecoration;
     expect(decoration.color, Colors.red);
   });
+
+  testWidgets('shows Traffic category card', (tester) async {
+    final categories = [
+      ScanCategory(
+        name: 'traffic',
+        severity: Severity.low,
+        issues: ['1.1.1.1'],
+      ),
+    ];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: DynamicScanResults(categories: categories)),
+      ),
+    );
+    expect(find.text('traffic'), findsOneWidget);
+    await tester.tap(find.text('traffic'));
+    await tester.pumpAndSettle();
+    expect(find.text('1.1.1.1'), findsOneWidget);
+  });
 }

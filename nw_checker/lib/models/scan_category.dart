@@ -58,6 +58,8 @@ IconData categoryIcon(String name) {
       return Icons.folder_shared;
     case 'dns':
       return Icons.language;
+    case 'traffic':
+      return Icons.traffic;
     default:
       return Icons.security;
   }

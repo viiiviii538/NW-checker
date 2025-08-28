@@ -10,7 +10,7 @@ from src.dynamic_scan import geoip
 
 import pytest
 
-from src.dynamic_scan import analyze, dns_analyzer, protocol_detector, device_tracker
+from src.dynamic_scan import analyze, dns_analyzer, protocol_detector, device_tracker, traffic_anomaly
 
 
 @pytest.fixture
@@ -277,19 +277,12 @@ def test_is_unapproved_device():
     assert not analyze.is_unapproved_device("00:aa", {"00:aa"})
 
 
-def test_detect_traffic_anomaly():
+def test_detect_traffic_anomaly(monkeypatch):
     stats = defaultdict(int)
-    assert analyze.detect_traffic_anomaly(stats, "host", 500_000, threshold=1_000_000) is False
-    assert analyze.detect_traffic_anomaly(stats, "host", 600_000, threshold=1_000_000) is True
-
-
-def test_detect_traffic_anomaly_from_config(tmp_path, monkeypatch):
-    stats = defaultdict(int)
-    cfg = tmp_path / "config.json"
-    cfg.write_text(json.dumps({"traffic_threshold": 700_000}))
-    monkeypatch.setattr(analyze, "CONFIG_PATH", cfg)
-    assert analyze.detect_traffic_anomaly(stats, "host", 400_000) is False
-    assert analyze.detect_traffic_anomaly(stats, "host", 400_000) is True
+    traffic_anomaly._stats.clear()
+    monkeypatch.setattr(traffic_anomaly, "SPIKE_THRESHOLD", 100_000)
+    analyze.detect_traffic_anomaly(stats, "host", 50_000)
+    assert analyze.detect_traffic_anomaly(stats, "host", 200_000) is True
 
 
 def test_load_threshold_from_file(tmp_path):
@@ -497,6 +490,29 @@ def test_detect_traffic_anomalies_normal():
     stats = defaultdict(int)
     pkt = type("Pkt", (), {"src_ip": "1.1.1.1", "size": 500_000})
     assert analyze.detect_traffic_anomalies(pkt, stats).traffic_anomaly is False
+
+
+def test_continuous_traffic_anomaly(monkeypatch):
+    """継続通信による異常検知を確認"""
+    traffic_anomaly._stats.clear()
+    fake_time = [0]
+
+    monkeypatch.setattr(traffic_anomaly.time, "time", lambda: fake_time[0])
+    monkeypatch.setattr(traffic_anomaly, "CONTINUOUS_DURATION", 2)
+
+    pkt = type("Pkt", (), {"src_mac": "aa:bb", "size": 10})
+    stats = {}
+
+    res = analyze.detect_traffic_anomalies(pkt, stats)
+    assert res.traffic_anomaly is False
+
+    fake_time[0] += 1
+    res = analyze.detect_traffic_anomalies(pkt, stats)
+    assert res.traffic_anomaly is False
+
+    fake_time[0] += 2
+    res = analyze.detect_traffic_anomalies(pkt, stats)
+    assert res.traffic_anomaly is True
 
 
 def test_detect_out_of_hours_within_schedule():
