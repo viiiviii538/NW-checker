@@ -24,3 +24,12 @@ def test_track_device_records_and_alerts(tmp_path):
     with sqlite3.connect(device_tracker.DB_PATH) as conn:
         rows = conn.execute("SELECT mac FROM devices").fetchall()
     assert rows == [("66:77:88:99:aa:bb",)]
+
+
+def test_load_approved_devices(tmp_path, monkeypatch):
+    cfg = tmp_path / "approved.json"
+    cfg.write_text('["AA:BB:CC:DD:EE:FF"]')
+    monkeypatch.setattr(device_tracker, "CONFIG_PATH", cfg)
+    device_tracker._known_devices.clear()
+    device_tracker._load_approved_devices()
+    assert "aa:bb:cc:dd:ee:ff" in device_tracker._known_devices
