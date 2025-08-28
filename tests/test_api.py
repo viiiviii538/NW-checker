@@ -36,7 +36,7 @@ def test_dynamic_scan_start_stop(monkeypatch, tmp_path):
 
     asyncio.run(
         api.scan_scheduler.storage.save_result(
-            {"protocol": "ftp", "src_ip": "1.1.1.1"}
+            {"protocol": "ftp", "src_ip": "1.1.1.1", "dangerous_protocol": True}
         )
     )
     resp3 = client.get("/scan/dynamic/results")
