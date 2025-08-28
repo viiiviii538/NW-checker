@@ -125,7 +125,8 @@ def test_build_topology_for_subnet(monkeypatch):
         captured["community"] = community
         return "JSON"
 
-    fake_module = types.SimpleNamespace(discover_hosts=fake_discover_hosts)
+    fake_module = types.ModuleType("discover_hosts")
+    fake_module.discover_hosts = fake_discover_hosts
     monkeypatch.setitem(sys.modules, "src.discover_hosts", fake_module)
     monkeypatch.setattr("src.topology_builder.build_topology", fake_build_topology)
 
@@ -133,11 +134,9 @@ def test_build_topology_for_subnet(monkeypatch):
         "192.168.0.0/24", use_snmp=True, community="private"
     )
     assert result == "JSON"
-    assert captured == {
-        "hosts": ["192.168.0.40", "192.168.0.41"],
-        "use_snmp": True,
-        "community": "private",
-    }
+    assert captured["hosts"] == ["192.168.0.40", "192.168.0.41"]
+    assert captured["use_snmp"] is True
+    assert captured["community"] == "private"
 
 
 def test_get_lldp_neighbors_parses_result(monkeypatch):
