@@ -1,0 +1,7 @@
+{
+  "nodes": [
+    {"id": "router", "ip": "192.168.0.1", "vendor": "Cisco", "hostname": "Router", "x": 100, "y": 100},
+    {"id": "server", "ip": "192.168.0.2", "vendor": "Dell", "hostname": "Server", "x": 300, "y": 100},
+    {"id": "pc", "ip": "192.168.0.3", "vendor": "Lenovo", "hostname": "PC", "x": 200, "y": 200}
+  ]
+}
