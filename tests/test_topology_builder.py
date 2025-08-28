@@ -1,6 +1,8 @@
 """Tests for building topology paths."""
 
 import json
+import sys
+import types
 
 from src.topology_builder import (
     build_paths,
@@ -57,11 +59,34 @@ def test_build_paths_with_snmp(monkeypatch):
 
     monkeypatch.setattr("src.topology_builder.traceroute", fake_traceroute)
     monkeypatch.setattr("src.topology_builder._augment_with_snmp", fake_augment)
+    monkeypatch.setattr("src.topology_builder.nextCmd", object())
 
     result = build_paths(["192.168.0.20"], use_snmp=True)
     assert result == {
         "paths": [{"ip": "192.168.0.20", "path": ["LAN", "SwitchA", "Host"]}]
     }
+
+
+def test_build_paths_snmp_unavailable(monkeypatch):
+    """When pysnmp isn't available, augmentation is skipped."""
+
+    def fake_traceroute(ip):
+        return ["192.168.0.1", ip]
+
+    called = {"flag": False}
+
+    def fake_augment(hops, path, community="public"):
+        called["flag"] = True
+
+    monkeypatch.setattr("src.topology_builder.traceroute", fake_traceroute)
+    monkeypatch.setattr("src.topology_builder._augment_with_snmp", fake_augment)
+    monkeypatch.setattr("src.topology_builder.nextCmd", None)
+
+    result = build_paths(["192.168.0.50"], use_snmp=True)
+    assert result == {
+        "paths": [{"ip": "192.168.0.50", "path": ["LAN", "Router", "Host"]}]
+    }
+    assert not called["flag"]
 
 
 def test_build_topology_wrapper(monkeypatch):
@@ -98,6 +123,7 @@ def test_build_topology_for_subnet(monkeypatch):
         captured["community"] = community
         return "JSON"
 
+    monkeypatch.setitem(sys.modules, "requests", types.SimpleNamespace())
     monkeypatch.setattr(
         "src.discover_hosts.discover_hosts", fake_discover_hosts
     )
