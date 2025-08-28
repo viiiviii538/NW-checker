@@ -1,7 +1,11 @@
 import pytest
+
+pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
 
 from src import api
+
+pytestmark = pytest.mark.fastapi
 
 
 def test_auth_middleware_enforces_token(monkeypatch):

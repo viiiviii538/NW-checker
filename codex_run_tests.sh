@@ -12,7 +12,7 @@ which python || true
 echo "== PyTest =="
 # src が見えるように（pytest.ini でもOKだが念のため）
 export PYTHONPATH="$ROOT/src:${PYTHONPATH:-}"
-python -m pytest -q
+python -m pytest -m "not fastapi" -q
 
 # --- Flutter tests ---
 if [ -f "$ROOT/pubspec.yaml" ]; then

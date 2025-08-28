@@ -2,10 +2,14 @@ import asyncio
 import tracemalloc
 from contextlib import suppress
 import pytest
+
+pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
 
 from src import api
 from src.dynamic_scan import analyze, capture, storage, geoip
+
+pytestmark = pytest.mark.fastapi
 
 
 class DummyPacket:

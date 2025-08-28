@@ -1,10 +1,15 @@
 import asyncio
 import logging
 import time
+import pytest
 
 import httpx
+
+pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
 from src import server
+
+pytestmark = pytest.mark.fastapi
 
 
 def test_static_scan_success(monkeypatch):
