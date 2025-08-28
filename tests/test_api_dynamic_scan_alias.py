@@ -56,7 +56,7 @@ def test_dynamic_scan_results_alias(monkeypatch, tmp_path):
     api.scan_scheduler = scheduler.DynamicScanScheduler()
     monkeypatch.setattr(storage, "Storage", lambda *args, **kwargs: store)
 
-    asyncio.run(api.scan_scheduler.storage.save_result({"protocol": "ftp"}))
+    asyncio.run(api.scan_scheduler.storage.save_result({"protocol": "ftp", "dangerous_protocol": True}))
 
     resp_old = client.get("/scan/dynamic/results")
     resp_new = client.get("/dynamic-scan/results")
