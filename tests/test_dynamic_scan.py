@@ -59,6 +59,12 @@ def test_detect_dangerous_protocols_safe_ports():
     assert res.dangerous_protocol is False
 
 
+def test_detect_dangerous_protocols_dst_port():
+    pkt = SimpleNamespace(protocol="RDP", src_port=80, dst_port=3389)
+    res = analyze.detect_dangerous_protocols(pkt)
+    assert res.dangerous_protocol is True
+
+
 def test_is_unapproved_device():
     assert analyze.is_unapproved_device("00:aa", {"00:bb"})
     assert not analyze.is_unapproved_device("00:aa", {"00:aa"})
