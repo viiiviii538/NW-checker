@@ -19,6 +19,7 @@ void main() {
     expect(categoryIcon('Ports'), Icons.router);
     expect(categoryIcon('SMB'), Icons.folder_shared);
     expect(categoryIcon('DNS'), Icons.language);
+    expect(categoryIcon('Traffic'), Icons.traffic);
     expect(categoryIcon('Other'), Icons.security);
   });
 }

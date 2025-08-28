@@ -65,12 +65,22 @@ def test_dynamic_scan_endpoints(monkeypatch, tmp_path, base):
             }
         )
     )
+    asyncio.run(
+        api.scan_scheduler.storage.save_result(
+            {
+                "src_ip": "4.4.4.4",
+                "traffic_anomaly": True,
+            }
+        )
+    )
 
     resp3 = client.get(f"{base}/results")
     assert resp3.status_code == 200
     body = resp3.json()
-    assert body["risk_score"] == 2
-    assert body["categories"][0]["issues"] == ["ftp", "unknown"]
+    assert body["risk_score"] == 3
+    categories = {c["name"]: c for c in body["categories"]}
+    assert categories["protocols"]["issues"] == ["ftp", "unknown"]
+    assert categories["traffic"]["issues"] == ["4.4.4.4"]
 
     resp4 = client.get(
         f"{base}/history",
