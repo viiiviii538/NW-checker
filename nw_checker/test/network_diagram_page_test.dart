@@ -67,4 +67,24 @@ void main() {
     await tester.pump();
     expect(controller.value.getTranslation().x, isNot(0));
   });
+
+  testWidgets('shows node details in sidebar when tapped', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: NetworkDiagramPage(initialHosts: hosts, initialSvg: svg),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(find.text('ノードを選択'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('node-router')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Router'), findsOneWidget);
+    expect(find.text('IP: 192.168.0.1'), findsOneWidget);
+    expect(find.text('Vendor: Cisco'), findsOneWidget);
+  });
 }
