@@ -30,6 +30,11 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt -r requirements-dev.txt
+      - name: Prepare (Codex shim)
+        shell: bash
+        run: |
+          chmod +x ./codex_run_tests.sh
+          ./codex_run_tests.sh
       - name: Run tests
         shell: bash
         run: ./codex_run_tests.sh
@@ -46,5 +51,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt -r requirements-dev.txt
           pip install "fastapi[all]" uvicorn httpx pytest-asyncio
+      - name: Prepare (Codex shim)
+        shell: bash
+        run: |
+          chmod +x ./codex_run_tests.sh
+          ./codex_run_tests.sh
       - name: Run FastAPI tests
         run: pytest -m fastapi -vv
