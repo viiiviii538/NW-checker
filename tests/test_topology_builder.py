@@ -57,6 +57,7 @@ def test_build_paths_with_snmp(monkeypatch):
 
     monkeypatch.setattr("src.topology_builder.traceroute", fake_traceroute)
     monkeypatch.setattr("src.topology_builder._augment_with_snmp", fake_augment)
+    monkeypatch.setattr("src.topology_builder.nextCmd", object())
 
     result = build_paths(["192.168.0.20"], use_snmp=True)
     assert result == {
@@ -98,9 +99,10 @@ def test_build_topology_for_subnet(monkeypatch):
         captured["community"] = community
         return "JSON"
 
-    monkeypatch.setattr(
-        "src.discover_hosts.discover_hosts", fake_discover_hosts
-    )
+    import sys, types
+
+    fake_module = types.SimpleNamespace(discover_hosts=fake_discover_hosts)
+    monkeypatch.setitem(sys.modules, "src.discover_hosts", fake_module)
     monkeypatch.setattr("src.topology_builder.build_topology", fake_build_topology)
 
     result = build_topology_for_subnet(
