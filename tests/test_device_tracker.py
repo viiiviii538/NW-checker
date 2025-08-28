@@ -33,3 +33,13 @@ def test_load_approved_devices(tmp_path, monkeypatch):
     device_tracker._known_devices.clear()
     device_tracker._load_approved_devices()
     assert "aa:bb:cc:dd:ee:ff" in device_tracker._known_devices
+
+
+def test_startup_loads_config(monkeypatch):
+    """デフォルトの設定ファイルがインポート時に読み込まれること"""
+    # モジュールを再読み込みして approved_devices.json を読み込ませる
+    import importlib
+
+    monkeypatch.setattr(device_tracker, "_known_devices", set())
+    importlib.reload(device_tracker)
+    assert "00:11:22:33:44:55" in device_tracker._known_devices
