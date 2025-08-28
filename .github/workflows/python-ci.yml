@@ -3,20 +3,24 @@ name: Python CI
 on:
   push:
     paths:
-      - '**.py'
-      - '.github/workflows/python-ci.yml'
+      - 'src/**'
+      - 'tests/**'
+      - 'pyproject.toml'
       - 'requirements*.txt'
       - 'pytest.ini'
-      - 'codex_run_tests.sh'
-      - 'tests/**'
+      - '.github/workflows/python-ci.yml'
   pull_request:
     paths:
-      - '**.py'
-      - '.github/workflows/python-ci.yml'
+      - 'src/**'
+      - 'tests/**'
+      - 'pyproject.toml'
       - 'requirements*.txt'
       - 'pytest.ini'
-      - 'codex_run_tests.sh'
-      - 'tests/**'
+      - '.github/workflows/python-ci.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   python-tests:
@@ -32,7 +36,9 @@ jobs:
           pip install -r requirements.txt -r requirements-dev.txt
       - name: Run tests
         shell: bash
-        run: ./codex_run_tests.sh
+        env:
+          PYTHONPATH: src
+        run: pytest -m "not fastapi" -vv
 
   python-fastapi-tests:
     runs-on: ubuntu-latest
@@ -47,4 +53,6 @@ jobs:
           pip install -r requirements.txt -r requirements-dev.txt
           pip install "fastapi[all]" uvicorn httpx pytest-asyncio
       - name: Run FastAPI tests
+        env:
+          PYTHONPATH: src
         run: pytest -m fastapi -vv
