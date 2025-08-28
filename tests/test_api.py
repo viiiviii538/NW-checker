@@ -1,11 +1,18 @@
 import asyncio
+import sqlite3
 import pytest
 
 pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
 
 from src import api
-from src.dynamic_scan import capture, analyze, storage, scheduler
+from src.dynamic_scan import (
+    capture,
+    analyze,
+    storage,
+    scheduler,
+    device_tracker,
+)
 
 pytestmark = pytest.mark.fastapi
 
@@ -55,3 +62,18 @@ def test_dynamic_scan_websocket_broadcast(tmp_path):
         asyncio.run(api.scan_scheduler.storage.save_result({"foo": "bar"}))
         message = websocket.receive_json()
         assert message["foo"] == "bar"
+
+
+def test_device_alert_websocket(tmp_path):
+    client = TestClient(api.app)
+    device_tracker.DB_PATH = tmp_path / "dev.db"
+    device_tracker._known_devices.clear()
+    device_tracker._listeners.clear()
+
+    with client.websocket_connect("/ws/device-alerts") as websocket:
+        assert device_tracker.track_device("aa:bb:cc:dd:ee:ff")
+        message = websocket.receive_json()
+        assert message["mac"] == "aa:bb:cc:dd:ee:ff"
+        with sqlite3.connect(device_tracker.DB_PATH) as conn:
+            rows = conn.execute("SELECT mac FROM devices").fetchall()
+        assert rows == [("aa:bb:cc:dd:ee:ff",)]

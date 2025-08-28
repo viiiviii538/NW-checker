@@ -12,6 +12,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
 from .dynamic_scan import scheduler, analyze
+from .dynamic_scan import device_tracker
 
 app = FastAPI()
 
@@ -192,6 +193,21 @@ async def ws_dynamic_scan(websocket: WebSocket):
         pass
     finally:
         scan_scheduler.storage.remove_listener(queue)
+
+
+@app.websocket("/ws/device-alerts")
+async def ws_device_alerts(websocket: WebSocket):
+    await websocket.accept()
+    queue: asyncio.Queue = asyncio.Queue()
+    device_tracker.add_listener(queue)
+    try:
+        while True:
+            data = await queue.get()
+            await websocket.send_json(data)
+    except WebSocketDisconnect:
+        pass
+    finally:
+        device_tracker.remove_listener(queue)
 
 @app.get("/health", tags=["meta"], include_in_schema=False)
 def health():

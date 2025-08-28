@@ -6,7 +6,14 @@ from collections import defaultdict
 
 import pytest
 
-from src.dynamic_scan import analyze, capture, storage, geoip, protocol_detector
+from src.dynamic_scan import (
+    analyze,
+    capture,
+    storage,
+    geoip,
+    protocol_detector,
+    device_tracker,
+)
 
 
 def test_geoip_lookup(monkeypatch):
@@ -163,7 +170,7 @@ def test_analyse_packets_pipeline(tmp_path, monkeypatch):
 
 def test_analyse_packets_pipeline_in_hours(tmp_path, monkeypatch):
     async def runner():
-        analyze._known_devices.clear()
+        device_tracker._known_devices.clear()
         store = storage.Storage(tmp_path / "results.json")
 
         async def fake_geoip(ip):

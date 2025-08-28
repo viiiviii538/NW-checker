@@ -10,7 +10,7 @@ from src.dynamic_scan import geoip
 
 import pytest
 
-from src.dynamic_scan import analyze, dns_analyzer, protocol_detector
+from src.dynamic_scan import analyze, dns_analyzer, protocol_detector, device_tracker
 
 
 @pytest.fixture
@@ -407,7 +407,7 @@ def test_detect_dangerous_protocols():
 
 
 def test_track_new_devices():
-    analyze._known_devices.clear()
+    device_tracker._known_devices.clear()
     pkt = type("Pkt", (), {"src_mac": "00:11"})
     assert analyze.track_new_devices(pkt).new_device is True
     assert analyze.track_new_devices(pkt).new_device is False
