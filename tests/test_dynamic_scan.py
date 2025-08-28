@@ -41,6 +41,7 @@ def test_reverse_dns_lookup(monkeypatch):
 
 def test_is_dangerous_protocol():
     assert protocol_detector.is_dangerous_protocol(23, 1000)
+    assert protocol_detector.is_dangerous_protocol(5900, None)
     assert not protocol_detector.is_dangerous_protocol(80, 8080)
     assert not protocol_detector.is_dangerous_protocol(None, None)
 
@@ -49,6 +50,12 @@ def test_detect_dangerous_protocols_safe_ports():
     pkt = SimpleNamespace(protocol="HTTP", src_port=80, dst_port=8080)
     res = analyze.detect_dangerous_protocols(pkt)
     assert res.dangerous_protocol is False
+
+
+def test_detect_dangerous_protocols_dst_port():
+    pkt = SimpleNamespace(protocol="RDP", src_port=80, dst_port=3389)
+    res = analyze.detect_dangerous_protocols(pkt)
+    assert res.dangerous_protocol is True
 
 
 def test_is_unapproved_device():

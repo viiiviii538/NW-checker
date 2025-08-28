@@ -98,19 +98,21 @@ def _aggregate_results(records: list[dict]) -> dict:
     """
 
     dangerous_list = [
-        r.get("protocol", "").lower()
+        (r.get("protocol") or "unknown").lower()
         for r in records
-        if r.get("protocol", "").lower() in analyze.DANGEROUS_PROTOCOLS
+        if r.get("dangerous_protocol")
     ]
     score = len(dangerous_list)
-    dangerous = set(dangerous_list)
+    dangerous = sorted(set(dangerous_list))
     categories: list[dict] = []
     if dangerous:
-        categories.append({
-            "name": "protocols",
-            "severity": "high",
-            "issues": sorted(dangerous),
-        })
+        categories.append(
+            {
+                "name": "protocols",
+                "severity": "high",
+                "issues": dangerous,
+            }
+        )
     return {"risk_score": score, "categories": categories}
 
 
