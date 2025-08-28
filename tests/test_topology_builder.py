@@ -57,11 +57,34 @@ def test_build_paths_with_snmp(monkeypatch):
 
     monkeypatch.setattr("src.topology_builder.traceroute", fake_traceroute)
     monkeypatch.setattr("src.topology_builder._augment_with_snmp", fake_augment)
+    monkeypatch.setattr("src.topology_builder.nextCmd", object())
 
     result = build_paths(["192.168.0.20"], use_snmp=True)
     assert result == {
         "paths": [{"ip": "192.168.0.20", "path": ["LAN", "SwitchA", "Host"]}]
     }
+
+
+def test_build_paths_snmp_unavailable(monkeypatch):
+    """When pysnmp is missing, SNMP augmentation is skipped."""
+
+    def fake_traceroute(ip):  # pragma: no cover - simple stub
+        return ["192.168.0.1", ip]
+
+    called = {"flag": False}
+
+    def fake_augment(hops, path, community="public"):
+        called["flag"] = True
+
+    monkeypatch.setattr("src.topology_builder.traceroute", fake_traceroute)
+    monkeypatch.setattr("src.topology_builder._augment_with_snmp", fake_augment)
+    monkeypatch.setattr("src.topology_builder.nextCmd", None)
+
+    result = build_paths(["192.168.0.30"], use_snmp=True)
+    assert result == {
+        "paths": [{"ip": "192.168.0.30", "path": ["LAN", "Router", "Host"]}]
+    }
+    assert not called["flag"]
 
 
 def test_build_topology_wrapper(monkeypatch):
@@ -98,6 +121,9 @@ def test_build_topology_for_subnet(monkeypatch):
         captured["community"] = community
         return "JSON"
 
+    import sys, types
+
+    monkeypatch.setitem(sys.modules, "requests", types.SimpleNamespace())
     monkeypatch.setattr(
         "src.discover_hosts.discover_hosts", fake_discover_hosts
     )

@@ -91,7 +91,7 @@ def build_paths(hosts: Iterable[str], use_snmp: bool = False, community: str = "
         path: List[str] = ["LAN"]
         for hop in hops:
             path.append("Host" if hop == ip else "Router")
-        if use_snmp:
+        if use_snmp and nextCmd is not None:
             _augment_with_snmp(hops, path, community)
         results.append({"ip": ip, "path": path})
     return {"paths": results}
