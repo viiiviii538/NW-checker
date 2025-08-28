@@ -7,6 +7,7 @@ from src.topology_builder import (
     build_topology,
     build_topology_for_subnet,
     traceroute,
+    _augment_with_snmp,
 )
 
 
@@ -57,11 +58,74 @@ def test_build_paths_with_snmp(monkeypatch):
 
     monkeypatch.setattr("src.topology_builder.traceroute", fake_traceroute)
     monkeypatch.setattr("src.topology_builder._augment_with_snmp", fake_augment)
+    monkeypatch.setattr("src.topology_builder.nextCmd", object())
 
     result = build_paths(["192.168.0.20"], use_snmp=True)
     assert result == {
         "paths": [{"ip": "192.168.0.20", "path": ["LAN", "SwitchA", "Host"]}]
     }
+
+
+def test_build_paths_snmp_unavailable(monkeypatch):
+    """When pysnmp is missing, SNMP augmentation is skipped."""
+
+    def fake_traceroute(ip):  # pragma: no cover - simple stub
+        return ["192.168.0.1", ip]
+
+    called = {"flag": False}
+
+    def fake_augment(hops, path, community="public"):
+        called["flag"] = True
+
+    monkeypatch.setattr("src.topology_builder.traceroute", fake_traceroute)
+    monkeypatch.setattr("src.topology_builder._augment_with_snmp", fake_augment)
+    monkeypatch.setattr("src.topology_builder.nextCmd", None)
+
+    result = build_paths(["192.168.0.30"], use_snmp=True)
+    assert result == {
+        "paths": [{"ip": "192.168.0.30", "path": ["LAN", "Router", "Host"]}]
+    }
+    assert not called["flag"]
+
+
+def test_augment_with_snmp_replaces_labels(monkeypatch):
+    """Neighbor names replace intermediate hops when available."""
+
+    hops = ["10.0.0.1", "10.0.0.2"]
+    path = ["LAN", "Router", "Host"]
+
+    def fake_get_lldp_neighbors(ip, community="public"):
+        return ["SwitchX"] if ip == "10.0.0.1" else []
+
+    monkeypatch.setattr(
+        "src.topology_builder._get_lldp_neighbors", fake_get_lldp_neighbors
+    )
+    monkeypatch.setattr("src.topology_builder.nextCmd", object())
+
+    _augment_with_snmp(hops, path)
+    assert path == ["LAN", "SwitchX", "Host"]
+
+
+def test_augment_with_snmp_skipped_without_pysnmp(monkeypatch):
+    """No augmentation occurs when pysnmp is unavailable."""
+
+    hops = ["10.0.0.1", "10.0.0.2"]
+    path = ["LAN", "Router", "Host"]
+
+    called = {"flag": False}
+
+    def fake_get_lldp_neighbors(ip, community="public"):
+        called["flag"] = True
+        return ["SwitchX"]
+
+    monkeypatch.setattr(
+        "src.topology_builder._get_lldp_neighbors", fake_get_lldp_neighbors
+    )
+    monkeypatch.setattr("src.topology_builder.nextCmd", None)
+
+    _augment_with_snmp(hops, path)
+    assert path == ["LAN", "Router", "Host"]
+    assert not called["flag"]
 
 
 def test_build_topology_wrapper(monkeypatch):
@@ -98,6 +162,9 @@ def test_build_topology_for_subnet(monkeypatch):
         captured["community"] = community
         return "JSON"
 
+    import sys, types
+
+    monkeypatch.setitem(sys.modules, "requests", types.SimpleNamespace())
     monkeypatch.setattr(
         "src.discover_hosts.discover_hosts", fake_discover_hosts
     )
