@@ -4,14 +4,16 @@ import 'network_scan.dart';
 
 /// SVGネットワーク図を表示するページ。
 class NetworkDiagramPage extends StatefulWidget {
-  const NetworkDiagramPage({super.key});
+  final Map<String, dynamic>? initialHosts;
+  final String? initialSvg;
+  const NetworkDiagramPage({super.key, this.initialHosts, this.initialSvg});
 
   @override
   State<NetworkDiagramPage> createState() => _NetworkDiagramPageState();
 }
 
 class _NetworkDiagramPageState extends State<NetworkDiagramPage> {
-  Map<String, dynamic>? _topology;
+  Map<String, dynamic>? _hosts;
   String? _svg;
   String _search = '';
   Map<String, dynamic>? _selected;
@@ -20,15 +22,20 @@ class _NetworkDiagramPageState extends State<NetworkDiagramPage> {
   @override
   void initState() {
     super.initState();
-    _load();
+    if (widget.initialHosts != null && widget.initialSvg != null) {
+      _hosts = widget.initialHosts;
+      _svg = widget.initialSvg;
+    } else {
+      _load();
+    }
   }
 
   Future<void> _load() async {
-    final topo = await NetworkScan.fetchTopologyJson();
+    final topo = await NetworkScan.fetchHostsJson();
     final svg = await NetworkScan.fetchTopologySvg();
     if (!mounted) return;
     setState(() {
-      _topology = topo;
+      _hosts = topo;
       _svg = svg;
     });
   }
@@ -44,12 +51,13 @@ class _NetworkDiagramPageState extends State<NetworkDiagramPage> {
     if (_svg == null) {
       return const Center(child: CircularProgressIndicator());
     }
-    final nodes = (_topology?['nodes'] as List<dynamic>? ?? [])
-        .where(
-          (n) => n['label'].toString().toLowerCase().contains(
-            _search.toLowerCase(),
-          ),
-        )
+    final nodes = (_hosts?['nodes'] as List<dynamic>? ?? [])
+        .where((n) {
+          final q = _search.toLowerCase();
+          return n['ip'].toString().contains(q) ||
+              n['vendor'].toString().toLowerCase().contains(q) ||
+              n['hostname'].toString().toLowerCase().contains(q);
+        })
         .toList();
     return Row(
       children: [
@@ -116,11 +124,12 @@ class _NetworkDiagramPageState extends State<NetworkDiagramPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        _selected!['label'] as String,
+                        _selected!['hostname'] as String,
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
                       const SizedBox(height: 8),
-                      Text(_selected!['details'] as String),
+                      Text('IP: ${_selected!['ip']}'),
+                      Text('Vendor: ${_selected!['vendor']}'),
                     ],
                   ),
                 ),
