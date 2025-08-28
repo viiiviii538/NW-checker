@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable
 
 import httpx
-from . import geoip, dns_analyzer, protocol_detector, device_tracker
+from . import geoip, dns_analyzer, protocol_detector, device_tracker, traffic_anomaly
 
 
 def load_dangerous_countries(
@@ -141,11 +141,9 @@ def detect_traffic_anomaly(
     size: int,
     threshold: int | None = None,
 ) -> bool:
-    """通信量を集計し、閾値を超えた場合に異常とみなす。"""
-    if threshold is None:
-        threshold = load_threshold()
-    traffic_stats[key] += size
-    return traffic_stats[key] > threshold
+    """過去平均と閾値から通信スパイクを検出する（後方互換用）。"""
+    traffic_anomaly.update_traffic_stats(key, size)
+    return traffic_anomaly.detect_spike(key)
 
 
 def is_night_traffic(timestamp: float, start_hour: int = 0, end_hour: int = 6) -> bool:
@@ -205,11 +203,10 @@ def detect_traffic_anomalies(
     packet, stats, threshold: int | None = None
 ) -> AnalysisResult:
     """通信量の異常を検出"""
-    key = getattr(
-        packet, "src_ip", getattr(packet, "ip_src", getattr(packet, "src_mac", ""))
-    )
+    mac = getattr(packet, "src_mac", getattr(packet, "mac", getattr(packet, "src", "")))
     size = getattr(packet, "size", getattr(packet, "len", 0))
-    anomaly = detect_traffic_anomaly(stats, key, size, threshold=threshold)
+    traffic_anomaly.update_traffic_stats(mac, size)
+    anomaly = traffic_anomaly.detect_spike(mac)
     return AnalysisResult(traffic_anomaly=anomaly)
 
 
