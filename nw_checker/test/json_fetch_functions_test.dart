@@ -6,7 +6,7 @@ import 'package:nw_checker/json_fetch_tab.dart';
 void main() {
   group('runDynamicCli', () {
     test('returns JSON on success', () async {
-      final server = await HttpServer.bind('localhost', 8000);
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0); // 空きポート
       addTearDown(() => server.close(force: true));
       server.listen((request) {
         request.response
@@ -15,12 +15,12 @@ void main() {
           ..write('{"ok": true}')
           ..close();
       });
-      final result = await runDynamicCli();
+      final result = await runDynamicCli(endpoint: Uri.parse('http://localhost:${server.port}'));
       expect(result, {'ok': true});
     });
 
     test('returns message when backend fails', () async {
-      final server = await HttpServer.bind('localhost', 8000);
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
       addTearDown(() => server.close(force: true));
       server.listen((request) {
         request.response

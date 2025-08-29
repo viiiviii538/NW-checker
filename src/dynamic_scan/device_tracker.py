@@ -1,3 +1,4 @@
+from contextlib import closing
 import asyncio
 import json
 import sqlite3
@@ -51,7 +52,7 @@ def track_device(mac_addr: str) -> bool:
         return False
     _known_devices.add(mac)
     timestamp = datetime.now().astimezone().isoformat(timespec="seconds")
-    with sqlite3.connect(DB_PATH) as conn:
+    with closing(sqlite3.connect(DB_PATH)) as conn:
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS devices (

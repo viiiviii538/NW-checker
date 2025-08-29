@@ -1,5 +1,6 @@
 import asyncio
 import sqlite3
+from contextlib import closing
 
 from src.dynamic_scan import device_tracker
 
@@ -21,7 +22,8 @@ def test_track_device_records_and_alerts(tmp_path):
     alert = q.get_nowait()
     assert alert["mac"] == "66:77:88:99:aa:bb"
 
-    with sqlite3.connect(device_tracker.DB_PATH) as conn:
+    # connect は closing で明示クローズ
+    with closing(sqlite3.connect(device_tracker.DB_PATH)) as conn:
         rows = conn.execute("SELECT mac FROM devices").fetchall()
     assert rows == [("66:77:88:99:aa:bb",)]
 

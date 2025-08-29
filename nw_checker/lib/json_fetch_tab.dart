@@ -72,11 +72,11 @@ class _JsonFetchTabState extends State<JsonFetchTab> {
 }
 
 /// Default CLI-backed implementations for dynamic scan and network map.
-Future<Map<String, dynamic>> runDynamicCli() async {
+Future<Map<String, dynamic>> runDynamicCli({Uri? endpoint}) async {
   try {
-    final resp = await http.get(
-      Uri.parse('http://localhost:8000/scan/dynamic/results'),
-    );
+    final uri = (endpoint ?? Uri.parse('http://localhost:8000'))
+      .resolve('/scan/dynamic/results');
+    final resp = await http.get(uri);
     if (resp.statusCode == 200) {
       return json.decode(resp.body) as Map<String, dynamic>;
     }

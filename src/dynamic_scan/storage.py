@@ -1,6 +1,7 @@
 import json
 import asyncio
 import sqlite3
+from contextlib import closing
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
@@ -27,7 +28,7 @@ class Storage:
 
     def _init_db(self) -> None:
         """SQLite テーブルを初期化"""
-        with sqlite3.connect(self.db_path) as conn:
+        with closing(sqlite3.connect(self.db_path)) as conn:
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS results (
@@ -91,7 +92,7 @@ class Storage:
     # fetch_results: 全角スペース除去＆日付文字列比較
     def fetch_results(self, start_date: str, end_date: str):
         """start～end を両端含む（日単位・'YYYY-MM-DD'）。"""
-        with sqlite3.connect(self.db_path) as conn:
+        with closing(sqlite3.connect(self.db_path)) as conn:
             rows = conn.execute(
                 """
                 SELECT data
@@ -106,7 +107,7 @@ class Storage:
 
     def _insert_record(self, record: Dict[str, Any]) -> None:
         """SQLite に 1 件のレコードを書き込む"""
-        with sqlite3.connect(self.db_path) as conn:
+        with closing(sqlite3.connect(self.db_path)) as conn:
             conn.execute(
                 "INSERT INTO results (timestamp, data) VALUES (?, ?)",
                 (record["timestamp"], json.dumps(record)),
@@ -115,7 +116,7 @@ class Storage:
 
     def _insert_dns_history(self, record: tuple[str, str, str, int]) -> None:
         """DNS 履歴を 1 件書き込む"""
-        with sqlite3.connect(self.db_path) as conn:
+        with closing(sqlite3.connect(self.db_path)) as conn:
             conn.execute(
                 "INSERT INTO dns_history (timestamp, ip, hostname, blacklisted) VALUES (?, ?, ?, ?)",
                 record,
@@ -152,13 +153,13 @@ class Storage:
             params.append(protocol)
 
         query += " ORDER BY timestamp"
-        with sqlite3.connect(self.db_path) as conn:
+        with closing(sqlite3.connect(self.db_path)) as conn:
             rows = conn.execute(query, params).fetchall()
         return [json.loads(r[0]) for r in rows]
 
     def fetch_dns_history(self, start_date: str, end_date: str) -> List[Dict[str, Any]]:
         """DNS 履歴を期間指定で取得"""
-        with sqlite3.connect(self.db_path) as conn:
+        with closing(sqlite3.connect(self.db_path)) as conn:
             rows = conn.execute(
                 """
                 SELECT timestamp, ip, hostname, blacklisted

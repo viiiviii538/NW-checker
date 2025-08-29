@@ -1,6 +1,7 @@
 import asyncio
 import sqlite3
 import pytest
+from contextlib import closing
 
 pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
@@ -74,6 +75,7 @@ def test_device_alert_websocket(tmp_path):
         assert device_tracker.track_device("aa:bb:cc:dd:ee:ff")
         message = websocket.receive_json()
         assert message["mac"] == "aa:bb:cc:dd:ee:ff"
-        with sqlite3.connect(device_tracker.DB_PATH) as conn:
+        with closing(sqlite3.connect(device_tracker.DB_PATH)) as conn:
             rows = conn.execute("SELECT mac FROM devices").fetchall()
+
         assert rows == [("aa:bb:cc:dd:ee:ff",)]
