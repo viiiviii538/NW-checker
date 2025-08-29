@@ -127,8 +127,7 @@ class DynamicScanApi {
           return results
               .map(
                 (e) => e is Map
-                    ? '${e['timestamp']} ${e['ip']} ${e['hostname']}' +
-                          (e['blacklisted'] == true ? ' [BLACKLISTED]' : '')
+                    ? '${e['timestamp']} ${e['ip']} ${e['hostname']}${e['blacklisted'] == true ? ' [BLACKLISTED]' : ''}'
                     : e.toString(),
               )
               .cast<String>()
