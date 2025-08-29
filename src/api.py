@@ -6,12 +6,11 @@ from typing import Optional
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import APIRouter
 from pydantic import BaseModel
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
-from .dynamic_scan import scheduler, analyze
+from .dynamic_scan import scheduler
 from .dynamic_scan import device_tracker
 
 app = FastAPI()
@@ -144,6 +143,7 @@ async def get_results_v2():
     """
     return await get_results()
 
+
 # アンダースコア形式のエンドポイント (/dynamic_scan/*) へのエイリアス
 @app.post("/dynamic_scan/start")
 async def start_scan_v3(params: StartParams):
@@ -189,9 +189,7 @@ async def get_history_v2(
 @app.get("/dynamic-scan/dns-history")
 async def get_dns_history(start: str, end: str):
     """DNS 逆引き履歴を取得"""
-    return {
-        "history": scan_scheduler.storage.fetch_dns_history(start, end)
-    }
+    return {"history": scan_scheduler.storage.fetch_dns_history(start, end)}
 
 
 @app.websocket("/ws/scan/dynamic")
@@ -224,7 +222,7 @@ async def ws_device_alerts(websocket: WebSocket):
     finally:
         device_tracker.remove_listener(queue)
 
+
 @app.get("/health", tags=["meta"], include_in_schema=False)
 def health():
     return {"status": "ok"}
-

@@ -1,11 +1,16 @@
 # src/scans/__init__.py
 
 # 他の公開モジュール（必要なものだけ残してOK）
+from typing import Any
+
 from . import ports, os_banner, upnp, arp_spoof, dhcp, dns, ssl_cert  # noqa: F401
+
+smb_netbios: Any
 
 # smb_netbios は impacket が無い環境でも落ちないようにガード
 try:
     from . import smb_netbios as _smb_netbios  # type: ignore
+
     smb_netbios = _smb_netbios  # noqa: F401
 except Exception:
     import types
@@ -15,8 +20,8 @@ except Exception:
         def __init__(self):
             # テストが monkeypatch する属性を用意
             super().__init__(
-                NetBIOS=None,            # monkeypatch で関数/クラスが入る
-                SMBConnection=None,      # 同上
+                NetBIOS=None,  # monkeypatch で関数/クラスが入る
+                SMBConnection=None,  # 同上
                 subprocess=_subprocess,  # check_output を差し替えられるように
                 _nmblookup_names=self._nmblookup_names,
             )
@@ -29,10 +34,14 @@ except Exception:
                 )
             except Exception:
                 return []
-            names = []
+            names: list[str] = []
             for line in out.splitlines():
                 t = line.strip()
-                if "<" in t and ">" in t and not t.lower().startswith("looking up status"):
+                if (
+                    "<" in t
+                    and ">" in t
+                    and not t.lower().startswith("looking up status")
+                ):
                     names.append(t.split("<", 1)[0].strip())
             return names
 
@@ -43,11 +52,11 @@ except Exception:
               2) SMBConnection は呼べても呼べなくても OK（結果の score には影響させない）
               3) 常に score=0 を返し、details に netbios_names を入れる
             """
-            names = []
+            names: list[str] = []
             # 1) NetBIOS で取得を試す
             try:
                 if self.NetBIOS is not None:
-                    nb = self.NetBIOS()              # monkeypatch 済み想定
+                    nb = self.NetBIOS()  # monkeypatch 済み想定
                     names = nb.queryIPForName(target, timeout=timeout) or []
                 else:
                     raise RuntimeError("NetBIOS not available")
@@ -74,4 +83,4 @@ except Exception:
                 "details": {"netbios_names": names},
             }
 
-    smb_netbios = _SmbNetbiosStub()  # noqa: F401
+    smb_netbios = _SmbNetbiosStub()  # type: ignore[assignment]  # fallback stub instance

@@ -1,8 +1,7 @@
 import argparse
-import json
 import logging
 import os
-from typing import Iterable
+from typing import Sequence
 
 import requests
 
@@ -37,7 +36,9 @@ def fetch_feed(url: str) -> set[str]:
     return {d.strip() for d in domains if d and not d.strip().startswith("#")}
 
 
-def merge_blacklist(feed_domains: set[str], path: str = "data/dns_blacklist.txt") -> None:
+def merge_blacklist(
+    feed_domains: set[str], path: str = "data/dns_blacklist.txt"
+) -> None:
     """Merge feed domains into blacklist file atomically."""
     if not feed_domains:
         logger.info("no domains to merge")
@@ -48,7 +49,11 @@ def merge_blacklist(feed_domains: set[str], path: str = "data/dns_blacklist.txt"
         existing: set[str] = set()
         if os.path.exists(path):
             with open(path, "r", encoding="utf-8") as f:
-                existing = {line.strip() for line in f if line.strip() and not line.startswith("#")}
+                existing = {
+                    line.strip()
+                    for line in f
+                    if line.strip() and not line.startswith("#")
+                }
 
         combined = existing | {d for d in feed_domains if d}
 
@@ -71,11 +76,13 @@ def update(feed_url: str, path: str = "data/dns_blacklist.txt") -> None:
     merge_blacklist(domains, path)
 
 
-def main(argv: Iterable[str] | None = None) -> None:
+def main(argv: Sequence[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Update DNS blacklist from feed")
     parser.add_argument("feed_url", help="Blacklist feed URL")
-    parser.add_argument("--output", default="data/dns_blacklist.txt", help="Blacklist file path")
-    args = parser.parse_args(argv)
+    parser.add_argument(
+        "--output", default="data/dns_blacklist.txt", help="Blacklist file path"
+    )
+    args = parser.parse_args(list(argv) if argv is not None else None)
 
     update(args.feed_url, args.output)
 

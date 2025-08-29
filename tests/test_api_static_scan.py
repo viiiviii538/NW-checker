@@ -61,4 +61,3 @@ def test_static_scan_timeout(monkeypatch):
     assert resp.status_code == 504
     body = resp.json()
     assert body["status"] == "timeout"
-

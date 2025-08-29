@@ -23,7 +23,9 @@ try:
         nextCmd,
     )
 except Exception:  # pragma: no cover - pysnmp may be unavailable
-    CommunityData = ContextData = ObjectIdentity = ObjectType = SnmpEngine = UdpTransportTarget = nextCmd = None
+    CommunityData = ContextData = ObjectIdentity = ObjectType = SnmpEngine = (
+        UdpTransportTarget
+    ) = nextCmd = None
 
 
 LLDP_REMOTE_SYS_NAME_OID = "1.0.8802.1.1.2.1.4.1.1.9"
@@ -50,7 +52,7 @@ def _get_lldp_neighbors(ip: str, community: str = "public") -> List[str]:
 
     neighbors: List[str] = []
     try:
-        for (error_indication, error_status, _error_index, var_binds) in nextCmd(
+        for error_indication, error_status, _error_index, var_binds in nextCmd(
             SnmpEngine(),
             CommunityData(community, mpModel=0),
             UdpTransportTarget((ip, 161), timeout=1, retries=0),
@@ -67,7 +69,9 @@ def _get_lldp_neighbors(ip: str, community: str = "public") -> List[str]:
     return neighbors
 
 
-def _augment_with_snmp(hops: List[str], path: List[str], community: str = "public") -> None:
+def _augment_with_snmp(
+    hops: List[str], path: List[str], community: str = "public"
+) -> None:
     """Replace hop labels with LLDP neighbor names when available."""
     if nextCmd is None:
         return
@@ -77,7 +81,9 @@ def _augment_with_snmp(hops: List[str], path: List[str], community: str = "publi
             path[idx + 1] = neighbors[0]
 
 
-def build_paths(hosts: Iterable[str], use_snmp: bool = False, community: str = "public") -> dict:
+def build_paths(
+    hosts: Iterable[str], use_snmp: bool = False, community: str = "public"
+) -> dict:
     """Construct labelled paths for ``hosts``.
 
     Each path starts with ``LAN`` and converts hop IPs to generic labels
@@ -97,14 +103,18 @@ def build_paths(hosts: Iterable[str], use_snmp: bool = False, community: str = "
     return {"paths": results}
 
 
-def build_topology(hosts: Iterable[str], use_snmp: bool = False, community: str = "public") -> str:
+def build_topology(
+    hosts: Iterable[str], use_snmp: bool = False, community: str = "public"
+) -> str:
     """Backward compatible wrapper returning JSON string paths."""
     data = build_paths(hosts, use_snmp=use_snmp, community=community)
     # Historical format expected only the list of path arrays
     return json.dumps({"paths": [entry["path"] for entry in data["paths"]]})
 
 
-def build_topology_for_subnet(subnet: str, use_snmp: bool = False, community: str = "public") -> str:
+def build_topology_for_subnet(
+    subnet: str, use_snmp: bool = False, community: str = "public"
+) -> str:
     """Discover hosts in ``subnet`` and build topology paths.
 
     This is a convenience wrapper around :func:`build_topology` that first
@@ -122,5 +132,9 @@ def build_topology_for_subnet(subnet: str, use_snmp: bool = False, community: st
     from . import discover_hosts  # local import to avoid heavy dependency during import
 
     discovered = discover_hosts.discover_hosts(subnet)
-    hosts = [h["ip"] if isinstance(h, dict) else h for h in discovered]
+    hosts: list[str] = []
+    for h in discovered:
+        ip = h.get("ip")
+        if ip:
+            hosts.append(ip)
     return build_topology(hosts, use_snmp=use_snmp, community=community)

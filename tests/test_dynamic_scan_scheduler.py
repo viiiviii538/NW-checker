@@ -72,10 +72,12 @@ def test_scheduler_loads_config(monkeypatch, tmp_path):
     async def inner():
         config_path = tmp_path / "config.json"
         config_path.write_text(
-            json.dumps({
-                "blacklist_feed_url": "http://conf.example.com/feed.csv",
-                "blacklist_update_interval_hours": 2,
-            })
+            json.dumps(
+                {
+                    "blacklist_feed_url": "http://conf.example.com/feed.csv",
+                    "blacklist_update_interval_hours": 2,
+                }
+            )
         )
         monkeypatch.delenv("BLACKLIST_FEED_URL", raising=False)
         monkeypatch.delenv("BLACKLIST_UPDATE_INTERVAL_HOURS", raising=False)

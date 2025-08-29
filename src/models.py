@@ -39,4 +39,3 @@ class ScanResult:
 def compute_total(results: Iterable[ScanResult]) -> int:
     """Aggregate total score from an iterable of :class:`ScanResult`."""
     return sum(r.score for r in results)
-
