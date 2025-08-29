@@ -1,10 +1,11 @@
-from __future__ import annotations
-
 """Utility functions to normalise raw scapy packets for analysis."""
 
+from __future__ import annotations
+
 from types import SimpleNamespace
-from scapy.layers.l2 import Ether
+
 from scapy.layers.inet import IP, TCP, UDP
+from scapy.layers.l2 import Ether
 from scapy.packet import Packet
 
 

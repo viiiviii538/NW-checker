@@ -5,7 +5,7 @@ DNSSECが無効な場合に警告を返す。"""
 
 # DNSサーバーの設定を検証し外部利用やDNSSEC無効を警告
 from ipaddress import ip_address, ip_network
-from typing import List
+from typing import Any, List
 
 from scapy.all import IP, UDP, DNS, DNSQR, sr1  # type: ignore
 
@@ -47,7 +47,7 @@ def scan() -> dict:
 
     external: List[str] = []
     invalid: List[str] = []
-    details = {"servers": servers, "warnings": []}
+    details: dict[str, Any] = {"servers": servers, "warnings": []}
 
     try:
         # invalid の検出（形式がIPでない）
@@ -73,7 +73,11 @@ def scan() -> dict:
         dnssec_enabled = None
         valid = [ip for ip in servers if ip not in invalid]
         if valid:
-            pkt = IP(dst=valid[0]) / UDP(dport=53) / DNS(rd=1, qd=DNSQR(qname="example.com"), ad=1)
+            pkt = (
+                IP(dst=valid[0])
+                / UDP(dport=53)
+                / DNS(rd=1, qd=DNSQR(qname="example.com"), ad=1)
+            )
             resp = sr1(pkt, timeout=2, verbose=False)
             if resp and resp.haslayer(DNS):
                 dnssec_enabled = bool(getattr(resp[DNS], "ad", 0))
@@ -81,7 +85,11 @@ def scan() -> dict:
         if dnssec_enabled is False:
             details["warnings"].append("DNSSEC is disabled")
 
-        return {"category": category, "score": len(details["warnings"]), "details": details}
+        return {
+            "category": category,
+            "score": len(details["warnings"]),
+            "details": details,
+        }
 
     except Exception as exc:
         details["error"] = str(exc)

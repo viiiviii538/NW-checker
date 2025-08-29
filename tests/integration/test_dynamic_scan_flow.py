@@ -35,11 +35,13 @@ def test_dynamic_scan_full_flow(monkeypatch, tmp_path, benchmark):
         return queue, asyncio.create_task(_task())
 
     monkeypatch.setattr(capture, "capture_packets", fake_capture)
+
     async def fake_geoip(ip: str):
         return {"country": "Nowhere", "ip": ip}
 
     monkeypatch.setattr(analyze, "geoip_lookup", fake_geoip)
     monkeypatch.setattr(geoip, "get_country", lambda ip: "US")
+
     async def run_flow(db_name: str) -> tuple[int, storage.Storage]:
         local_store = storage.Storage(tmp_path / db_name)
         queue, capture_task = capture.capture_packets()

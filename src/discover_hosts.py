@@ -93,20 +93,26 @@ def _run_nmap_scan(subnet: str) -> List[Dict[str, Optional[str]]]:
                 entry["vendor"] = m_mac.group(2)
 
     for host in host_map.values():
-        if not host.get("hostname"):
-            hostname = _get_hostname_nbtscan(host["ip"])
+        ip = host.get("ip")
+        if not host.get("hostname") and ip:
+            hostname = _get_hostname_nbtscan(ip)
             if not hostname:
-                hostname = _get_hostname_avahi(host["ip"])
+                hostname = _get_hostname_avahi(ip)
             if hostname:
                 host["hostname"] = hostname
-        if host.get("mac") and not host.get("vendor"):
-            vendor = _lookup_vendor(host["mac"])
+        mac = host.get("mac")
+        if mac and not host.get("vendor"):
+            vendor = _lookup_vendor(mac)
             if vendor:
                 host["vendor"] = vendor
 
     results: List[Dict[str, Optional[str]]] = []
     for info in host_map.values():
-        entry = {"ip": info["ip"], "hostname": info.get("hostname"), "vendor": info.get("vendor")}
+        entry = {
+            "ip": info["ip"],
+            "hostname": info.get("hostname"),
+            "vendor": info.get("vendor"),
+        }
         results.append(entry)
     return results
 
@@ -139,7 +145,7 @@ def _get_hostname_avahi(ip: str) -> Optional[str]:
     return None
 
 
-def discover_hosts(subnet: str) -> List[Dict[str, str]]:
+def discover_hosts(subnet: str) -> List[Dict[str, Optional[str]]]:
     """Discover devices in the given subnet.
 
     The current implementation delegates the heavy lifting to ``nmap`` to obtain
@@ -147,4 +153,9 @@ def discover_hosts(subnet: str) -> List[Dict[str, str]]:
     :func:`_verify_host` to confirm reachability.  Hostname resolution and
     vendor lookup are handled within :func:`_run_nmap_scan`.
     """
-    return [h for h in _run_nmap_scan(subnet) if _verify_host(h["ip"])]
+    hosts: List[Dict[str, Optional[str]]] = []
+    for h in _run_nmap_scan(subnet):
+        ip = h.get("ip")
+        if ip and _verify_host(ip):
+            hosts.append(h)
+    return hosts

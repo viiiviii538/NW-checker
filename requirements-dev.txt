@@ -8,3 +8,9 @@ uvicorn==0.35.0
 httpx==0.28.1
 anyio>=3.0.0
 python-multipart>=0.0.9
+
+# Type stubs
+types-requests
+types-urllib3
+types-PyYAML
+typing-extensions

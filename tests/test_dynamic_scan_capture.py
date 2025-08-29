@@ -11,6 +11,7 @@ def _patch_parser(monkeypatch):
 
 def test_capture_packets_enqueue(monkeypatch):
     _patch_parser(monkeypatch)
+
     class FakeSniffer:
         def __init__(self, iface=None, prn=None):
             self.prn = prn
@@ -92,6 +93,7 @@ def test_capture_packets_passes_interface(monkeypatch):
 
 def test_capture_packets_stops_after_duration(monkeypatch):
     _patch_parser(monkeypatch)
+
     class FakeSniffer:
         def __init__(self, iface=None, prn=None):
             self.started = False
@@ -127,6 +129,7 @@ def test_capture_packets_stops_after_duration(monkeypatch):
 
 def test_capture_packets_stops_when_cancelled(monkeypatch):
     _patch_parser(monkeypatch)
+
     class FakeSniffer:
         def __init__(self, iface=None, prn=None):
             self.started = False

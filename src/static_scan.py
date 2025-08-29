@@ -1,20 +1,20 @@
 """Run all static scan modules concurrently with fault tolerance."""
 
-from concurrent.futures import ThreadPoolExecutor, TimeoutError
+from concurrent.futures import Future, ThreadPoolExecutor, TimeoutError
 from importlib import import_module
 from pkgutil import iter_modules
-from typing import Dict, List, Tuple
+from typing import Any, Callable, Dict, List, Tuple
 
 from . import scans
 
 
-def _load_scanners() -> List[Tuple[str, callable]]:
+def _load_scanners() -> List[Tuple[str, Callable[[], Dict[str, Any]]]]:
     """Discover scan functions under :mod:`src.scans`.
 
     Returns a list of ``(module_name, scan_callable)`` tuples.
     """
 
-    scanners: List[Tuple[str, callable]] = []
+    scanners: List[Tuple[str, Callable[[], Dict[str, Any]]]] = []
     for mod_info in iter_modules(scans.__path__):
         if mod_info.name.startswith("_"):
             continue
@@ -25,7 +25,7 @@ def _load_scanners() -> List[Tuple[str, callable]]:
     return scanners
 
 
-def run_all(timeout: float = 5.0) -> Dict[str, List[Dict]]:
+def run_all(timeout: float = 5.0) -> Dict[str, List[Dict[str, Any]]]:
     """Execute all static scanners in parallel and aggregate their results.
 
     Parameters
@@ -49,13 +49,15 @@ def run_all(timeout: float = 5.0) -> Dict[str, List[Dict]]:
         key=lambda x: priority.index(x[0]) if x[0] in priority else len(priority)
     )
 
-    findings: List[Dict] = []
+    findings: List[Dict[str, Any]] = []
 
     # Run all scanners concurrently while preserving the deterministic order
     # established above.  Each scanner is allowed ``timeout`` seconds to
     # complete; on timeout or failure we record an error entry with score 0.
     with ThreadPoolExecutor() as pool:
-        futures = [(name, pool.submit(scan)) for name, scan in scanners]
+        futures: List[Tuple[str, Future[Any]]] = [
+            (name, pool.submit(scan)) for name, scan in scanners
+        ]
         for name, future in futures:
             try:
                 result = future.result(timeout=timeout)
