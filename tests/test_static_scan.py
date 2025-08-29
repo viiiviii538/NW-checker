@@ -90,9 +90,7 @@ def test_run_all_includes_dhcp_details(monkeypatch):
             "score": 2,
             "details": {
                 "servers": ["1.1.1.1", "2.2.2.2"],
-                "warnings": [
-                    "Multiple DHCP servers detected: 1.1.1.1, 2.2.2.2"
-                ],
+                "warnings": ["Multiple DHCP servers detected: 1.1.1.1, 2.2.2.2"],
             },
         }
 

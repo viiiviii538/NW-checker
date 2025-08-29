@@ -32,11 +32,13 @@ except Exception:  # pragma: no cover
 
 from src import static_scan
 
+
 def test_load_scanners_discovers_modules():
     scanners = static_scan._load_scanners()
     names = {name for name, _ in scanners}
     # Ensure common scan modules are discovered
-    assert {'ports', 'os_banner'}.issubset(names)
+    assert {"ports", "os_banner"}.issubset(names)
+
 
 def test_run_all_executes_scanners_concurrently(monkeypatch):
     """Scans should run in parallel to reduce total execution time."""
@@ -45,6 +47,7 @@ def test_run_all_executes_scanners_concurrently(monkeypatch):
         def slow_scan():
             time.sleep(1)
             return {"category": name, "score": 1, "details": {}}
+
         return slow_scan
 
     monkeypatch.setattr(
@@ -87,4 +90,3 @@ def test_load_scanners_skips_private_and_non_scan_modules(tmp_path, monkeypatch)
     result = static_scan.run_all()
     assert result["findings"] == [{"category": "good", "score": 1, "details": {}}]
     assert result["risk_score"] == 1
-

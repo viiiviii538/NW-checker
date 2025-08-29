@@ -1,12 +1,15 @@
 """Utilities for generating network topology graphs."""
+
 from __future__ import annotations
 
-from typing import Dict, Iterable, List, Mapping, Sequence
+from typing import Iterable, List, Mapping, Sequence
 
 from graphviz import Digraph
 
 
-def build_graph(paths: Iterable[Sequence[str]], nodes: Mapping[str, Mapping[str, str]]) -> Digraph:
+def build_graph(
+    paths: Iterable[Sequence[str]], nodes: Mapping[str, Mapping[str, str]]
+) -> Digraph:
     """Build a Graphviz digraph representing the topology.
 
     Parameters

@@ -4,7 +4,6 @@ import contextlib
 from types import SimpleNamespace
 from collections import defaultdict
 
-import pytest
 
 from src.dynamic_scan import (
     analyze,

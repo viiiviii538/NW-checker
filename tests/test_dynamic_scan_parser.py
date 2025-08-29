@@ -3,6 +3,7 @@ from scapy.layers.inet import IP, TCP
 
 from src.dynamic_scan import parser
 
+
 def test_parse_packet_tcp_fields():
     pkt = (
         Ether(src="aa:aa:aa:aa:aa:aa", dst="bb:bb:bb:bb:bb:bb")
@@ -19,6 +20,7 @@ def test_parse_packet_tcp_fields():
     assert parsed.size == len(pkt)
     assert parsed.timestamp == 123.456
 
+
 def test_parse_packet_unknown_protocol():
     pkt = IP(src="3.3.3.3", dst="4.4.4.4", proto=1)  # ICMP
     pkt.time = 1.0
@@ -27,6 +29,7 @@ def test_parse_packet_unknown_protocol():
     assert parsed.protocol == "1"
     assert parsed.src_ip == "3.3.3.3"
     assert parsed.dst_ip == "4.4.4.4"
+
 
 def test_parse_packet_none_returns_empty():
     parsed = parser.parse_packet(None)
