@@ -18,11 +18,11 @@ def test_build_graph_hierarchy():
     graph = build_graph(paths, nodes)
     src = graph.source
 
-    assert 'node [shape=ellipse]' in src
-    assert '1 -> 2' in src
-    assert '2 -> 3' in src
-    assert '2 -> 4' in src
-    assert '1 -> 5' in src
+    assert "node [shape=ellipse]" in src
+    assert "1 -> 2" in src
+    assert "2 -> 3" in src
+    assert "2 -> 4" in src
+    assert "1 -> 5" in src
 
     assert '1 [label="root\nCisco"]' in src
     assert '3 [label="hostA\nDell"]' in src
@@ -38,5 +38,5 @@ def test_build_graph_label_fallback():
     graph = build_graph(paths, nodes)
     src = graph.source
 
-    assert 'A [label=alpha]' in src
-    assert 'B [label=B]' in src
+    assert "A [label=alpha]" in src
+    assert "B [label=B]" in src

@@ -51,13 +51,20 @@ class DynamicScanScheduler:
         self.analyse_task: asyncio.Task | None = None
         self.storage: storage.Storage = storage.Storage()
 
-    async def _run_scan(self, interface: str | None, duration: int | None, approved_macs: Iterable[str] | None) -> None:
+    async def _run_scan(
+        self,
+        interface: str | None,
+        duration: int | None,
+        approved_macs: Iterable[str] | None,
+    ) -> None:
         """実際に 1 回のスキャンを実行する内部メソッド"""
         queue, self.capture_task = capture.capture_packets(
             interface=interface, duration=duration
         )
         self.analyse_task = asyncio.create_task(
-            analyze.analyse_packets(queue, self.storage, approved_macs=approved_macs or [])
+            analyze.analyse_packets(
+                queue, self.storage, approved_macs=approved_macs or []
+            )
         )
         try:
             await asyncio.gather(self.capture_task, self.analyse_task)

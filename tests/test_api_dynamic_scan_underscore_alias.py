@@ -45,7 +45,9 @@ def test_dynamic_scan_start_stop_underscore_alias(monkeypatch, tmp_path):
     client.post("/dynamic_scan/start", json={"duration": 0})
     resp_underscore_stop = client.post("/dynamic_scan/stop")
     assert resp_hyphen_stop.status_code == resp_underscore_stop.status_code == 200
-    assert resp_hyphen_stop.json() == resp_underscore_stop.json() == {"status": "stopped"}
+    assert (
+        resp_hyphen_stop.json() == resp_underscore_stop.json() == {"status": "stopped"}
+    )
 
 
 def test_dynamic_scan_results_underscore_alias(monkeypatch, tmp_path):
@@ -55,7 +57,11 @@ def test_dynamic_scan_results_underscore_alias(monkeypatch, tmp_path):
     api.scan_scheduler = scheduler.DynamicScanScheduler()
     monkeypatch.setattr(storage, "Storage", lambda *args, **kwargs: store)
 
-    asyncio.run(api.scan_scheduler.storage.save_result({"protocol": "ftp", "dangerous_protocol": True}))
+    asyncio.run(
+        api.scan_scheduler.storage.save_result(
+            {"protocol": "ftp", "dangerous_protocol": True}
+        )
+    )
 
     resp_hyphen = client.get("/dynamic-scan/results")
     resp_underscore = client.get("/dynamic_scan/results")

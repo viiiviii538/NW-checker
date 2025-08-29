@@ -25,7 +25,9 @@ def test_network_map_delegates(monkeypatch):
 def test_network_map_success(monkeypatch, capsys):
     """JSON output and success log are emitted on success."""
 
-    monkeypatch.setattr(network_map, "discover_hosts", lambda subnet: [{"ip": "192.168.0.10"}])
+    monkeypatch.setattr(
+        network_map, "discover_hosts", lambda subnet: [{"ip": "192.168.0.10"}]
+    )
     exit_code = network_map.main(["192.168.0.0/24"])
     captured = capsys.readouterr()
     assert exit_code == 0
