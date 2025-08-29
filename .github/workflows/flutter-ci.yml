@@ -40,10 +40,20 @@ jobs:
         working-directory: nw_checker
         run: flutter pub get
 
+      - name: Run flutter analyze
+        if: ${{ steps.check_fl.outputs.exists == 'true' }}
+        working-directory: nw_checker
+        run: flutter analyze
+
       - name: Run flutter tests
         if: ${{ steps.check_fl.outputs.exists == 'true' }}
         working-directory: nw_checker
         run: flutter test -r expanded
+
+      - name: Coverage threshold check
+        if: ${{ steps.check_fl.outputs.exists == 'true' }}
+        working-directory: nw_checker
+        run: flutter test --coverage
 
       - name: Note when skipped
         if: ${{ steps.check_fl.outputs.exists != 'true' }}

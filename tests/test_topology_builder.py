@@ -21,7 +21,9 @@ def test_traceroute_parses_hops(monkeypatch):
             "2  8.8.8.8  2.0 ms\n"
         )
 
-    monkeypatch.setattr("src.topology_builder.subprocess.check_output", fake_check_output)
+    monkeypatch.setattr(
+        "src.topology_builder.subprocess.check_output", fake_check_output
+    )
 
     assert traceroute("8.8.8.8") == ["192.168.0.1", "8.8.8.8"]
 
@@ -135,11 +137,7 @@ def test_build_topology_wrapper(monkeypatch):
         assert hosts == ["192.168.0.30"]
         assert use_snmp
         assert community == "private"
-        return {
-            "paths": [
-                {"ip": "192.168.0.30", "path": ["LAN", "Router", "Host"]}
-            ]
-        }
+        return {"paths": [{"ip": "192.168.0.30", "path": ["LAN", "Router", "Host"]}]}
 
     monkeypatch.setattr("src.topology_builder.build_paths", fake_build_paths)
 
@@ -162,12 +160,11 @@ def test_build_topology_for_subnet(monkeypatch):
         captured["community"] = community
         return "JSON"
 
-    import sys, types
+    import sys
+    import types
 
     monkeypatch.setitem(sys.modules, "requests", types.SimpleNamespace())
-    monkeypatch.setattr(
-        "src.discover_hosts.discover_hosts", fake_discover_hosts
-    )
+    monkeypatch.setattr("src.discover_hosts.discover_hosts", fake_discover_hosts)
     monkeypatch.setattr("src.topology_builder.build_topology", fake_build_topology)
 
     result = build_topology_for_subnet(
@@ -179,4 +176,3 @@ def test_build_topology_for_subnet(monkeypatch):
         "use_snmp": True,
         "community": "private",
     }
-

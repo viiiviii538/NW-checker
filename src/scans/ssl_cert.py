@@ -6,6 +6,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import socket
 import ssl
+from typing import Any
 
 # 信頼された証明書発行者の簡易リスト
 TRUSTED_ISSUERS = {
@@ -16,9 +17,11 @@ TRUSTED_ISSUERS = {
 }
 
 
-def _extract_issuer(cert: dict) -> str:
+def _extract_issuer(cert: dict[str, Any] | None) -> str:
     """抽出した issuer 情報を文字列に整形して返す。"""
 
+    if not cert:
+        return ""
     issuer = cert.get("issuer", ())
     names = []
     for part in issuer:
@@ -30,13 +33,13 @@ def _extract_issuer(cert: dict) -> str:
 
 def scan(host: str = "example.com", port: int = 443) -> dict:
     category = "ssl_cert"
-    details: dict = {"host": host}
+    details: dict[str, Any] = {"host": host}
 
     try:
         expired = False
         days_remaining: int | None = None
         issuer = ""
-        cert_data: dict = {}
+        cert_data: dict[str, Any] | None = None
 
         context = ssl.create_default_context()
         with socket.create_connection((host, port), timeout=2) as sock:
@@ -44,9 +47,11 @@ def scan(host: str = "example.com", port: int = 443) -> dict:
                 cert = ssock.getpeercert()
                 cert_data = cert
                 issuer = _extract_issuer(cert)
-                not_after = cert.get("notAfter")
-                if not_after:
-                    expiry = datetime.strptime(not_after, "%b %d %H:%M:%S %Y %Z").replace(tzinfo=timezone.utc)
+                not_after = cert.get("notAfter") if cert else None
+                if isinstance(not_after, str):
+                    expiry = datetime.strptime(
+                        not_after, "%b %d %H:%M:%S %Y %Z"
+                    ).replace(tzinfo=timezone.utc)
                     delta = expiry - datetime.now(timezone.utc)
                     days_remaining = delta.days
                     expired = days_remaining < 0
@@ -61,7 +66,12 @@ def scan(host: str = "example.com", port: int = 443) -> dict:
                 score += 1
 
         details.update(
-            {"expired": expired, "issuer": issuer, "days_remaining": days_remaining, "cert": cert_data}
+            {
+                "expired": expired,
+                "issuer": issuer,
+                "days_remaining": days_remaining,
+                "cert": cert_data,
+            }
         )
         return {"category": category, "score": score, "details": details}
 

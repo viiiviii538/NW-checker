@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """HTTP server exposing the static scan API.
 
 The static scan can take time and perform blocking operations.  To keep the
@@ -7,8 +5,11 @@ API responsive we execute the scan in a background thread and apply a timeout
 so hung scanners do not block the event loop.
 """
 
+from __future__ import annotations
+
 import asyncio
 import logging
+from typing import Any
 
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
@@ -54,7 +55,7 @@ async def static_scan_endpoint(report: bool = False):
         )
     logger.info("Static scan completed")
 
-    findings = result.get("findings", {}) if isinstance(result, dict) else result
+    findings: Any = result.get("findings", {}) if isinstance(result, dict) else result
     risk_score = result.get("risk_score") if isinstance(result, dict) else None
 
     response = {"status": "ok", "findings": findings, "risk_score": risk_score}

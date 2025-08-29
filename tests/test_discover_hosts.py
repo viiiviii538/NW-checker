@@ -24,7 +24,9 @@ def test_discover_hosts_resolves_hostname_and_vendor(monkeypatch):
             assert cmd == ["nbtscan", "-q", "192.168.0.20"]
             return "192.168.0.20 host20\n"
         if cmd[0] == "avahi-resolve":
-            raise AssertionError("avahi-resolve should not be called when nbtscan succeeds")
+            raise AssertionError(
+                "avahi-resolve should not be called when nbtscan succeeds"
+            )
         raise AssertionError(f"Unexpected command: {cmd}")
 
     monkeypatch.setattr(subprocess, "check_output", fake_check_output)
@@ -38,6 +40,7 @@ def test_discover_hosts_resolves_hostname_and_vendor(monkeypatch):
             "00:11:22:33:44:55": "VendorA",
             "66:77:88:99:AA:BB": "VendorB",
         }
+
         class Resp:
             status_code = 200
             text = mapping[mac]
@@ -97,6 +100,7 @@ def test_discover_hosts_avahi_fallback(monkeypatch):
 
     def fake_get(url, timeout=5):
         assert url == "https://api.macvendors.com/AA:BB:CC:DD:EE:FF"
+
         class Resp:
             status_code = 200
             text = "VendorC"

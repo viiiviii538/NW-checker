@@ -27,8 +27,13 @@ def test_fetch_feed_parses_json(monkeypatch):
         def json(self):
             return {"domains": ["a.com", "b.com"]}
 
-    monkeypatch.setattr(blacklist_updater.requests, "get", lambda url, timeout=10: FakeResp())
-    assert blacklist_updater.fetch_feed("http://example.com/feed.json") == {"a.com", "b.com"}
+    monkeypatch.setattr(
+        blacklist_updater.requests, "get", lambda url, timeout=10: FakeResp()
+    )
+    assert blacklist_updater.fetch_feed("http://example.com/feed.json") == {
+        "a.com",
+        "b.com",
+    }
 
 
 def test_fetch_feed_parses_text(monkeypatch):
@@ -40,7 +45,9 @@ def test_fetch_feed_parses_text(monkeypatch):
         def raise_for_status(self):
             pass
 
-    monkeypatch.setattr(blacklist_updater.requests, "get", lambda url, timeout=10: FakeResp())
+    monkeypatch.setattr(
+        blacklist_updater.requests, "get", lambda url, timeout=10: FakeResp()
+    )
     assert blacklist_updater.fetch_feed("http://example.com/feed.txt") == {"d.com"}
 
 

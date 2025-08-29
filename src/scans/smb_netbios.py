@@ -14,6 +14,7 @@ from typing import Any, Dict, List
 try:
     from impacket.nmb import NetBIOS  # type: ignore
     from impacket.smbconnection import SMBConnection  # type: ignore
+
     HAS_IMPACKET = True
 except Exception:  # pragma: no cover
     NetBIOS = None  # type: ignore
@@ -23,7 +24,9 @@ except Exception:  # pragma: no cover
 
 def _nmblookup_names(target: str) -> list[str]:
     try:
-        output = subprocess.check_output(["nmblookup", "-A", target], text=True, timeout=3)
+        output = subprocess.check_output(
+            ["nmblookup", "-A", target], text=True, timeout=3
+        )
     except Exception:  # pragma: no cover
         return []
     names: list[str] = []
@@ -36,9 +39,14 @@ def _nmblookup_names(target: str) -> list[str]:
             names.append(name.upper())  # テストは大文字 "HOSTNAME" を期待
     return names
 
+
 def scan(target: str) -> Dict[str, Any]:
     category = "smb_netbios"
-    details: Dict[str, Any] = {"target": target, "netbios_names": [], "smb1_enabled": False}
+    details: Dict[str, Any] = {
+        "target": target,
+        "netbios_names": [],
+        "smb1_enabled": False,
+    }
     last_error: str | None = None
 
     try:
@@ -50,8 +58,10 @@ def scan(target: str) -> Dict[str, Any]:
                 try:
                     names = nb.queryIPForName(target, timeout=2) or []
                 finally:
-                    try: nb.close()
-                    except Exception: pass
+                    try:
+                        nb.close()
+                    except Exception:
+                        pass
         except Exception as e:
             # NetBIOS失敗は記録だけ。後で nmblookup フォールバック。
             last_error = str(e)
@@ -68,10 +78,12 @@ def scan(target: str) -> Dict[str, Any]:
             if SMBConnection is not None:
                 conn = SMBConnection(target, target, sess_port=445, timeout=2)  # type: ignore
                 try:
-                    details["smb1_enabled"] = (conn.getDialect() == 0x0000)  # SMB1
+                    details["smb1_enabled"] = conn.getDialect() == 0x0000  # SMB1
                 finally:
-                    try: conn.logoff()
-                    except Exception: pass
+                    try:
+                        conn.logoff()
+                    except Exception:
+                        pass
         except Exception as e:
             # SMBのエラーは優先（テストが"connection refused"等を期待）
             last_error = str(e)

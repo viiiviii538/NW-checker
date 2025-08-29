@@ -1,4 +1,5 @@
 """GeoIP ユーティリティ"""
+
 from __future__ import annotations
 
 from contextlib import closing
@@ -21,8 +22,8 @@ def get_country(ip_addr: str, db_path: str | None = None) -> str | None:
         import geoip2.database
 
         with closing(geoip2.database.Reader(db_path)) as reader:
-            resp = reader.country(ip_addr)
-            code = resp.country.iso_code
+            geo_resp = reader.country(ip_addr)
+            code = geo_resp.country.iso_code
             if code:
                 return code.upper()
     except Exception:

@@ -35,9 +35,8 @@ socket = dns_analyzer.socket
 
 
 def reverse_dns_lookup(ip_addr: str):
-    return dns_analyzer.reverse_dns_lookup(
-        ip_addr, resolver=socket.gethostbyaddr
-    )
+    return dns_analyzer.reverse_dns_lookup(ip_addr, resolver=socket.gethostbyaddr)
+
 
 CONFIG_PATH = Path(__file__).with_name("config.json")
 
@@ -116,7 +115,6 @@ async def geoip_lookup(ip: str, db_path: str | None = None) -> Dict[str, Any]:
     except Exception:
         pass
     return {}
-
 
 
 def is_unapproved_device(mac: str, approved_macs: Iterable[str]) -> bool:

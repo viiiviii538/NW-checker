@@ -54,4 +54,3 @@ def reverse_dns_lookup(
         return host
     except Exception:
         return None
-

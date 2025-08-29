@@ -25,7 +25,9 @@ def scan(target: str = "127.0.0.1") -> dict:
         # サービスバナー取得
         tcp_info = host_info.get("tcp", {})
         for port, data in tcp_info.items():
-            banner = " ".join(filter(None, [data.get("name"), data.get("version")])).strip()
+            banner = " ".join(
+                filter(None, [data.get("name"), data.get("version")])
+            ).strip()
             if banner:
                 banners[int(port)] = banner
 
