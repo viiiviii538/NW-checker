@@ -44,7 +44,6 @@ jobs:
         if: ${{ steps.check_fl.outputs.exists == 'true' }}
         working-directory: nw_checker
         run: flutter analyze
-        continue-on-error: true
 
       - name: Run flutter tests
         if: ${{ steps.check_fl.outputs.exists == 'true' }}
@@ -55,7 +54,6 @@ jobs:
         if: ${{ steps.check_fl.outputs.exists == 'true' }}
         working-directory: nw_checker
         run: flutter test --coverage
-        continue-on-error: true
 
       - name: Note when skipped
         if: ${{ steps.check_fl.outputs.exists != 'true' }}
