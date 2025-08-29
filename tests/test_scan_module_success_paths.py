@@ -19,12 +19,15 @@ def ok_ports(mp):
     class Dummy:
         def __enter__(self):
             return self
+
         def __exit__(self, exc_type, exc, tb):
             return False
+
     def fake_conn(addr, timeout=0.5):
         if addr[1] == 22:
             return Dummy()
         raise OSError("closed")
+
     mp.setattr(ports.socket, "create_connection", fake_conn)
 
 
@@ -39,6 +42,7 @@ def ok_os_banner(mp):
                     }
                 }
             }
+
     mp.setattr(os_banner.nmap, "PortScanner", lambda: MockScanner())
 
 
@@ -46,15 +50,20 @@ def ok_smb_netbios(mp):
     class DummyNB:
         def queryIPForName(self, target, timeout=2):  # noqa: D401
             return ["HOST"]
+
         def close(self):  # noqa: D401
             pass
+
     class DummyConn:
         def __init__(self, *args, **kwargs):
             pass
+
         def getDialect(self):  # noqa: D401
             return 0x0000
+
         def logoff(self):  # noqa: D401
             pass
+
     mp.setattr(smb_netbios, "NetBIOS", lambda: DummyNB())
     mp.setattr(smb_netbios, "SMBConnection", DummyConn)
 
@@ -77,8 +86,10 @@ def ok_dhcp(mp):
     class FakePkt:
         def __contains__(self, layer):  # noqa: D401
             return True
+
         def __getitem__(self, layer):  # noqa: D401
             return types.SimpleNamespace(src="1.2.3.4")
+
     mp.setattr(dhcp, "srp", lambda *_, **__: ([(None, FakePkt())], None))
 
 
@@ -87,10 +98,13 @@ def ok_dns(mp):
         ancount = 1
         arcount = 0
         ad = 1
+
         def __getitem__(self, item):  # noqa: D401
             return self
+
         def haslayer(self, layer):  # noqa: D401
             return True
+
     mp.setattr(dns, "_get_nameservers", lambda path="/etc/resolv.conf": ["8.8.8.8"])
     mp.setattr(dns, "sr1", lambda *_, **__: FakeResp())
 
@@ -98,15 +112,20 @@ def ok_dns(mp):
 def ok_ssl_cert(mp):
     future = datetime.now(timezone.utc) + timedelta(days=60)
     not_after = future.strftime("%b %d %H:%M:%S %Y GMT")
+
     class DummySock:
         def __init__(self, cert=None):
             self.cert = cert or {}
+
         def __enter__(self):
             return self
+
         def __exit__(self, exc_type, exc, tb):  # noqa: D401
             return False
+
         def getpeercert(self):  # noqa: D401
             return self.cert
+
     class DummyContext:
         def wrap_socket(self, sock, server_hostname=None):  # noqa: D401, ARG002
             return DummySock(
@@ -115,6 +134,7 @@ def ok_ssl_cert(mp):
                     "issuer": ((("commonName", "Let's Encrypt"),),),
                 }
             )
+
     mp.setattr(ssl_cert.ssl, "create_default_context", lambda: DummyContext())
     mp.setattr(ssl_cert.socket, "create_connection", lambda *_, **__: DummySock())
 

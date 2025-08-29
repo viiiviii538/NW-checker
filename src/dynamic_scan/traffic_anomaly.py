@@ -14,6 +14,7 @@ CONTINUOUS_DURATION = 60
 # 通信が途切れたとみなす間隔（秒）
 CONTINUOUS_GAP = 10
 
+
 def update_traffic_stats(mac: str, bytes: int) -> None:
     """通信量統計を更新する。
 
@@ -43,6 +44,7 @@ def update_traffic_stats(mac: str, bytes: int) -> None:
     entry["total"] += bytes
     entry["count"] += 1
     entry["last_seen"] = now
+
 
 def detect_spike(mac: str) -> bool:
     """過去平均 ± 閾値で通信スパイクを検知する。

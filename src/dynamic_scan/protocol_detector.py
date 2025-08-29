@@ -2,6 +2,7 @@
 
 危険ポートの判定を行うモジュール。
 """
+
 from typing import Optional
 
 # 危険とされるポート番号集合

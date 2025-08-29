@@ -2,12 +2,12 @@ import sys
 import subprocess
 import types
 
+from src.scans.arp_spoof import _get_arp_table
+
 scapy_all = types.SimpleNamespace(ARP=object, send=lambda *args, **kwargs: None)
 scapy = types.SimpleNamespace(all=scapy_all)
 sys.modules.setdefault("scapy", scapy)
 sys.modules.setdefault("scapy.all", scapy_all)
-
-from src.scans.arp_spoof import _get_arp_table
 
 
 def test_get_arp_table_parses_and_ignores_malformed(monkeypatch):

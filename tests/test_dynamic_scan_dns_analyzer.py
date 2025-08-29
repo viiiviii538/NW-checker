@@ -1,4 +1,3 @@
-import pytest
 from src.dynamic_scan import dns_analyzer
 
 
