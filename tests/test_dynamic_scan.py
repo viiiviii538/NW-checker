@@ -49,6 +49,8 @@ def test_reverse_dns_lookup(monkeypatch):
 def test_is_dangerous_protocol():
     assert protocol_detector.is_dangerous_protocol(23, 1000)
     assert protocol_detector.is_dangerous_protocol(5900, None)
+    assert protocol_detector.is_dangerous_protocol(3389, None)
+    assert protocol_detector.is_dangerous_protocol(3306, None)
     assert not protocol_detector.is_dangerous_protocol(80, 8080)
     assert not protocol_detector.is_dangerous_protocol(None, None)
 
