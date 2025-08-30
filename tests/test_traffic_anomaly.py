@@ -27,3 +27,24 @@ def test_continuous_traffic(monkeypatch):
     traffic_anomaly.update_traffic_stats(mac, 10)  # t=3
     fake_time[0] += 3
     assert traffic_anomaly.detect_spike(mac) is True
+
+
+def test_reset_after_gap(monkeypatch):
+    """長い通信途切れ後は統計がリセットされる"""
+    traffic_anomaly._stats.clear()
+    mac = "ee:ff"
+    fake_time = [0]
+
+    def fake_time_func():
+        return fake_time[0]
+
+    monkeypatch.setattr(traffic_anomaly.time, "time", fake_time_func)
+    monkeypatch.setattr(traffic_anomaly, "CONTINUOUS_DURATION", 5)
+    monkeypatch.setattr(traffic_anomaly, "CONTINUOUS_GAP", 5)
+    traffic_anomaly.update_traffic_stats(mac, 10)  # t=0
+    fake_time[0] += 2
+    traffic_anomaly.update_traffic_stats(mac, 10)  # t=2
+    fake_time[0] += 6  # gap > CONTINUOUS_GAP triggers reset
+    traffic_anomaly.update_traffic_stats(mac, 10)  # t=8
+    fake_time[0] += 4
+    assert traffic_anomaly.detect_spike(mac) is False
