@@ -1,6 +1,7 @@
 # 開発/テスト用パッケージ
 pytest==8.4.1
 pytest-benchmark==5.1.0
+pytest-asyncio>=0.23
 
 # APIテストに必要
 fastapi==0.116.1
