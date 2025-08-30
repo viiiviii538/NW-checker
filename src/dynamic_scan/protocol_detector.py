@@ -7,7 +7,8 @@ from typing import Optional
 
 # 危険とされるポート番号集合
 # FTP(21), Telnet(23), RDP(3389), SMB(445) などの典型的な脆弱サービス
-# VNC や WinRM(5985/5986) などの管理用プロトコルも監視対象とする
+# VNC や WinRM(5985/5986) などの管理用プロトコル、
+# データベース系サービスのポートも監視対象とする
 DANGEROUS_PORTS: set[int] = {
     21,  # FTP
     23,  # Telnet
@@ -18,6 +19,10 @@ DANGEROUS_PORTS: set[int] = {
     5985,  # WinRM HTTP
     5986,  # WinRM HTTPS
     2323,  # Telnet alternate
+    1433,  # Microsoft SQL Server
+    1521,  # Oracle DB
+    3306,  # MySQL
+    5432,  # PostgreSQL
 }
 
 
