@@ -5,36 +5,61 @@ on:
   push:
     branches-ignore: [ main ]
 
+concurrency:
+  group: soft-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  # Python+Flutter（not fastapi）を codex_run_tests.sh で実行
   ci-soft:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: pip install -U pip && pip install -r requirements.txt -r requirements-dev.txt
-      - uses: subosito/flutter-action@v2
+
+      - name: Install deps
+        run: |
+          python -m pip install -U pip
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
-      - run: cd nw_checker && flutter pub get
+
+      - name: Flutter pub get
+        run: |
+          if [ -f nw_checker/pubspec.yaml ]; then cd nw_checker && flutter pub get; fi
+
       - name: Run unified tests (SOFT)
         run: bash codex_run_tests.sh
         env:
-          SOFT_CL: "1"
+          SOFT_CL: "1"           # ← ソフトモード（lint/type/coverageは警告扱い）
           PY_MIN_COV: "80"
           FL_MIN_LINE_RATE: "80.0"
 
+  # fastapi テストも毎回走らせるが、Softは落ちてもブロックしない
   fastapi-soft:
     runs-on: ubuntu-latest
-    # ← Softでは失敗してもPRをブロックしない
-    continue-on-error: true
+    continue-on-error: true     # ← ここがポイント
+    needs: []
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: pip install -U pip && pip install -r requirements.txt -r requirements-dev.txt
-      - name: FastAPI tests
+
+      - name: Install deps
+        run: |
+          python -m pip install -U pip
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Run FastAPI tests
         run: pytest -m fastapi -vv
