@@ -25,3 +25,16 @@ jobs:
           SOFT_CL: "1"
           PY_MIN_COV: "80"
           FL_MIN_LINE_RATE: "80.0"
+
+  fastapi-soft:
+    runs-on: ubuntu-latest
+    # ← Softでは失敗してもPRをブロックしない
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -U pip && pip install -r requirements.txt -r requirements-dev.txt
+      - name: FastAPI tests
+        run: pytest -m fastapi -vv
