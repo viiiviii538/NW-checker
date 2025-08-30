@@ -26,3 +26,14 @@ jobs:
           SOFT_CL: "0"
           PY_MIN_COV: "90"
           FL_MIN_LINE_RATE: "90.0"
+
+  fastapi-hard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -U pip && pip install -r requirements.txt -r requirements-dev.txt
+      - name: FastAPI tests
+        run: pytest -m fastapi -vv
