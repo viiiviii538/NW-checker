@@ -18,6 +18,10 @@ DANGEROUS_PORTS: set[int] = {
     5985,  # WinRM HTTP
     5986,  # WinRM HTTPS
     2323,  # Telnet alternate
+    1433,  # Microsoft SQL Server
+    1521,  # Oracle DB
+    3306,  # MySQL
+    5432,  # PostgreSQL
 }
 
 

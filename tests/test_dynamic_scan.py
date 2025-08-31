@@ -57,6 +57,11 @@ def test_is_dangerous_protocol_winrm():
     assert protocol_detector.is_dangerous_protocol(5985, 80)
 
 
+def test_is_dangerous_protocol_db_ports():
+    assert protocol_detector.is_dangerous_protocol(1433, 80)
+    assert protocol_detector.is_dangerous_protocol(None, 3306)
+
+
 def test_detect_dangerous_protocols_safe_ports():
     pkt = SimpleNamespace(protocol="HTTP", src_port=80, dst_port=8080)
     res = analyze.detect_dangerous_protocols(pkt)

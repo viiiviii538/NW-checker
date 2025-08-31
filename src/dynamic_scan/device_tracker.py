@@ -2,7 +2,6 @@ from contextlib import closing
 import asyncio
 import json
 import sqlite3
-from contextlib import closing
 from datetime import datetime
 from pathlib import Path
 from typing import List, Set
