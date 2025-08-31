@@ -1,4 +1,3 @@
-from contextlib import closing
 import asyncio
 import json
 import sqlite3

@@ -22,8 +22,8 @@ def get_country(ip_addr: str, db_path: str | None = None) -> str | None:
         import geoip2.database
 
         with closing(geoip2.database.Reader(db_path)) as reader:
-            resp = reader.country(ip_addr)
-            code = resp.country.iso_code
+            db_resp = reader.country(ip_addr)
+            code = db_resp.country.iso_code
             if code:
                 return code.upper()
     except Exception:
@@ -32,9 +32,9 @@ def get_country(ip_addr: str, db_path: str | None = None) -> str | None:
 
     # 外部 API へのフォールバック
     try:
-        resp = httpx.get(f"https://ipapi.co/{ip_addr}/country/", timeout=5)
-        if resp.status_code == 200:
-            code = resp.text.strip().upper()
+        api_resp = httpx.get(f"https://ipapi.co/{ip_addr}/country/", timeout=5)
+        if api_resp.status_code == 200:
+            code = api_resp.text.strip().upper()
             return code or None
     except httpx.HTTPError:
         pass
