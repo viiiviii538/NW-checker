@@ -13,6 +13,7 @@ DANGEROUS_PORTS: set[int] = {
     23,  # Telnet
     3389,  # RDP
     445,  # SMB
+    5800,  # VNC over HTTP
     5900,  # VNC
     5901,  # VNC alt
     5985,  # WinRM HTTP
