@@ -3,9 +3,12 @@
 import socket
 import subprocess
 
+import pytest
 import requests
 
 from src.discover_hosts import discover_hosts
+
+pytestmark = pytest.mark.nmap
 
 
 def test_discover_hosts_resolves_hostname_and_vendor(monkeypatch):

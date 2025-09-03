@@ -78,6 +78,7 @@ def test_ports_scan_handles_exception(monkeypatch):
     assert "fail" in result["details"]["error"]
 
 
+@pytest.mark.nmap
 def test_os_banner_scan_collects_os_and_banners(monkeypatch):
     class MockScanner:
         def scan(self, target, arguments=""):
@@ -97,6 +98,7 @@ def test_os_banner_scan_collects_os_and_banners(monkeypatch):
     assert result["details"]["os"] == "Linux"
 
 
+@pytest.mark.nmap
 def test_os_banner_scan_handles_no_results(monkeypatch):
     class MockScanner:
         def scan(self, target, arguments=""):
@@ -109,6 +111,7 @@ def test_os_banner_scan_handles_no_results(monkeypatch):
     assert result["details"]["os"] == ""
 
 
+@pytest.mark.nmap
 def test_os_banner_scan_handles_exception(monkeypatch):
     class MockScanner:
         def scan(self, target, arguments=""):
