@@ -1,3 +1,5 @@
+import time
+
 from src import static_scan
 from src.scans import (
     ports,
@@ -68,3 +70,24 @@ def test_run_all_sums_varying_scores(monkeypatch):
     results = static_scan.run_all()
     assert results["risk_score"] == 5
     assert [f["category"] for f in results["findings"]] == ["a", "b", "c"]
+
+
+def test_run_all_handles_timeouts(monkeypatch):
+    def slow_scan():
+        time.sleep(0.2)
+        return {"category": "slow", "score": 2, "details": {}}
+
+    def fast_scan():
+        return {"category": "fast", "score": 1, "details": {}}
+
+    monkeypatch.setattr(
+        static_scan,
+        "_load_scanners",
+        lambda: [("slow", slow_scan), ("fast", fast_scan)],
+    )
+
+    results = static_scan.run_all(timeout=0.01)
+    by_cat = {r["category"]: r for r in results["findings"]}
+    assert by_cat["slow"]["details"]["error"] == "timeout"
+    assert by_cat["fast"]["score"] == 1
+    assert results["risk_score"] == 1
