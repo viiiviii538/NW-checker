@@ -56,3 +56,15 @@ def test_run_all_handles_module_errors(monkeypatch):
     assert by_cat["dns"]["score"] == 0
     assert by_cat["dns"]["details"]["error"] == "boom"
     assert results["risk_score"] == len(modules) - 1
+
+
+def test_run_all_sums_varying_scores(monkeypatch):
+    scanners = [
+        ("a", lambda: {"category": "a", "score": 2, "details": {}}),
+        ("b", lambda: {"category": "b", "score": 3, "details": {}}),
+        ("c", lambda: {"category": "c", "score": 0, "details": {"error": "x"}}),
+    ]
+    monkeypatch.setattr(static_scan, "_load_scanners", lambda: scanners)
+    results = static_scan.run_all()
+    assert results["risk_score"] == 5
+    assert [f["category"] for f in results["findings"]] == ["a", "b", "c"]
