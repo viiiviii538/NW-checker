@@ -1,7 +1,10 @@
 """Static scan for OS and service banners using nmap."""
 
 # OSやサービスのバナー情報からバージョン漏洩を調べる
-import nmap
+try:  # pragma: no cover - optional dependency
+    import nmap  # type: ignore
+except Exception:  # pragma: no cover
+    nmap = None
 
 
 def scan(target: str = "127.0.0.1") -> dict:
@@ -15,6 +18,8 @@ def scan(target: str = "127.0.0.1") -> dict:
     details: dict = {"target": target}
 
     try:
+        if nmap is None:
+            raise RuntimeError("nmap module not available")
         scanner = nmap.PortScanner()
         banners: dict[int, str] = {}
         os_name = ""

@@ -2,6 +2,8 @@ import sys
 import time
 import types
 
+import pytest
+
 # 外部依存ライブラリが存在しない場合に限りスタブを登録
 try:  # pragma: no cover - 実環境では本物が入るため
     import nmap  # type: ignore  # noqa: F401
@@ -31,6 +33,8 @@ except Exception:  # pragma: no cover
     sys.modules.setdefault("scapy.all", scapy_stub.all)
 
 from src import static_scan
+
+pytestmark = pytest.mark.nmap
 
 
 def test_load_scanners_discovers_modules():

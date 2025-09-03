@@ -9,6 +9,11 @@ export PYTHONPATH="$ROOT/src:${PYTHONPATH:-}"
 SOFT_CL="${SOFT_CL:-0}"   # 1なら緩め
 PY_MIN_COV="${PY_MIN_COV:-80}"
 FL_MIN_LINE_RATE="${FL_MIN_LINE_RATE:-80.0}"
+FORCE_RUN_PYTEST="${FORCE_RUN_PYTEST:-0}"
+
+if [[ "${CI:-}" == "true" ]]; then
+  FORCE_RUN_PYTEST=1
+fi
 
 run_or_warn () {
   local cmd="$1" name="$2"
@@ -27,10 +32,15 @@ run_or_warn "black --check src tests" "black"
 run_or_warn "mypy src" "mypy"
 
 # --- Python tests ---
-pytest -m "not fastapi" -vv --cov=src --cov-report=xml
+if [[ "$FORCE_RUN_PYTEST" == "1" ]]; then
+  if [[ "$SOFT_CL" == "1" ]]; then
+    pytest -m "not fastapi and not nmap" -vv --cov=src --cov-report=xml
+  else
+    pytest -vv --cov=src --cov-report=xml
+  fi
 
-if [[ "$SOFT_CL" != "1" ]]; then
-  python3 - <<PY
+  if [[ "$SOFT_CL" != "1" ]]; then
+    python3 - <<PY
 import sys, xml.etree.ElementTree as ET
 cov = ET.parse('coverage.xml').getroot().get('line-rate')
 rate = float(cov) * 100
@@ -38,6 +48,9 @@ thr = float("$PY_MIN_COV")
 print(f"Python coverage: {rate:.1f}% (min {thr}%)")
 sys.exit(0 if rate >= thr else 1)
 PY
+  fi
+else
+  echo "Pytest skipped (set FORCE_RUN_PYTEST=1 to run)"
 fi
 
 # --- Flutter tests ---

@@ -76,7 +76,6 @@ def patch_ssl_cert(mp):
 
 CASES = [
     ("ports", ports, patch_ports, ("host",)),
-    ("os_banner", os_banner, patch_os_banner, ("host",)),
     ("smb_netbios", smb_netbios, patch_smb_netbios, ("host",)),
     ("upnp", upnp, patch_upnp, ()),
     ("arp_spoof", arp_spoof, patch_arp_spoof, (0,)),
@@ -85,9 +84,24 @@ CASES = [
     ("ssl_cert", ssl_cert, patch_ssl_cert, ("example.com",)),
 ]
 
+NMAP_CASES = [("os_banner", os_banner, patch_os_banner, ("host",))]
+
 
 @pytest.mark.parametrize("name, module, apply_patch, args", CASES)
 def test_scan_handles_errors_and_returns_structure(
+    name, module, apply_patch, args, monkeypatch
+):
+    apply_patch(monkeypatch)
+    result = module.scan(*args)
+    assert result["category"] == name
+    assert result["score"] == 0
+    assert "details" in result and isinstance(result["details"], dict)
+    assert "error" in result["details"]
+
+
+@pytest.mark.nmap
+@pytest.mark.parametrize("name, module, apply_patch, args", NMAP_CASES)
+def test_scan_handles_errors_and_returns_structure_nmap(
     name, module, apply_patch, args, monkeypatch
 ):
     apply_patch(monkeypatch)

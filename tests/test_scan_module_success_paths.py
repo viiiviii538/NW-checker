@@ -141,7 +141,6 @@ def ok_ssl_cert(mp):
 
 SUCCESS_CASES = [
     ("ports", ports, ok_ports, ("host",), 1),
-    ("os_banner", os_banner, ok_os_banner, ("host",), 2),
     ("smb_netbios", smb_netbios, ok_smb_netbios, ("host",), 5),
     ("upnp", upnp, ok_upnp, (), 1),
     ("arp_spoof", arp_spoof, ok_arp_spoof, (0,), 5),
@@ -150,9 +149,23 @@ SUCCESS_CASES = [
     ("ssl_cert", ssl_cert, ok_ssl_cert, ("example.com",), 0),
 ]
 
+NMAP_CASES = [("os_banner", os_banner, ok_os_banner, ("host",), 2)]
+
 
 @pytest.mark.parametrize("name, module, apply_patch, args, expected", SUCCESS_CASES)
 def test_scan_module_success(name, module, apply_patch, args, expected, monkeypatch):
+    apply_patch(monkeypatch)
+    result = module.scan(*args)
+    assert result["category"] == name
+    assert result["score"] == expected
+    assert "error" not in result["details"]
+
+
+@pytest.mark.nmap
+@pytest.mark.parametrize("name, module, apply_patch, args, expected", NMAP_CASES)
+def test_scan_module_success_nmap(
+    name, module, apply_patch, args, expected, monkeypatch
+):
     apply_patch(monkeypatch)
     result = module.scan(*args)
     assert result["category"] == name
