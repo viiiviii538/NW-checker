@@ -10,9 +10,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Python+Flutter（not fastapi）を codex_run_tests.sh で実行
+  # Python+Flutter（not fastapi）は codex_run_tests.sh 側でスキップ運用
   ci-soft:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      PYTHONUTF8: "1"
+      SOFT_CL: "1"           # ← ソフトモード（lint/type/coverageは警告扱い）
+      PY_MIN_COV: "80"
+      FL_MIN_LINE_RATE: "80.0"
     steps:
       - uses: actions/checkout@v4
 
@@ -20,6 +26,14 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: |
+            pip-${{ runner.os }}-
 
       - name: Install deps
         run: |
@@ -38,23 +52,34 @@ jobs:
 
       - name: Run unified tests (SOFT)
         run: bash codex_run_tests.sh
-        env:
-          SOFT_CL: "1"           # ← ソフトモード（lint/type/coverageは警告扱い）
-          PY_MIN_COV: "80"
-          FL_MIN_LINE_RATE: "80.0"
 
-  # fastapi テストも毎回走らせるが、Softは落ちてもブロックしない
+  # fastapi テストは毎回回すけど、Softは失敗してもブロックしない
   fastapi-soft:
     runs-on: ubuntu-latest
-    continue-on-error: true     # ← ここがポイント
-    needs: []
+    continue-on-error: true
+    timeout-minutes: 20
+    env:
+      PYTHONUTF8: "1"
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install OS deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y nmap
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: |
+            pip-${{ runner.os }}-
 
       - name: Install deps
         run: |
