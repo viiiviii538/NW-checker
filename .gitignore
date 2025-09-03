@@ -106,6 +106,8 @@ unlinked_spec.ds
 
 # Coverage
 coverage/
+coverage.xml
+.coverage
 
 # Symbols
 app.*.symbols
